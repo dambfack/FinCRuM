@@ -1,4 +1,4 @@
-# Firebase Studio
+# Finsculpt CRM
 
 This is a NextJS starter in Firebase Studio.
 

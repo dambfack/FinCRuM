@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans'; // Updated import
+import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import {
@@ -14,16 +14,11 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload } from 'lucide-react';
+import { LayoutDashboard, Table, Upload, Shapes } from 'lucide-react'; // Changed icon
 import { Toaster } from "@/components/ui/toaster";
 
-// const geistSans = Geist({ // No need to call it as a function when importing from geist/font/sans
-//   variable: '--font-geist-sans',
-//   subsets: ['latin'],
-// });
-
 export const metadata: Metadata = {
-  title: 'ListMaster',
+  title: 'Finsculpt CRM', // Updated title
   description: 'Basic CRM App',
 };
 
@@ -33,10 +28,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // Added 'dark' class to enable dark mode by default
+    <html lang="en" className="dark">
       <body
         className={cn(
-          GeistSans.variable, // Use the variable directly from the import
+          GeistSans.variable,
           'antialiased font-sans flex min-h-screen flex-col'
         )}
       >
@@ -45,9 +41,8 @@ export default function RootLayout({
             <SidebarHeader>
               <div className="flex items-center justify-between">
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                    {/* You can replace this with a logo if you have one */}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-accent"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l10 0"/></svg>
-                    ListMaster
+                    <Shapes className="h-6 w-6 text-accent"/> {/* Changed icon */}
+                    Finsculpt CRM {/* Updated brand name */}
                   </Link>
                   <SidebarTrigger className="md:hidden" />
               </div>
@@ -86,8 +81,8 @@ export default function RootLayout({
               <div className="flex items-center gap-2 md:hidden">
                 <SidebarTrigger />
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-accent"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l10 0"/></svg>
-                   ListMaster
+                   <Shapes className="h-6 w-6 text-accent"/> {/* Changed icon */}
+                   Finsculpt CRM {/* Updated brand name */}
                  </Link>
               </div>
               {/* Add Header content if needed, e.g., User profile */}
