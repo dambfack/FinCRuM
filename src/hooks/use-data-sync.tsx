@@ -1,9 +1,18 @@
-// src/hooks/use-data-sync.ts
+// src/hooks/use-data-sync.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { uploadToOneDrive, downloadFromOneDrive } from '@/services/onedrive';
 import { uploadToGoogleDrive, downloadFromGoogleDrive } from '@/services/google-drive';
 import type { ExcelData, CloudAuthInfo, DataConflict } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from '@/lib/utils';
+import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import React from 'react'; // Import React for JSX
 
 // Placeholder for authentication - replace with actual auth logic
 const getAuthInfo = async (provider: 'onedrive' | 'googledrive'): Promise<CloudAuthInfo | null> => {
@@ -144,6 +153,7 @@ export function useDataSync() {
                             rowIndex: i,
                             localValue: localRow,
                             cloudValue: cloudRow,
+                            headers: mergedData.headers // Pass headers for context
                         });
                         // For now, keep local value during conflict (manual resolution needed)
                          tempMergedRows.push(localRow);
@@ -218,7 +228,7 @@ export function useDataSync() {
   }, [performSync, SYNC_INTERVAL]);
 
 
-   // Function to manually resolve a conflict (Placeholder)
+   // Function to manually resolve a conflict
    const resolveConflict = useCallback((resolvedConflict: DataConflict) => {
        // 1. Find the conflict in the state
        const conflictIndex = conflicts.findIndex(c => c.rowIndex === resolvedConflict.rowIndex);
@@ -241,13 +251,21 @@ export function useDataSync() {
            // For simplicity now, the next scheduled sync will handle uploading the resolved state.
             toast({ title: "Conflict Resolved", description: `Row ${resolvedConflict.rowIndex + 1} updated.` });
 
+            // If all conflicts are resolved, maybe trigger a sync?
+             if (conflicts.length === 1) { // If this was the last conflict
+                 // Optionally trigger a background sync to upload the fully resolved data
+                 // Be cautious about triggering too many syncs
+                 setTimeout(performSync, 1000); // Small delay
+             }
+
+
        } else {
             console.error("Invalid row index for conflict resolution:", resolvedConflict.rowIndex);
              toast({ title: "Resolution Error", description: "Invalid row index.", variant: "destructive" });
        }
 
 
-   }, [conflicts, toast]);
+   }, [conflicts, toast, performSync]); // Added performSync dependency
 
 
   // Placeholder: Function to trigger authentication flow
@@ -285,8 +303,9 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
     const handleResolutionChoice = (rowIndex: number, choice: 'local' | 'cloud' | 'manual') => {
         setResolutions(prev => ({ ...prev, [rowIndex]: choice }));
         if (choice === 'manual' && !manualValues[rowIndex]) {
-            // Initialize manual values if switching to manual
-            setManualValues(prev => ({ ...prev, [rowIndex]: conflicts.find(c => c.rowIndex === rowIndex)?.localValue || [] }));
+             // Initialize manual values with local data if switching to manual and not already initialized
+            const conflict = conflicts.find(c => c.rowIndex === rowIndex);
+            setManualValues(prev => ({ ...prev, [rowIndex]: [...(conflict?.localValue || [])] })); // Deep copy
         }
     };
 
@@ -308,54 +327,66 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
             resolvedValue = conflict.cloudValue;
         } else if (choice === 'manual') {
              resolvedValue = manualValues[conflict.rowIndex];
+             if (!resolvedValue || resolvedValue.length !== conflict.localValue.length) {
+                toast({ title: "Manual Edit Incomplete", description: `Please ensure all fields for Row ${conflict.rowIndex + 1} are filled.`, variant: "destructive"});
+                return; // Prevent resolving incomplete manual edits
+             }
         }
 
         if (resolvedValue) {
+             // Ensure the headers are included in the resolved conflict object passed back
             onResolve({ ...conflict, resolvedValue });
         } else {
-             // Handle error: no resolution selected or manual data missing
-              console.error("No resolution selected or manual data missing for row", conflict.rowIndex);
+             toast({ title: "Resolution Error", description: `Please select a resolution option for Row ${conflict.rowIndex + 1}.`, variant: "destructive"});
+             console.error("No resolution selected or manual data missing for row", conflict.rowIndex);
         }
     };
 
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-3xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <Card className="w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl">
                  <CardHeader>
                      <CardTitle>Resolve Data Conflicts</CardTitle>
                      <CardDescription>Differences found between local data and cloud data. Choose which version to keep for each conflict.</CardDescription>
                  </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto space-y-4">
+                <CardContent className="flex-1 overflow-y-auto space-y-4 p-6">
                     {conflicts.map((conflict) => (
-                        <Card key={conflict.rowIndex} className="p-4 border-orange-500 border-2">
-                             <h3 className="font-semibold mb-2">Conflict in Row {conflict.rowIndex + 1}</h3>
-                             {/* Display limited columns for brevity */}
-                              <div className="grid grid-cols-3 gap-2 text-sm mb-4">
-                                 <div className="font-medium">Field</div>
-                                 <div className="font-medium">Local Version</div>
-                                 <div className="font-medium">Cloud Version ({/* Add provider name if possible */})</div>
-                                 {conflict.localValue.slice(0, 5).map((_, colIndex) => ( // Show first 5 columns
-                                     <React.Fragment key={colIndex}>
-                                         <div className="text-muted-foreground">{conflict.localValue[0]} {/* Assuming first column is a good identifier */}</div>
-                                         <div>{conflict.localValue[colIndex]}</div>
-                                         <div>{conflict.cloudValue[colIndex]}</div>
-                                     </React.Fragment>
-                                 ))}
-                             </div>
+                        <Card key={conflict.rowIndex} className="p-4 border-orange-500 border bg-background shadow-md">
+                             <h3 className="font-semibold mb-3 text-base">Conflict in Row {conflict.rowIndex + 1}</h3>
+                              <div className="overflow-x-auto mb-4">
+                                  <table className="w-full text-sm border-collapse">
+                                      <thead>
+                                          <tr className="border-b">
+                                              <th className="text-left p-2 font-medium text-muted-foreground w-1/4">Field</th>
+                                              <th className="text-left p-2 font-medium text-muted-foreground w-1/3">Local Version</th>
+                                              <th className="text-left p-2 font-medium text-muted-foreground w-1/3">Cloud Version</th>
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          {conflict.localValue.map((_, colIndex) => (
+                                             <tr key={colIndex} className="border-b last:border-b-0 hover:bg-muted/50">
+                                                 <td className="p-2 text-muted-foreground truncate" title={conflict.headers?.[colIndex]}>{conflict.headers?.[colIndex] ?? `Col ${colIndex+1}`}</td>
+                                                 <td className={`p-2 ${JSON.stringify(conflict.localValue[colIndex]) !== JSON.stringify(conflict.cloudValue[colIndex]) ? 'font-semibold text-orange-700' : ''}`}>{conflict.localValue[colIndex]}</td>
+                                                 <td className={`p-2 ${JSON.stringify(conflict.localValue[colIndex]) !== JSON.stringify(conflict.cloudValue[colIndex]) ? 'font-semibold text-blue-700' : ''}`}>{conflict.cloudValue[colIndex]}</td>
+                                             </tr>
+                                         ))}
+                                      </tbody>
+                                  </table>
+                              </div>
 
                              <RadioGroup
                                 value={resolutions[conflict.rowIndex]}
                                 onValueChange={(value: 'local' | 'cloud' | 'manual') => handleResolutionChoice(conflict.rowIndex, value)}
-                                className="flex space-x-4 mb-2"
+                                className="flex flex-wrap gap-4 mb-4"
                             >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="local" id={`local-${conflict.rowIndex}`} />
-                                    <Label htmlFor={`local-${conflict.rowIndex}`}>Keep Local</Label>
+                                    <Label htmlFor={`local-${conflict.rowIndex}`}>Keep Local (Orange)</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="cloud" id={`cloud-${conflict.rowIndex}`} />
-                                    <Label htmlFor={`cloud-${conflict.rowIndex}`}>Use Cloud</Label>
+                                    <Label htmlFor={`cloud-${conflict.rowIndex}`}>Use Cloud (Blue)</Label>
                                 </div>
                                  <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="manual" id={`manual-${conflict.rowIndex}`} />
@@ -364,38 +395,37 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
                             </RadioGroup>
 
                              {resolutions[conflict.rowIndex] === 'manual' && (
-                                <div className="space-y-2 mt-2 border-t pt-2">
+                                <div className="space-y-3 mt-4 border-t pt-4">
                                     <h4 className="text-sm font-medium">Manual Edit:</h4>
                                      {manualValues[conflict.rowIndex]?.map((val, colIndex) => (
-                                         <div key={colIndex} className="flex items-center gap-2">
-                                              <Label className="w-20 text-xs truncate" title={conflict.localValue[0] /* Header? */}>{conflict.localValue[0] /* Header? */ || `Col ${colIndex+1}`}</Label>
+                                         <div key={colIndex} className="grid grid-cols-4 items-center gap-3">
+                                              <Label className="text-xs truncate text-right col-span-1" title={conflict.headers?.[colIndex]}>{conflict.headers?.[colIndex] ?? `Col ${colIndex+1}`}</Label>
                                               <Input
                                                   value={val}
                                                   onChange={(e) => handleManualInputChange(conflict.rowIndex, colIndex, e.target.value)}
-                                                  className="h-8"
+                                                  className="h-8 col-span-3"
                                               />
                                          </div>
                                      ))}
                                 </div>
                             )}
 
-
-                            <Button size="sm" onClick={() => handleApplyResolution(conflict)} className="mt-4">Apply Resolution</Button>
+                            <div className="flex justify-end mt-4">
+                                <Button size="sm" onClick={() => handleApplyResolution(conflict)} disabled={!resolutions[conflict.rowIndex]}>Apply Resolution</Button>
+                            </div>
                         </Card>
                     ))}
                 </CardContent>
                 {/* Add overall actions if needed, like "Resolve All with Local" etc. */}
-                {/* <CardFooter>
-                     <Button variant="outline" onClick={() => setConflicts([])}>Cancel / Close</Button>
-                </CardFooter> */}
+                 <CardFooter className="border-t p-4 bg-muted/50">
+                     <p className="text-xs text-muted-foreground">Resolved data will be saved locally. The next sync will upload the changes.</p>
+                     {/* Example: Add a button to resolve all with local - requires careful implementation */}
+                     {/* <Button variant="outline" size="sm" onClick={handleResolveAllLocal} className="ml-auto">Resolve All with Local</Button> */}
+                 </CardFooter>
             </Card>
         </div>
     );
 };
-// Dummy components used in ConflictResolutionUI
-import React from 'react';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+
 
 export { ConflictResolutionUI }; // Export the placeholder component

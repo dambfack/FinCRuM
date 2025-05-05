@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { GeistSans as Geist } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans'; // Updated import
 import './globals.css';
 import { cn } from '@/lib/utils';
 import {
@@ -17,10 +17,10 @@ import Link from 'next/link';
 import { LayoutDashboard, Table, Upload } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+// const geistSans = Geist({ // No need to call it as a function when importing from geist/font/sans
+//   variable: '--font-geist-sans',
+//   subsets: ['latin'],
+// });
 
 export const metadata: Metadata = {
   title: 'ListMaster',
@@ -36,7 +36,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={cn(
-          geistSans.variable,
+          GeistSans.variable, // Use the variable directly from the import
           'antialiased font-sans flex min-h-screen flex-col'
         )}
       >

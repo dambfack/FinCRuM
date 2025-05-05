@@ -1,11 +1,12 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Added CardDescription
 import { BarChart, Users, TrendingUp } from 'lucide-react';
 import type { FC } from 'react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
 import type { ExcelData } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface DashboardStats {
   totalCustomers: number;

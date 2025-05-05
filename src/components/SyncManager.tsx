@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync';
+import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync.tsx'; // Updated import path
 import { cn } from '@/lib/utils';
 import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

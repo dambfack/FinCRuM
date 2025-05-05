@@ -28,4 +28,5 @@ export interface DataConflict {
   localValue: string[];
   cloudValue: string[];
   resolvedValue?: string[]; // Optional field for resolved data
+  headers?: string[]; // Optional: Include headers for context in UI
 }
