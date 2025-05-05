@@ -14,11 +14,11 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, Shapes } from 'lucide-react'; // Changed icon
+import { LayoutDashboard, Table, Upload, Shapes, UserPlus } from 'lucide-react'; // Added UserPlus icon
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Finsculpt CRM', // Updated title
+  title: 'Finsculpt CRM',
   description: 'Basic CRM App',
 };
 
@@ -41,8 +41,8 @@ export default function RootLayout({
             <SidebarHeader>
               <div className="flex items-center justify-between">
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                    <Shapes className="h-6 w-6 text-accent"/> {/* Changed icon */}
-                    Finsculpt CRM {/* Updated brand name */}
+                    <Shapes className="h-6 w-6 text-accent"/>
+                    Finsculpt CRM
                   </Link>
                   <SidebarTrigger className="md:hidden" />
               </div>
@@ -65,6 +65,14 @@ export default function RootLayout({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                   <SidebarMenuButton asChild tooltip="Add Customer">
+                     <Link href="/add-customer">
+                       <UserPlus />
+                       <span>Add Customer</span>
+                     </Link>
+                   </SidebarMenuButton>
+                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Import Data">
                     <Link href="/import">
@@ -81,8 +89,8 @@ export default function RootLayout({
               <div className="flex items-center gap-2 md:hidden">
                 <SidebarTrigger />
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                   <Shapes className="h-6 w-6 text-accent"/> {/* Changed icon */}
-                   Finsculpt CRM {/* Updated brand name */}
+                   <Shapes className="h-6 w-6 text-accent"/>
+                   Finsculpt CRM
                  </Link>
               </div>
               {/* Add Header content if needed, e.g., User profile */}
