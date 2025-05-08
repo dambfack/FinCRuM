@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react'; // Import useState and useEffect
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync.tsx';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react'; // Added HelpCircle for loading state
 import { formatDistanceToNow } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
 
 const SyncManager = () => {
   const {
@@ -19,6 +19,7 @@ const SyncManager = () => {
     resolveConflict,
     initiateAuthentication,
   } = useDataSync();
+  const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
 
   // State to track provider configuration, initialized to null (loading/unknown)
   const [isProviderConfigured, setIsProviderConfigured] = useState<boolean | null>(null);
@@ -28,8 +29,8 @@ const SyncManager = () => {
   // Check configuration only on the client side after mount
   useEffect(() => {
     const oneDriveConfigured = !!localStorage.getItem('onedriveAccessToken');
-    const googleDriveConfigured = !!localStorage.getItem('googledriveAccessToken');
-    setIsOneDriveConnected(oneDriveConfigured);
+      const googleDriveConfigured = !!localStorage.getItem('googledriveAccessToken');
+      setIsOneDriveConnected(oneDriveConfigured);
     setIsGoogleDriveConnected(googleDriveConfigured);
     setIsProviderConfigured(oneDriveConfigured || googleDriveConfigured);
   }, []); // Empty dependency array ensures this runs once on mount
@@ -38,8 +39,8 @@ const SyncManager = () => {
     if (isProviderConfigured === null) {
       // Loading state
       return <HelpCircle className="h-5 w-5 text-muted-foreground animate-pulse" />;
-    }
-    if (isSyncing) {
+    }    
+      if (isSyncing) {
       return <Loader2 className="h-5 w-5 animate-spin" />;
     }
     if (conflicts.length > 0) {
@@ -52,21 +53,21 @@ const SyncManager = () => {
   };
 
   const renderSyncStatusText = () => {
-     if (isProviderConfigured === null) {
-        return "Checking configuration...";
-     }
-     if (isSyncing) {
-        return "Syncing in progress...";
-     }
-     if (conflicts.length > 0) {
-        return `${conflicts.length} conflict(s) need resolution`;
-     }
-     if (lastSyncTime) {
-        return `Last sync: ${formatDistanceToNow(lastSyncTime, { addSuffix: true })}`;
-     }
-     if (isProviderConfigured) {
-        return "Ready to sync";
-     }
+      if (isProviderConfigured === null) {
+          return "Checking configuration...";
+      }
+      if (isSyncing) {
+          return "Syncing in progress...";
+      }
+      if (conflicts.length > 0) {
+          return `${conflicts.length} conflict(s) need resolution`;
+      }
+      if (lastSyncTime) {
+          return `Last sync: ${formattedLastSyncTime}`;
+      }
+      if (isProviderConfigured) {
+          return "Ready to sync";
+      }
      return "No cloud provider configured";
   }
 
@@ -110,11 +111,11 @@ const SyncManager = () => {
                   </Button>
            </div>
 
-            {isProviderConfigured === false && ( // Only show if definitely not configured
+            {isProviderConfigured === false && ( 
                  <Card className="border-dashed border-accent">
                     <CardHeader>
                         <CardTitle className="text-base">Connect Cloud Storage</CardTitle>
-                        <CardDescription>Connect your OneDrive or Google Drive account to enable backup and sync.</CardDescription>
+                        <CardDescription>Connect your OneDrive or Google Drive account to enable data backup and sync.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-4">
                          {isOneDriveConnected === false && ( // Show only if not connected
@@ -140,10 +141,10 @@ const SyncManager = () => {
 
         </CardContent>
         {/* Optionally add a footer for more actions or logs */}
-         {/* <CardFooter>
-             <p className="text-xs text-muted-foreground">Automatic daily sync is enabled.</p>
-         </CardFooter> */}
-      </Card>
+          {/* <CardFooter>
+              <p className="text-xs text-muted-foreground">Automatic daily sync is enabled.</p>
+          </CardFooter> */}
+        </Card>
 
       {/* Render Conflict Resolution UI */}
       {conflicts.length > 0 && (

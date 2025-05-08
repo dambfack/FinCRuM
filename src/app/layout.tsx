@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Table, Upload, Shapes, UserPlus } from 'lucide-react'; // Added UserPlus icon
+import { SyncManager } from "@/components/SyncManager";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
@@ -94,6 +95,7 @@ export default function RootLayout({
                  </Link>
               </div>
               {/* Add Header content if needed, e.g., User profile */}
+              <SyncManager/>
               <div className="ml-auto">
                 {/* Placeholder for future elements like user avatar/settings */}
               </div>
