@@ -37,7 +37,7 @@ async function handleGoogleDriveError(response: Response, operationName: string,
   }
 
   console.error(
-    `Google Drive API Error during ${operationName}: Status ${response.status} for ${requestUrl}. Message: ${apiMessage}. Response body:`,
+    `Received API Error from Google Drive during ${operationName}: Status ${response.status} for ${requestUrl}. API Message: ${apiMessage}. Response body:`,
     parsedErrorBody || '<empty or non-JSON response>'
   );
 
