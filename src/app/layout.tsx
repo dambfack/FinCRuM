@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Table, Upload, Shapes, UserPlusIcon } from 'lucide-react'; // Changed UserPlus to UserPlusIcon
-import { SyncManager } from "@/components/SyncManager";
+import SyncManager from "@/components/SyncManager"; // Changed to default import
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
