@@ -151,12 +151,13 @@ body {
   @apply font-medium;
   color: hsl(var(--popover-foreground)); /* Uses popover-foreground (light in dark) */
 }
+
 .react-datepicker__day-name {
   @apply font-medium w-9 h-9 flex items-center justify-center;
-  color: hsl(var(--muted-foreground)); /* Day names are muted (grayish in dark) */
+  color: hsl(var(--muted-foreground)); /* Day names are muted for light mode */
 }
 .dark .react-datepicker__day-name {
-  color: hsl(var(--muted-foreground));
+  color: hsl(0 0% 95%); /* Very light gray/white for dark mode */
 }
 
 
@@ -322,3 +323,5 @@ body {
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
+
+    
