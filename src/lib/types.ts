@@ -15,7 +15,7 @@ export interface ExcelData {
 /**
  * Defines the possible synchronization statuses.
  */
-export type SyncStatus = 'idle' | 'pending' | 'syncing' | 'synced' | 'failed';
+export type SyncStatus = 'idle' | 'pending' | 'syncing' | 'synced' | 'failed' | 'error' | 'conflict';
 
 /**
  * Defines the possible cloud storage providers.
@@ -43,8 +43,8 @@ export interface Contact {
   company?: string; // Optional
   address?: string; // Optional
   notes?: string; // Optional
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 /**
@@ -54,12 +54,13 @@ export interface Task {
   id: string; // Unique identifier
   title: string;
   description?: string; // Optional
-  dueDate: Date;
+  dueDate?: Date | string; // Optional
   completed: boolean;
   priority?: 'high' | 'medium' | 'low'; // Optional
-  createdAt: Date;
+  status?: 'todo' | 'in-progress' | 'done'; // Optional
+  createdAt: Date | string;
+  updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
-  updatedAt: Date;
 }
 
 /**
@@ -69,12 +70,14 @@ export interface Reminder {
   id: string; // Unique identifier
   title: string;
   description?: string; // Optional
-  remindAt: Date;
+  dateTime: Date | string; // Changed from remindAt for consistency
   completed: boolean;
-  createdAt: Date;
-    googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
-    googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled';
-  updatedAt: Date;
+  associatedContactId?: string; // Optional: ID of the contact this reminder is for
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
+  googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled'; // Optional
+  dismissed?: boolean; // Optional
 }
 
 /**
@@ -84,22 +87,20 @@ export interface Appointment {
   id: string; // Unique identifier
   title: string;
   description?: string; // Optional
-  start: Date;
-  end: Date;
+  date: Date | string; // Date part
+  time: string; // Time part (e.g., "10:00")
+  start?: Date | string; // Combined datetime, can be derived or primary
+  end?: Date | string;   // Combined datetime, can be derived or primary
   location?: string; // Optional
+  invitedContacts?: string[]; // Array of contact IDs
   attendees?: Contact[]; // Optional - link to contacts
-  createdAt: Date;
-    googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
-    googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled';
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
+  googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled'; // Optional
 }
 
-
-
-
-
 /**
- * Represents authentication information for cloud storage services.
  * Represents authentication information for cloud storage services.
  */
 export interface CloudAuthInfo {
@@ -116,4 +117,44 @@ export interface DataConflict {
   cloudValue: string[];
   resolvedValue?: string[]; // Optional field for resolved data
   headers?: string[]; // Optional: Include headers for context in UI
+}
+
+/**
+ * Enum for local storage keys or data types.
+ */
+export enum DataItemType {
+  Contacts = 'contacts',
+  Tasks = 'tasks',
+  Reminders = 'reminders',
+  Appointments = 'appointments',
+  CustomerData = 'customerData', // For ExcelData (imported data)
+  LocalData = 'localData', // For a monolithic local data object if ever used
+  LastSyncTime = 'lastSyncTime',
+  OneDriveAccessToken = 'onedriveAccessToken',
+  GoogleDriveAccessToken = 'googledriveAccessToken',
+}
+
+/**
+ * Represents the structure of all local data managed by the CRM.
+ * This can be used if storing all data under a single key,
+ * or as a reference for individual item types.
+ */
+export interface LocalData {
+  contacts?: Contact[];
+  tasks?: Task[];
+  reminders?: Reminder[];
+  appointments?: Appointment[];
+  customerData?: ExcelData; // For imported excel data
+  lastSyncTime?: string; // ISO string
+}
+
+/**
+ * Represents metadata for a file in cloud storage.
+ */
+export interface FileMetadata {
+  id?: string;
+  name?: string;
+  lastModified?: string; // ISO string, or from provider
+  modifiedTime?: string; // Specifically for Google Drive
+  size?: number;
 }

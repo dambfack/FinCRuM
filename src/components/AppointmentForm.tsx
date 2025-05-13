@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Appointment, LocalData } from '../lib/types';
+import { Appointment, Contact, DataItemType } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { syncWithGoogleCalendar, createGoogleCalendarEvent, updateGoogleCalendarEvent } from '../services/google-calendar'; // Assuming this function exists
+import { createGoogleCalendarEvent, updateGoogleCalendarEvent } from '../services/google-calendar';
+import { getData, saveData, parseDate } from '../lib/utils';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
+import DatePicker from 'react-datepicker'; // Using react-datepicker
+import "react-datepicker/dist/react-datepicker.css";
+
 
 interface AppointmentFormProps {
   initialData?: Appointment;
@@ -10,189 +18,186 @@ interface AppointmentFormProps {
 }
 
 const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, onCancel }) => {
-  const [localData, setLocalData] = useState<LocalData | null>(null);
-  useEffect(() => {
-    const storedData = localStorage.getItem('localData');
-    if (storedData) {
-      setLocalData(JSON.parse(storedData));
-    }
-  }, []);
-
-  const updateLocalData = (newData: LocalData) => {
-    localStorage.setItem('localData', JSON.stringify(newData));
-  };
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
-  const [date, setDate] = useState(initialData?.date || '');
-  const [time, setTime] = useState(initialData?.time || '');
+  
+  // For DatePicker, we need Date objects
+  const [appointmentDate, setAppointmentDate] = useState<Date | null>(initialData?.date ? parseDate(initialData.date as string) : null);
+  const [time, setTime] = useState(initialData?.time || ''); // Keep time as string e.g., "10:00"
+
   const [location, setLocation] = useState(initialData?.location || '');
-  const [invitedContacts, setInvitedContacts] = useState<string[]>(initialData?.invitedContacts || []);
+  const [invitedContactIds, setInvitedContactIds] = useState<string[]>(initialData?.invitedContacts || []);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const { triggerSync } = useDataSync(); // Assuming useDataSync provides triggerSync
+  const { triggerSync, syncCalendar } = useDataSync();
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+
+  useEffect(() => {
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || [];
+    setAllContacts(loadedContacts);
+
+    if (initialData) {
+        setTitle(initialData.title);
+        setDescription(initialData.description || '');
+        setAppointmentDate(initialData.date ? parseDate(initialData.date as string) : null);
+        setTime(initialData.time || '');
+        setLocation(initialData.location || '');
+        setInvitedContactIds(initialData.invitedContacts || []);
+    }
+
+  }, [initialData]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!title.trim()) {
-      newErrors.title = 'Title is required';
-    }
-    if (!date.trim()) {
-      newErrors.date = 'Date is required';
-    }
-    if (!time.trim()) {
-      newErrors.time = 'Time is required';
-    }
+    if (!title.trim()) newErrors.title = 'Title is required';
+    if (!appointmentDate) newErrors.date = 'Date is required';
+    if (!time.trim()) newErrors.time = 'Time is required';
+    else if (!/^\d{2}:\d{2}$/.test(time)) newErrors.time = 'Time must be in HH:MM format';
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
+    if (!validateForm() || !appointmentDate) {
       return;
     }
 
-    const newAppointment: Appointment = {
-      id: initialData?.id || Date.now().toString(), // Simple ID generation
+    const appointmentDateTimeString = `${appointmentDate.toISOString().split('T')[0]}T${time}:00`;
+    const appointmentDateTime = new Date(appointmentDateTimeString);
+    
+    if (isNaN(appointmentDateTime.getTime())) {
+        setErrors(prev => ({...prev, time: "Invalid date or time combination"}));
+        return;
+    }
+
+    const newOrUpdatedAppointment: Appointment = {
+      id: initialData?.id || Date.now().toString(),
       title,
       description,
-      date,
-      time,
+      date: appointmentDate.toISOString(), // Store as ISO string
+      time, // Store time string
+      start: appointmentDateTime.toISOString(), // Store combined start
+      end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), // Default 1 hour duration for end
       location,
-      invitedContacts,
-      googleCalendarEventId: initialData?.googleCalendarEventId, // Preserve existing Google Calendar ID
+      invitedContacts: invitedContactIds,
+      googleCalendarEventId: initialData?.googleCalendarEventId,
+      createdAt: initialData?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    if (localData) {
-        const updatedData = { ...localData };
-        let existingAppointmentIndex = -1;
-        if (updatedData.appointments) {
-          existingAppointmentIndex = updatedData.appointments.findIndex((a) => a.id === newAppointment.id);
-        }
-    
-        if (existingAppointmentIndex >= 0) {
-          // Update existing appointment
-          updatedData.appointments[existingAppointmentIndex] = newAppointment;
-        } else {
-          // Add new appointment
-          if (!updatedData.appointments) {
-            updatedData.appointments = [];
-          }
-          updatedData.appointments.push(newAppointment);
-        }
-        updateLocalData(updatedData);
-      }
+    const appointments = getData<Appointment[]>(DataItemType.Appointments) || [];
+    const existingIndex = appointments.findIndex(a => a.id === newOrUpdatedAppointment.id);
 
-    // Sync with Google Calendar
+    if (existingIndex >= 0) {
+      appointments[existingIndex] = newOrUpdatedAppointment;
+    } else {
+      appointments.push(newOrUpdatedAppointment);
+    }
+    saveData<Appointment[]>(DataItemType.Appointments, appointments);
+
     try {
-      if (!newAppointment.googleCalendarEventId){
-        const googleEventId = await createGoogleCalendarEvent(newAppointment);
-        newAppointment.googleCalendarEventId = googleEventId;
-        if (localData) {
-            updateLocalData({ ...localData, appointments: localData.appointments.map(appointment => appointment.id === newAppointment.id ? newAppointment : appointment) });
-          }
+      if (!newOrUpdatedAppointment.googleCalendarEventId){
+        const googleEvent = await createGoogleCalendarEvent(newOrUpdatedAppointment); // Pass the specific appointment
+        if (googleEvent && googleEvent.id) {
+            newOrUpdatedAppointment.googleCalendarEventId = googleEvent.id;
+            // Update local storage again with the event ID
+            const updatedAppointments = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
+            saveData<Appointment[]>(DataItemType.Appointments, updatedAppointments);
+        }
       } else {
-        await updateGoogleCalendarEvent(newAppointment)
+        await updateGoogleCalendarEvent(newOrUpdatedAppointment); // Pass the specific appointment
       }
-
+      // Consider calling syncCalendar() here or as part of a broader sync strategy
+      await syncCalendar();
     } catch (error) {
       console.error('Error saving or updating with Google Calendar:', error);
       // Handle error (e.g., show a toast notification)
     }
 
-
-    onSave(newAppointment);
-    triggerSync(); // Trigger data sync after saving
+    onSave(newOrUpdatedAppointment);
+    // triggerSync(); // This might be too broad, consider specific sync needs
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Title
-        </label>
-        <input
-          type="text"
+        <Label htmlFor="title">Title</Label>
+        <Input
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={`mt-1 block w-full border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+          className={errors.title ? 'border-destructive' : ''}
         />
-        {errors.title && <p className="mt-2 text-sm text-red-600">{errors.title}</p>}
+        {errors.title && <p className="text-sm text-destructive mt-1">{errors.title}</p>}
       </div>
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
+        <Label htmlFor="description">Description</Label>
+        <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        ></textarea>
+        />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-            Date
-          </label>
-          <input
-            type="date"
-            id="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={`mt-1 block w-full border ${errors.date ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+          <Label htmlFor="date">Date</Label>
+          <DatePicker
+            selected={appointmentDate}
+            onChange={(date: Date | null) => setAppointmentDate(date)}
+            className={`w-full ${errors.date ? 'border-destructive' : ''} mt-1 block border rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 h-10`}
+            wrapperClassName="w-full"
+            dateFormat="MM/dd/yyyy"
           />
-          {errors.date && <p className="mt-2 text-sm text-red-600">{errors.date}</p>}
+          {errors.date && <p className="text-sm text-destructive mt-1">{errors.date}</p>}
         </div>
         <div>
-          <label htmlFor="time" className="block text-sm font-medium text-gray-700">
-            Time
-          </label>
-          <input
+          <Label htmlFor="time">Time (HH:MM)</Label>
+          <Input
             type="time"
             id="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className={`mt-1 block w-full border ${errors.time ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+            className={errors.time ? 'border-destructive' : ''}
           />
-          {errors.time && <p className="mt-2 text-sm text-red-600">{errors.time}</p>}
+          {errors.time && <p className="text-sm text-destructive mt-1">{errors.time}</p>}
         </div>
       </div>
       <div>
-        <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-          Location
-        </label>
-        <input
-          type="text"
+        <Label htmlFor="location">Location</Label>
+        <Input
           id="location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         />
       </div>
-      {/* Add multi-select or input for invited contacts */}
-      {/* <div>
-        <label htmlFor="invitedContacts" className="block text-sm font-medium text-gray-700">
-          Invited Contacts
-        </label>
-        {/* Implement multi-select or tag input for contacts }
-      </div> */}
+      <div>
+        <Label htmlFor="invitedContacts">Invited Contacts</Label>
+        <select
+            id="invitedContacts"
+            multiple
+            value={invitedContactIds}
+            onChange={(e) => setInvitedContactIds(Array.from(e.target.selectedOptions, option => option.value))}
+            className="mt-1 block w-full border border-input rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2"
+            size={5}
+        >
+            {allContacts.map(contact => (
+                <option key={contact.id} value={contact.id}>
+                    {contact.firstName} {contact.lastName} ({contact.email})
+                </option>
+            ))}
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple contacts.</p>
+      </div>
       <div className="flex justify-end space-x-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Save Appointment
-        </button>
+        </Button>
+        <Button type="submit">
+          {initialData ? 'Update Appointment' : 'Save Appointment'}
+        </Button>
       </div>
     </form>
   );

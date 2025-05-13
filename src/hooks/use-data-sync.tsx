@@ -3,59 +3,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { uploadToOneDrive, downloadFromOneDrive } from '@/services/onedrive';
 import { uploadToGoogleDrive, downloadFromGoogleDrive } from '@/services/google-drive';
+import { getAuthInfo } from '@/services/auth';
 import { createCalendarEvent, deleteCalendarEvent, listCalendarEvents, updateCalendarEvent } from "@/services/google-calendar";
-import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment } from '@/lib/types';
+import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, DataItemType as DIT } from '@/lib/types'; // Renamed DataItemType to DIT to avoid conflict
+import { DataItemType } from '@/lib/types'; // Actual import of DataItemType
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle } from 'lucide-react'; // Added HelpCircle
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Added Card Imports
+import { AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-
-import React from 'react'; // Import React for JSX
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
-
-
-// Placeholder for authentication - replace with actual auth logic
-const getAuthInfo = async (provider: 'onedrive' | 'googledrive'): Promise<CloudAuthInfo | null> => {
-  // In a real app, this would involve OAuth flows
-  console.warn(`Authentication for ${provider} is not implemented. Using localStorage tokens.`);
-  // Simulating getting a token - DO NOT USE IN PRODUCTION
-   if (typeof window !== 'undefined') {
-       const storedToken = localStorage.getItem(`${provider}AccessToken`);
-       if (storedToken) {
-           return { accessToken: storedToken, provider };
-        }
-        return null; // Indicate no auth available
-    }
-   return null;
-};
-
-type LocalDataFn = <T>(key: string, data?: T) => T | null | void;
-
-// Function to get local data from localStorage
-const getLocalData = <T,>(key: string): T | null => {
-   if (typeof window !== 'undefined') {
-       const storedData = localStorage.getItem(key);
-        try {
-           return storedData ? JSON.parse(storedData) : null;
-       } catch (e) {
-           console.error(`Failed to parse local data for ${key}:`, e);
-           return null;
-       }
-   }
-   return null;
-};
-const setLocalData: LocalDataFn = <T,>(key: string, data: T) => {
-    if (typeof window !== 'undefined') {
-       try {
-            localStorage.setItem(key, JSON.stringify(data));
-       } catch (e) {
-            console.error(`Failed to save local data for ${key}:`, e);
-       }
-   }
-};
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn, formatDateTime, getData, saveData } from '@/lib/utils'; // Import getData, saveData and formatDateTime
 
 export function useDataSync() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -64,23 +25,19 @@ export function useDataSync() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const { toast } = useToast();
 
-    // PRODUCTION NOTE: This interval runs only when the user has the app open in their browser.
-    // For reliable background sync independent of user sessions, consider using serverless functions
-    // (e.g., Vercel Cron Jobs, Firebase Cloud Functions scheduled tasks) triggered on a schedule.
     const SYNC_INTERVAL = 24 * 60 * 60 * 1000; // Daily sync interval
 
-    // Function to perform the sync
   const performSync = useCallback(async () => {
     if (isSyncing) return;
     setSyncStatus('syncing');
     setIsSyncing(true);
-    setConflicts([]); // Clear old conflicts
+    setConflicts([]);
     toast({ title: "Sync Started", description: "Synchronizing data with cloud storage..." });
 
-      const localCustomerData: ExcelData | null = getLocalData<ExcelData>('customerData');
-      const localTasks: Task[] | null = getLocalData<Task[]>('tasks');
-      const localReminders: Reminder[] | null = getLocalData<Reminder[]>('reminders');
-      const localAppointments: Appointment[] | null = getLocalData<Appointment[]>('appointments');
+      const localCustomerData: ExcelData | null = getData<ExcelData>(DataItemType.CustomerData);
+      const localTasks: Task[] | null = getData<Task[]>(DataItemType.Tasks);
+      const localReminders: Reminder[] | null = getData<Reminder[]>(DataItemType.Reminders);
+      const localAppointments: Appointment[] | null = getData<Appointment[]>(DataItemType.Appointments);
 
     if (!localCustomerData && !localTasks && !localReminders && !localAppointments) {
         toast({ title: "Sync Skipped", description: "No local data found to sync.", variant: "destructive" });
@@ -89,12 +46,10 @@ export function useDataSync() {
         return;
     }
 
-
-  // --- Determine which providers are configured (Example: Check localStorage for tokens) ---
     const configuredProviders: ('onedrive' | 'googledrive')[] = [];
     if (typeof window !== 'undefined') {
-        if (localStorage.getItem('onedriveAccessToken')) configuredProviders.push('onedrive');
-        if (localStorage.getItem('googledriveAccessToken')) configuredProviders.push('googledrive');
+        if (localStorage.getItem(DataItemType.OneDriveAccessToken)) configuredProviders.push('onedrive');
+        if (localStorage.getItem(DataItemType.GoogleDriveAccessToken)) configuredProviders.push('googledrive');
     }
 
     if(configuredProviders.length === 0) {
@@ -108,178 +63,132 @@ export function useDataSync() {
       let encounteredConflicts: DataConflict[] = [];
 
     for (const provider of configuredProviders) {
-
        try {
            const authInfo = await getAuthInfo(provider);
            if (!authInfo) {
                console.warn(`Skipping ${provider}: Not authenticated.`);
                 toast({ title: `Skipping ${provider}`, description: `Authentication required.`, variant:"default" });
                  setSyncStatus('error');
-                // Attempt to remove invalid token if auth failed (e.g., token expired)
                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem(`${provider}AccessToken`);
+                    localStorage.removeItem(`${provider}AccessToken`); // Kept for direct access token removal
                  }
-                continue; // Skip if not authenticated
+                continue;
             }
 
-            // 1. Download data from the cloud provider
-            // PRODUCTION NOTE: Add robust error handling for API calls (network errors, auth errors, rate limits)
            const cloudDataRaw = await (provider === 'onedrive'
                 ? downloadFromOneDrive(authInfo) : downloadFromGoogleDrive(authInfo));
              const cloudData = (cloudDataRaw && cloudDataRaw.headers && cloudDataRaw.rows) ? cloudDataRaw as ExcelData : null;
 
-
-           if (!cloudData && localCustomerData) { // Only upload if localCustomerData exists
-               // If no cloud data exists, upload local data
+           if (!cloudData && localCustomerData) {
                const localDataToUpload = {
                    headers: localCustomerData.headers,
                    rows: localCustomerData.rows
                };
-
                console.log(`No data found on ${provider}. Uploading local data.`);
-               // PRODUCTION NOTE: Handle potential upload errors gracefully.
                await (provider === 'onedrive'
                    ? uploadToOneDrive(localDataToUpload, authInfo)
                    : uploadToGoogleDrive(localDataToUpload, authInfo));
-               continue; // Move to next provider
+               continue;
            } else if (cloudData) {
-             // 2. Compare and Merge (Simplified Example: Row-by-row comparison based on a key, e.g., first column)
-            // Consider using a dedicated library or a more sophisticated diffing/merging strategy,
-            // potentially based on timestamps or versioning if the cloud storage supports it.
              const currentConflicts: DataConflict[] = [];
              let tempMergedRows: string[][] = [];
 
-              // Check header consistency (basic check)
               if (localCustomerData && JSON.stringify(localCustomerData.headers) !== JSON.stringify(cloudData.headers)) {
                   console.error(`Header mismatch between local and ${provider} data. Aborting merge with this provider.`);
                   setSyncStatus('error');
                   toast({ title: "Sync Error", description: `Header mismatch with ${provider}. Manual data correction might be needed.`, variant: "destructive" });
-                  continue; // Skip this provider due to header mismatch
+                  continue;
               } else if (!localCustomerData) {
-                // If no local customer data, cloud data becomes the merged data
                 mergedData = cloudData;
               } else {
-                // Create a map of row keys to rows for efficient lookup
-                const localRowsMap = new Map(mergedData.rows.map(row => [row[0], row])); // Assuming first column as key
-                const cloudRowsMap = new Map(cloudData.rows.map(row => [row[0], row])); // Assuming first column as key
+                const localRowsMap = new Map(mergedData.rows.map(row => [row[0], row])); // Assuming ID is the first column
+                const cloudRowsMap = new Map(cloudData.rows.map(row => [row[0], row])); // Assuming ID is the first column
 
-               // Iterate through all unique keys and resolve
                const allKeys = new Set([...localRowsMap.keys(), ...cloudRowsMap.keys()]);
                for (const key of allKeys) {
                    const localRow = localRowsMap.get(key) || null;
                     const cloudRow = cloudRowsMap.get(key) || null;
 
                   if (localRow && cloudRow) {
-                       // Existing in both
                        if (JSON.stringify(localRow) !== JSON.stringify(cloudRow)) {
                            currentConflicts.push({
-                                rowIndex: tempMergedRows.length, // Current index in the new data
+                                rowIndex: tempMergedRows.length, // This logic might need adjustment if rows are not simply appended
                                 localValue: localRow,
                                 cloudValue: cloudRow,
-                                headers: mergedData.headers // Pass headers for context
+                                headers: mergedData.headers
                            });
-                            // For now, keep local value during conflict detection (manual resolution UI will decide final state)
-                             tempMergedRows.push(localRow);
+                             tempMergedRows.push(localRow); // Default to local in case of conflict before resolution UI
                         } else {
-                            // Rows are identical
                             tempMergedRows.push(localRow);
                         }
                     } else if (localRow) {
-                       // Exists locally, not in cloud (add to merged)
                        tempMergedRows.push(localRow);
                    } else if (cloudRow) {
-                       // Exists in cloud, not locally (add to merged)
                         tempMergedRows.push(cloudRow);
                    }
                }
-
-                mergedData = { headers: mergedData.headers, rows: tempMergedRows }; // Update merged data with results from this provider
+                mergedData = { headers: mergedData.headers, rows: tempMergedRows };
               }
              encounteredConflicts = [...encounteredConflicts, ...currentConflicts];
 
-
+            // Data sanitization (example for contact objects, might not be needed if structure is always string[][])
             if (mergedData && mergedData.rows) {
                 for (let i = 0; i < mergedData.rows.length; i++) {
                     const row = mergedData.rows[i];
-                    const contactIndex = mergedData.headers.indexOf('contact');
+                    const contactIndex = mergedData.headers.indexOf('contact'); // Example header
                     if (contactIndex > -1 && typeof row[contactIndex] === 'string') {
-                        try {
-                            // This was the problematic part. `row[contactIndex] = JSON.parse(row[contactIndex])`
-                            // changes the type within the loop, but it doesn't guarantee it's a string array.
-                            // For consistency, we'll ensure it remains string[][] and handle parsing/stringifying elsewhere
-                            // or ensure the `ExcelData` type correctly reflects potential JSON strings.
-                            // For now, we assume contact data is stored as a JSON string in the row.
-                        } catch (e) {
-                            console.warn("Could not parse contact string during merge:", row[contactIndex], e);
-                        }
+                        // Potentially parse or validate if needed
                     }
                 }
             }
 
-              // 3. Upload the potentially merged data back (only if no conflicts for this provider, or after resolution)
-              // PRODUCTION NOTE: This strategy uploads the full merged data. For large datasets, consider delta updates if the API supports it.
-              if (currentConflicts.length === 0 && mergedData.rows.length > 0) { // Ensure there's data to upload
+              if (currentConflicts.length === 0 && mergedData.rows.length > 0) {
                    console.log(`Uploading merged data to ${provider}.`);
-                   // PRODUCTION NOTE: Handle potential upload errors gracefully.
                    await (provider === 'onedrive'
                       ? uploadToOneDrive(mergedData, authInfo)
                       : uploadToGoogleDrive(mergedData, authInfo));
               } else if (currentConflicts.length > 0) {
                    console.warn(`Conflicts detected with ${provider}. Manual resolution required before uploading changes for this provider.`);
-                   // Data for this provider won't be uploaded until conflicts are resolved and sync is run again.
               }
            }
-
-
        } catch (error: any) {
            console.error(`Error syncing with ${provider}:`, error);
            let errorMessage = `Failed to sync data.`;
-            // Handle potential authentication errors specifically
             if (error?.response?.status === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('Token')) {
                errorMessage = `Authentication failed for ${provider}. Please reconnect.`;
-               // Remove the likely invalid token
                setSyncStatus('error');
-
                if (typeof window !== 'undefined') {
-                    localStorage.removeItem(`${provider}AccessToken`);
+                    localStorage.removeItem(`${provider}AccessToken`); // Kept for direct access token removal
                 }
             } else if (error instanceof Error) {
                 errorMessage += ` ${error.message}`;
             }
             toast({ title: `Sync Error with ${provider}`, description: errorMessage, variant: "destructive" });
-            // Depending on the error, you might want to stop the sync process or just skip the provider.
-            // For now, we continue to the next provider.
         }
-    } // End loop through providers
-
-       // Serialize contact objects back to JSON strings before saving/uploading
+    }
+      // Sanitize mergedData before saving (ensure contact objects are stringified if needed)
        if (mergedData && mergedData.rows) {
          mergedData.rows.forEach(row => {
-             const contactIndex = mergedData.headers.indexOf('contact');
+             const contactIndex = mergedData.headers.indexOf('contact'); // Example header
              if (contactIndex > -1 && typeof row[contactIndex] !== 'string' && row[contactIndex] !== null && row[contactIndex] !== undefined) {
-                  row[contactIndex] = JSON.stringify(row[contactIndex]);
+                  row[contactIndex] = JSON.stringify(row[contactIndex]); // Example sanitization
               }
          });
        }
 
-       // 4. Update local storage with the final merged data (only if no new conflicts were encountered *during this specific sync cycle*)
        if (encounteredConflicts.length === 0) {
-           if (mergedData.rows.length > 0 || mergedData.headers.length > 0) { // Only save if there's actual data
-             setLocalData<ExcelData>('customerData', mergedData);
+           if (mergedData.rows.length > 0 || mergedData.headers.length > 0) {
+             saveData<ExcelData>(DataItemType.CustomerData, mergedData);
            }
-        setLastSyncTime(new Date());
-        // Update localStorage timestamp
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('lastSyncTime', new Date().toISOString());
-        }
+        const now = new Date();
+        setLastSyncTime(now);
+        saveData<string>(DataItemType.LastSyncTime, now.toISOString());
         setSyncStatus('synced');
         toast({ title: "Sync Complete", description: "Data synchronized successfully." });
     } else {
-         setConflicts(encounteredConflicts); // Show conflict resolution UI
+         setConflicts(encounteredConflicts);
          toast({ title: "Sync Complete with Conflicts", description: "Manual resolution needed for some data.", variant: "destructive" });
-         // In this state, local data is NOT updated with the merged data until conflicts are resolved.
          setSyncStatus('conflict');
-         // The merged data exists only in the `mergedData` variable within this function's scope.
          console.log("Conflicts detected:", encounteredConflicts);
     }
 
@@ -288,7 +197,7 @@ export function useDataSync() {
 
 
   const syncCalendar = useCallback(async () => {
-    const authInfo = await getAuthInfo('googledrive'); // Assuming googledrive token for calendar
+    const authInfo = await getAuthInfo('googledrive'); // Assuming Google Drive auth is used for Calendar
     if (!authInfo) {
       toast({ title: "Google Calendar Sync Failed", description: "Not authenticated with Google.", variant: "destructive"});
       return;
@@ -297,9 +206,9 @@ export function useDataSync() {
     toast({ title: "Syncing Calendar...", description: "Updating Google Calendar events." });
 
     try {
-        const localTasks: Task[] = getLocalData<Task[]>('tasks') || [];
-        const localReminders: Reminder[] = getLocalData<Reminder[]>('reminders') || [];
-        const localAppointments: Appointment[] = getLocalData<Appointment[]>('appointments') || [];
+        const localTasks: Task[] = getData<Task[]>(DataItemType.Tasks) || [];
+        const localReminders: Reminder[] = getData<Reminder[]>(DataItemType.Reminders) || [];
+        const localAppointments: Appointment[] = getData<Appointment[]>(DataItemType.Appointments) || [];
 
         const syncedTasks: Task[] = [];
         for (const task of localTasks) {
@@ -312,11 +221,11 @@ export function useDataSync() {
                 if (googleEvent && googleEvent.id) {
                     syncedTasks.push({ ...task, googleCalendarEventId: googleEvent.id });
                 } else {
-                     syncedTasks.push(task); // Keep task even if calendar creation fails
+                     syncedTasks.push(task);
                 }
             }
         }
-        setLocalData('tasks', syncedTasks);
+        saveData<Task[]>(DataItemType.Tasks, syncedTasks);
 
         const syncedReminders: Reminder[] = [];
          for (const reminder of localReminders) {
@@ -333,7 +242,7 @@ export function useDataSync() {
                  }
              }
          }
-         setLocalData('reminders', syncedReminders);
+         saveData<Reminder[]>(DataItemType.Reminders, syncedReminders);
 
          const syncedAppointments: Appointment[] = [];
          for (const appointment of localAppointments) {
@@ -342,7 +251,7 @@ export function useDataSync() {
                  await updateCalendarEvent(appointment.googleCalendarEventId, appointment, eventType);
                  syncedAppointments.push(appointment);
              } else {
-                 const googleEvent = await createCalendarEvent(appointment, eventType);
+                 const googleEvent = await createCalendarEvent(appointment, eventType); // Changed from createGoogleCalendarEvent to generic createCalendarEvent
                  if (googleEvent && googleEvent.id) {
                     syncedAppointments.push({ ...appointment, googleCalendarEventId: googleEvent.id });
                  } else {
@@ -350,7 +259,7 @@ export function useDataSync() {
                  }
              }
          }
-         setLocalData('appointments', syncedAppointments);
+         saveData<Appointment[]>(DataItemType.Appointments, syncedAppointments);
 
         toast({ title: "Calendar Synced", description: "Google Calendar events updated." });
     } catch (error) {
@@ -359,85 +268,59 @@ export function useDataSync() {
     }
 }, [toast]);
 
-  // Effect to run sync periodically and load last sync time
   useEffect(() => {
-    // Only run interval logic in the browser
     if (typeof window !== 'undefined') {
-        // Load last sync time from localStorage
-        const storedLastSyncTime = localStorage.getItem('lastSyncTime');
-        if (storedLastSyncTime) {
-            setLastSyncTime(new Date(storedLastSyncTime));
+        const storedLastSyncTimeString = getData<string>(DataItemType.LastSyncTime);
+        if (storedLastSyncTimeString) {
+            setLastSyncTime(new Date(storedLastSyncTimeString));
         }
-
-        // Perform an initial sync check shortly after load if needed (optional)
-        // Consider if this is desirable UX - might be better to wait for user action or timer.
-        // setTimeout(performSync, 5000); // e.g., 5 seconds after load
-
-        // Set up the interval timer
         const intervalId = setInterval(() => {
             console.log("Performing scheduled sync check...");
             performSync();
         }, SYNC_INTERVAL);
-
-        // Clear interval on component unmount
         return () => clearInterval(intervalId);
     }
-  }, [performSync, SYNC_INTERVAL]); // Add SYNC_INTERVAL to dependencies
+  }, [performSync, SYNC_INTERVAL]);
 
-
-    // Function to manually resolve a conflict
     const resolveConflict = useCallback((resolvedConflict: DataConflict) => {
-        // 1. Find the conflict in the state
         const conflictIndex = conflicts.findIndex(c => c.rowIndex === resolvedConflict.rowIndex);
         if (conflictIndex === -1 || !resolvedConflict.resolvedValue) return;
 
-        // 2. Update the local representation of merged data (get current local data again)
-        let currentLocalData = getLocalData<ExcelData>('customerData');
+        let currentLocalData = getData<ExcelData>(DataItemType.CustomerData);
         if (!currentLocalData) {
             toast({ title: "Error", description: "Could not load local data to apply resolution.", variant: "destructive" });
             return;
         }
 
-        // Ensure the row index is valid
         if (resolvedConflict.rowIndex >= 0 && resolvedConflict.rowIndex < currentLocalData.rows.length) {
             currentLocalData.rows[resolvedConflict.rowIndex] = resolvedConflict.resolvedValue;
-            setLocalData<ExcelData>('customerData', currentLocalData); // Save the resolved data locally
+            saveData<ExcelData>(DataItemType.CustomerData, currentLocalData);
 
-            // 3. Remove the resolved conflict from the state
             setConflicts(prevConflicts => prevConflicts.filter((_, index) => index !== conflictIndex));
 
             toast({ title: "Conflict Resolved", description: `Row ${resolvedConflict.rowIndex + 1} updated locally.` });
 
-            // If all conflicts are resolved, trigger a sync to upload the changes
-            if (conflicts.length === 1) { // If this was the last conflict
+            if (conflicts.length === 1) { 
                 toast({ title: "All Conflicts Resolved", description: "Attempting to sync changes to the cloud..." });
-                // Using setTimeout to ensure state update completes before triggering sync
-                setTimeout(performSync, 500); // Small delay
+                setTimeout(performSync, 500);
             }
 
         } else {
             console.error("Invalid row index for conflict resolution:", resolvedConflict.rowIndex);
             toast({ title: "Resolution Error", description: "Invalid row index.", variant: "destructive" });
         }
-    }, [conflicts, toast, performSync]); // Added performSync dependency
+    }, [conflicts, toast, performSync]);
 
-    // Function to trigger authentication flow (Conceptual)
-    // PRODUCTION NOTE: Implement proper OAuth 2.0 flows for production.
-    // This usually involves redirecting the user to the provider's auth page
-    // and handling the callback to obtain tokens. Libraries like next-auth
-    // can simplify this process significantly.
     const initiateAuthentication = async (provider: 'onedrive' | 'googledrive') => {
         toast({ title: `Connecting ${provider}...`, description: "Redirecting for authentication (simulation)." });
 
-        // --- START: SIMULATION ONLY - REPLACE WITH REAL OAUTH ---
         if (typeof window !== 'undefined') {
             const mockToken = `mock-${provider}-token-${Date.now()}`;
-            localStorage.setItem(`${provider}AccessToken`, mockToken);
+            const tokenKey = provider === 'onedrive' ? DataItemType.OneDriveAccessToken : DataItemType.GoogleDriveAccessToken;
+            localStorage.setItem(tokenKey, mockToken); // Use DataItemType for token keys
             toast({ title: `Connected ${provider} (Mock)`, description: "Mock token stored. Please refresh or sync." });
-            // Automatically trigger a sync after mock authentication for demo purposes
              setTimeout(() => performSync(), 500);
         }
-        // --- END: SIMULATION ONLY ---
     };
 
 
@@ -448,8 +331,12 @@ export function useDataSync() {
     performSync,
     syncStatus,
     resolveConflict,
-       initiateAuthentication,
-    syncCalendar
+    initiateAuthentication,
+    syncCalendar,
+    // Expose generic getData and saveData if needed by other parts of the app directly through this hook,
+    // though it's generally better for components to import them from lib/utils
+    getLocalData: getData, 
+    setLocalData: saveData
   };
 }
 const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflict[]; onResolve: (resolvedConflict: DataConflict) => void }) => {
@@ -463,12 +350,10 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
          const initialResolutions: Record<number, 'local' | 'cloud' | 'manual'> = {};
 
          conflicts.forEach((conflict) => {
-            initialManualValues[conflict.rowIndex] = [...(conflict.localValue || [])]; // Default to local or empty array
-            // Optionally pre-select a resolution strategy, e.g., 'manual' or 'local'
-            // initialResolutions[conflict.rowIndex] = 'manual';
+            initialManualValues[conflict.rowIndex] = [...(conflict.localValue || [])];
          });
          setManualValues(initialManualValues);
-         setResolutions(initialResolutions); // Initialize resolutions as well
+         setResolutions(initialResolutions);
      }, [conflicts]);
 
 
@@ -512,7 +397,7 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-border">
+          <Card className="w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border-border">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
                              <AlertTriangle className="h-5 w-5 text-orange-500" />

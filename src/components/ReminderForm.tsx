@@ -1,152 +1,163 @@
 import React, { useState, useEffect } from 'react';
-import { Reminder, Contact } from '../lib/types'; // Assuming types and Contact type are defined
-import { useDataSync } from '../hooks/use-data-sync'; // Assuming useDataSync hook
-import { useLocalStorage } from '../hooks/use-local-storage';
-import { addReminderToGoogleCalendar, updateReminderInGoogleCalendar } from '../services/google-calendar'; // Assuming Google Calendar service functions
+import { Reminder, Contact, DataItemType } from '../lib/types';
+import { useDataSync } from '../hooks/use-data-sync';
+import { addReminderToGoogleCalendar, updateReminderInGoogleCalendar } from '../services/google-calendar';
+import { getData, saveData, parseDate } from '../lib/utils';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'; // Assuming ShadCN Select
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
+
 
 interface ReminderFormProps {
   initialReminder?: Reminder;
-  contacts: Contact[]; // List of contacts for association
+  // contacts list is now fetched internally
   onSave: (reminder: Reminder) => void;
   onCancel: () => void;
 }
 
-const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, contacts, onSave, onCancel }) => {
+const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, onCancel }) => {
   const [title, setTitle] = useState(initialReminder?.title || '');
   const [description, setDescription] = useState(initialReminder?.description || '');
-  const [dateTime, setDateTime] = useState(initialReminder?.dateTime || '');
+  // For DatePicker, ensure dateTime is a Date object or null
+  const [reminderDateTime, setReminderDateTime] = useState<Date | null>(
+    initialReminder?.dateTime ? parseDate(initialReminder.dateTime as string) : null
+  );
   const [associatedContactId, setAssociatedContactId] = useState(initialReminder?.associatedContactId || ''); 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { syncData } = useDataSync(); // Access sync function
-  const [reminders, setReminders] = useLocalStorage<Reminder[]>('reminders', []);
+  
+  const { performSync, syncCalendar } = useDataSync();
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || []; // Prefer specific contacts, fallback to customerData
+    setContacts(loadedContacts);
+
     if (initialReminder) {
-      const existingReminder = reminders.find((r) => r.id === initialReminder.id);
-      if (existingReminder) {
-        setTitle(existingReminder.title);
-        setDescription(existingReminder.description);
-        setDateTime(existingReminder.dateTime);
-        setAssociatedContactId(existingReminder.associatedContactId || '');
-      }
+      setTitle(initialReminder.title);
+      setDescription(initialReminder.description || '');
+      setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
+      setAssociatedContactId(initialReminder.associatedContactId || '');
     }
-  }, [initialReminder, reminders]);
-  const updateReminders = (updatedReminder: Reminder) => {
-    const index = reminders.findIndex((t) => t.id === updatedReminder.id);
-    const updatedReminders = [...reminders];
-    index > -1 ? (updatedReminders[index] = updatedReminder) : updatedReminders.push(updatedReminder);
-    setReminders(updatedReminders);
-  };
+  }, [initialReminder]);
+
+
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!title.trim()) {
-      newErrors.title = 'Title is required';
-    }
-    if (!dateTime) {
-      newErrors.dateTime = 'Date and time are required';
-    }
+    if (!title.trim()) newErrors.title = 'Title is required';
+    if (!reminderDateTime) newErrors.dateTime = 'Date and time are required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
+    if (!validateForm() || !reminderDateTime) {
       return;
     }
 
-    const newReminder: Reminder = {
-      ...initialReminder, // Keep existing ID if updating
-      id: initialReminder?.id || Date.now().toString(), // Simple ID generation
+    const newOrUpdatedReminder: Reminder = {
+      id: initialReminder?.id || Date.now().toString(),
       title,
       description,
-      dateTime,
-      associatedContactId: associatedContactId || undefined, // Store as undefined if no contact selected
-      googleCalendarEventId: initialReminder?.googleCalendarEventId, // Keep existing Google Calendar ID
+      dateTime: reminderDateTime.toISOString(), // Store as ISO string
+      associatedContactId: associatedContactId || undefined,
+      googleCalendarEventId: initialReminder?.googleCalendarEventId,
+      completed: initialReminder?.completed || false,
+      createdAt: initialReminder?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    try {
-      // Sync with Google Calendar
-      if (initialReminder?.googleCalendarEventId) {
-        await updateReminderInGoogleCalendar(newReminder);
-      } else {
-        const googleEventId = await addReminderToGoogleCalendar(newReminder);
-        newReminder.googleCalendarEventId = googleEventId;
-      }
+    let currentReminders = getData<Reminder[]>(DataItemType.Reminders) || [];
+    const existingIndex = currentReminders.findIndex(r => r.id === newOrUpdatedReminder.id);
+    if (existingIndex >= 0) {
+      currentReminders[existingIndex] = newOrUpdatedReminder;
+    } else {
+      currentReminders.push(newOrUpdatedReminder);
+    }
+    saveData<Reminder[]>(DataItemType.Reminders, currentReminders);
 
-      onSave(newReminder);
-      updateReminders(newReminder);
-       setTimeout(() => {
-         syncData(); // Trigger data sync after saving/updating
-       }, 100);
+    try {
+      if (initialReminder?.googleCalendarEventId) {
+        await updateReminderInGoogleCalendar(newOrUpdatedReminder);
+      } else {
+        const googleEvent = await addReminderToGoogleCalendar(newOrUpdatedReminder);
+        if (googleEvent && googleEvent.id) {
+            newOrUpdatedReminder.googleCalendarEventId = googleEvent.id;
+            // Update local storage again with the event ID
+            const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
+            saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
+        }
+      }
+      await syncCalendar(); 
     } catch (error) {
       console.error('Error saving reminder or syncing with Google Calendar:', error);
       // Handle error (e.g., show a toast notification)
     }
+    
+    onSave(newOrUpdatedReminder);
+    // performSync(); // Consider if full data sync is needed or just calendar sync
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
-        <input
-          type="text"
+        <Label htmlFor="title">Title</Label>
+        <Input
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={`mt-1 block w-full border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+          className={errors.title ? 'border-destructive' : ''}
         />
-        {errors.title && <p className="mt-2 text-sm text-red-600">{errors.title}</p>}
+        {errors.title && <p className="text-sm text-destructive mt-1">{errors.title}</p>}
       </div>
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
+        <Label htmlFor="description">Description</Label>
+        <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        ></textarea>
-      </div>
-      <div>
-        <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700">Date and Time</label>
-        <input
-          type="datetime-local"
-          id="dateTime"
-          value={dateTime}
-          onChange={(e) => setDateTime(e.target.value)}
-          className={`mt-1 block w-full border ${errors.dateTime ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
         />
-        {errors.dateTime && <p className="mt-2 text-sm text-red-600">{errors.dateTime}</p>}
       </div>
       <div>
-        <label htmlFor="associatedContact" className="block text-sm font-medium text-gray-700">Associated Contact (Optional)</label>
-        <select
-          id="associatedContact"
-          value={associatedContactId}
-          onChange={(e) => setAssociatedContactId(e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        >
-          <option value="">Select a contact</option>
-          {contacts.map((contact) => (
-            <option key={contact.id} value={contact.id}>{contact.name}</option>
-          ))}
-        </select>
+        <Label htmlFor="dateTime">Date and Time</Label>
+        <DatePicker
+            selected={reminderDateTime}
+            onChange={(date: Date | null) => setReminderDateTime(date)}
+            showTimeSelect
+            dateFormat="MM/dd/yyyy h:mm aa"
+            className={`w-full ${errors.dateTime ? 'border-destructive' : ''} mt-1 block border rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 h-10`}
+            wrapperClassName="w-full"
+        />
+        {errors.dateTime && <p className="text-sm text-destructive mt-1">{errors.dateTime}</p>}
+      </div>
+      <div>
+        <Label htmlFor="associatedContact">Associated Contact (Optional)</Label>
+        <Select value={associatedContactId} onValueChange={setAssociatedContactId}>
+            <SelectTrigger className="w-full mt-1">
+                <SelectValue placeholder="Select a contact" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                        {contact.firstName} {contact.lastName} ({contact.email})
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
       </div>
       <div className="flex justify-end space-x-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
+        </Button>
+        <Button type="submit">
           {initialReminder ? 'Update Reminder' : 'Add Reminder'}
-        </button>
+        </Button>
       </div>
     </form>
   );

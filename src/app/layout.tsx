@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, Shapes, UserPlus } from 'lucide-react'; // Added UserPlus icon
+import { LayoutDashboard, Table, Upload, Shapes, UserPlusIcon } from 'lucide-react'; // Changed UserPlus to UserPlusIcon
 import { SyncManager } from "@/components/SyncManager";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -69,7 +69,7 @@ export default function RootLayout({
                  <SidebarMenuItem>
                    <SidebarMenuButton asChild tooltip="Add Customer">
                      <Link href="/add-customer">
-                       <UserPlus />
+                       <UserPlusIcon /> 
                        <span>Add Customer</span>
                      </Link>
                    </SidebarMenuButton>

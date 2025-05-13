@@ -2,14 +2,13 @@
 
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle } from 'lucide-react';
+import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon } from 'lucide-react'; // Renamed UserPlus to UserPlusIcon
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
+import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, DataItemType } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataSync } from '@/hooks/use-data-sync';
-import { useGoogleCalendar } from '@/hooks/use-google-calendar';
 import TaskList from './TaskList';
 import AppointmentList from './AppointmentList';
 import ReminderList from './ReminderList';
@@ -17,14 +16,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
-
+import { getData, parseDate } from '@/lib/utils'; // Import getData and parseDate
 
 interface DashboardStats {
   totalCustomers: number;
-  newCustomersToday: number;
+  newCustomersToday: number; // This might be hard to calculate accurately without proper date tracking on import
 }
 
-// Initial stats
 const initialStats: DashboardStats = {
   totalCustomers: 0,
   newCustomersToday: 0,
@@ -40,22 +38,18 @@ const chartData = [
   { name: 'Jun', customers: 0 },
 ];
 
-const mockData: Contact[] = [
+// Fallback mock contacts if no data is in localStorage
+const mockContacts: Contact[] = [
   { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', createdAt: new Date(), updatedAt: new Date() },
   { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', createdAt: new Date(), updatedAt: new Date()  },
-  { id: '3', firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@example.com', phone: '555-123-4567', company: 'Gamma Inc', createdAt: new Date(), updatedAt: new Date()  },
-  { id: '4', firstName: 'Alice', lastName: 'Williams', email: 'alice.williams@example.com', phone: '555-987-6543', company: 'Delta Co', createdAt: new Date(), updatedAt: new Date()  },
-  { id: '5', firstName: 'Bob', lastName: 'Brown', email: 'bob.brown@example.com', phone: '555-555-5555', company: 'Epsilon Ltd', createdAt: new Date(), updatedAt: new Date()  },
 ];
 
 
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
-    const { performSync, syncStatus, syncCalendar } = useDataSync();
-    const { isSignedIn, handleSignIn, handleSignOut } = useGoogleCalendar();
-
+    const { performSync, syncStatus, syncCalendar, initiateAuthentication } = useDataSync();
     const [loading, setLoading] = useState(true);
-    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]); // For recent contacts display
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -64,73 +58,103 @@ const Dashboard: FC = () => {
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
 
+    // State for Google Calendar sign-in (simplified)
+    const [isGoogleCalendarLinked, setIsGoogleCalendarLinked] = useState(false);
 
     useEffect(() => {
+      // Check if Google Drive (used for Calendar) token exists
+      if (typeof window !== 'undefined') {
+        setIsGoogleCalendarLinked(!!localStorage.getItem(DataItemType.GoogleDriveAccessToken));
+      }
+    }, []);
+
+
+    const loadDashboardData = useCallback(() => {
         setLoading(true);
          try {
-            const storedData = localStorage.getItem('customerData');
-            if (storedData) {
-                const parsedData: ExcelData = JSON.parse(storedData);
-                 if (parsedData && parsedData.rows) {
-                     const totalCustomers = parsedData.rows.length;
-                     setStats({
-                         totalCustomers: totalCustomers,
-                         newCustomersToday: 0,
-                     });
-                      // Transform ExcelData to Contact[]
-                        const contactHeaders = parsedData.headers;
-                        const transformedContacts: Contact[] = parsedData.rows.map((row, index) => {
-                            const contact: Partial<Contact> & { id: string } = { id: `contact-${index}`}; // Add a default ID
-                            contactHeaders.forEach((header, i) => {
-                                (contact as any)[header] = row[i];
-                            });
-                            contact.createdAt = new Date(); // Placeholder
-                            contact.updatedAt = new Date(); // Placeholder
-                            return contact as Contact;
-                        });
-                        setContacts(transformedContacts.slice(0, 5)); // Display first 5
-                 } else {
-                    setStats(initialStats);
-                    setContacts([]);
-                 }
+            const customerData = getData<ExcelData>(DataItemType.CustomerData);
+            let displayContacts: Contact[] = [];
+
+            if (customerData && customerData.rows) {
+                 setStats({
+                     totalCustomers: customerData.rows.length,
+                     newCustomersToday: 0, // Placeholder - implement if needed
+                 });
+                  // Transform ExcelData to Contact[] for recent contacts display
+                    const contactHeaders = customerData.headers;
+                    // Assuming standard headers for contact info
+                    const firstNameIndex = contactHeaders.indexOf('firstName');
+                    const lastNameIndex = contactHeaders.indexOf('lastName');
+                    const emailIndex = contactHeaders.indexOf('email');
+                    const phoneIndex = contactHeaders.indexOf('phone');
+                    const companyIndex = contactHeaders.indexOf('company');
+
+                    displayContacts = customerData.rows.slice(0, 5).map((row, index): Contact => ({
+                        id: `imported-${index}-${Date.now()}`, // Create a more unique ID
+                        firstName: row[firstNameIndex] || '',
+                        lastName: row[lastNameIndex] || '',
+                        email: row[emailIndex] || '',
+                        phone: phoneIndex > -1 ? row[phoneIndex] : undefined,
+                        company: companyIndex > -1 ? row[companyIndex] : undefined,
+                        createdAt: new Date().toISOString(), // Placeholder
+                        updatedAt: new Date().toISOString(), // Placeholder
+                    }));
             } else {
-                setStats(initialStats);
-                setContacts(mockData.slice(0,5)); // Use mockData if nothing in localStorage
+                // Fallback to mock data if no customerData
+                setStats(initialStats); // Reset stats if no real data
+                displayContacts = mockContacts.slice(0,5);
             }
+            setContacts(displayContacts);
+
+            // Also load contacts from DataItemType.Contacts if they exist (manual adds)
+            const manualContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+            // Simple merge: show manual contacts first, then imported, up to 5
+            // This could be more sophisticated (e.g., deduplication, sorting)
+            const combinedContacts = [...manualContacts, ...displayContacts];
+            const uniqueContacts = Array.from(new Map(combinedContacts.map(c => [c.id, c])).values());
+            setContacts(uniqueContacts.slice(0, 5));
+
+
         } catch (error) {
-            console.error("Error loading dashboard stats:", error);
+            console.error("Error loading dashboard data:", error);
             setStats(initialStats);
-            setContacts(mockData.slice(0,5)); // Use mockData on error
+            setContacts(mockContacts.slice(0,5)); // Fallback to mockData on error
         } finally {
             setLoading(false);
         }
     }, []);
 
-    const handleGoogleCalendarAuth = useCallback(async () => {
-      if (isSignedIn) {
-        handleSignOut();
-      } else {
-        await handleSignIn();
-        // Attempt to sync calendar items after successful sign-in
-        syncCalendar();
-      }
-    }, [isSignedIn, handleSignIn, handleSignOut, syncCalendar]);
+    useEffect(() => {
+        loadDashboardData();
+    }, [loadDashboardData]);
 
-    const handleSaveTask = () => {
-        setIsTaskFormOpen(false);
-        setEditingTask(undefined);
-        // Optionally re-fetch tasks or trigger a state update in TaskList
+    const handleGoogleCalendarAuth = useCallback(async () => {
+      if (isGoogleCalendarLinked) {
+        // Simulate sign out for demo purposes - in real app, clear token and call Google's revoke
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
+        }
+        setIsGoogleCalendarLinked(false);
+        // Consider calling a sign-out function from google-calendar.ts if it exists
+      } else {
+        await initiateAuthentication('googledrive'); // This sets a mock token
+        // After auth, check token and update state
+        if (typeof window !== 'undefined' && localStorage.getItem(DataItemType.GoogleDriveAccessToken)) {
+          setIsGoogleCalendarLinked(true);
+          syncCalendar(); // Attempt to sync calendar items after successful "sign-in"
+        }
+      }
+    }, [isGoogleCalendarLinked, initiateAuthentication, syncCalendar]);
+
+
+    const refreshData = () => {
+        loadDashboardData();
+        // Potentially add more specific refresh logic for tasks, reminders, appointments if needed
     };
-    const handleSaveReminder = () => {
-        setIsReminderFormOpen(false);
-        setEditingReminder(undefined);
-         // Optionally re-fetch reminders or trigger a state update in ReminderList
-    };
-    const handleSaveAppointment = () => {
-        setIsAppointmentFormOpen(false);
-        setEditingAppointment(undefined);
-        // Optionally re-fetch appointments or trigger a state update in AppointmentList
-    };
+
+    const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); refreshData(); };
+    const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); refreshData(); };
+    const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
 
 
     return (
@@ -142,11 +166,13 @@ const Dashboard: FC = () => {
           </Button>
         </div>
 
-        <div className="flex items-center justify-between py-2">
-          <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isSignedIn ? 'destructive' : 'default'}>
-            {isSignedIn ? 'Sign Out from Google' : 'Link Google Calendar'}
+         <div className="flex items-center justify-start py-2">
+          <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'}>
+            <Calendar className="mr-2 h-4 w-4" />
+            {isGoogleCalendarLinked ? 'Unlink Google Calendar' : 'Link Google Calendar'}
           </Button>
         </div>
+
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
@@ -178,7 +204,7 @@ const Dashboard: FC = () => {
             </CardContent>
           </Card>
           <Card>
-           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-muted">
+           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-muted dark:bg-muted/50">
              <CardTitle className="text-sm font-medium">Data Source</CardTitle>
               <BarChart className="h-4 w-4 text-muted-foreground" />
            </CardHeader>
@@ -211,7 +237,7 @@ const Dashboard: FC = () => {
                     cursor={{ fill: 'hsl(var(--accent) / 0.3)' }}
                   />
                   <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }}/>
-                  <Bar dataKey="customers" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="customers" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                 </RechartsBarChart>
               </ResponsiveContainer>
           )}
@@ -226,7 +252,7 @@ const Dashboard: FC = () => {
           </CardTitle>
           <Link href="/add-customer">
             <Button size="sm" variant="outline">
-                <UserPlus className="mr-2 h-4 w-4" /> Add New Customer
+                <UserPlusIcon className="mr-2 h-4 w-4" /> Add New Customer
             </Button>
           </Link>
         </CardHeader>
@@ -243,10 +269,7 @@ const Dashboard: FC = () => {
                     <span className="font-medium">{contact.firstName} {contact.lastName}</span>
                     <p className="text-sm text-muted-foreground">{contact.email}</p>
                     </div>
-                    <div className="flex space-x-2">
-                    {/* <Button size="icon" className="p-2 h-auto w-auto" variant={'ghost'}> <Edit className="h-4 w-4" /> </Button>
-                    <Button size="icon" className="p-2 h-auto w-auto" variant={'ghost'}> <Trash2 className="h-4 w-4" /> </Button> */}
-                    </div>
+                    {/* Edit/Delete for contacts can be added here if needed */}
                 </li>
                 ))}
             </ul>
@@ -304,7 +327,7 @@ const Dashboard: FC = () => {
                     </DialogHeader>
                     <ReminderForm
                         initialReminder={editingReminder}
-                        contacts={contacts} // Pass contacts for association
+                        // contacts are now fetched within ReminderForm
                         onSave={handleSaveReminder}
                         onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
                     />

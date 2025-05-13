@@ -189,7 +189,3 @@ export async function uploadMetadataToOneDrive(metadata: FileMetadata, authInfo:
     throw error;
   }
 }
-```
-  </change>
-  <change>
-    <file>src/services/google-
