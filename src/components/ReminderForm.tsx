@@ -14,33 +14,39 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface ReminderFormProps {
   initialReminder?: Reminder;
-  // contacts list is now fetched internally
   onSave: (reminder: Reminder) => void;
   onCancel: () => void;
 }
 
+const NO_ASSOCIATED_CONTACT_VALUE = "__NO_ASSOCIATED_CONTACT__";
+
 const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, onCancel }) => {
-  const [title, setTitle] = useState(initialReminder?.title || '');
-  const [description, setDescription] = useState(initialReminder?.description || '');
-  // For DatePicker, ensure dateTime is a Date object or null
-  const [reminderDateTime, setReminderDateTime] = useState<Date | null>(
-    initialReminder?.dateTime ? parseDate(initialReminder.dateTime as string) : null
-  );
-  const [associatedContactId, setAssociatedContactId] = useState(initialReminder?.associatedContactId || ''); 
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [reminderDateTime, setReminderDateTime] = useState<Date | null>(null);
+  const [associatedContactId, setAssociatedContactId] = useState(''); 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const { performSync, syncCalendar } = useDataSync();
+  const { syncCalendar } = useDataSync();
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
-    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || []; // Prefer specific contacts, fallback to customerData
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || [];
     setContacts(loadedContacts);
 
     if (initialReminder) {
       setTitle(initialReminder.title);
       setDescription(initialReminder.description || '');
       setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
+      // If associatedContactId is undefined or an empty string, set state to an empty string to show placeholder.
+      // Otherwise, use the existing contact ID.
       setAssociatedContactId(initialReminder.associatedContactId || '');
+    } else {
+      // For new reminders, initialize fields to empty or null to allow placeholders or default states.
+      setTitle('');
+      setDescription('');
+      setReminderDateTime(null);
+      setAssociatedContactId(''); // Empty string will show placeholder
     }
   }, [initialReminder]);
 
@@ -63,8 +69,8 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
       id: initialReminder?.id || Date.now().toString(),
       title,
       description,
-      dateTime: reminderDateTime.toISOString(), // Store as ISO string
-      associatedContactId: associatedContactId || undefined,
+      dateTime: reminderDateTime.toISOString(), 
+      associatedContactId: associatedContactId === NO_ASSOCIATED_CONTACT_VALUE || associatedContactId === '' ? undefined : associatedContactId,
       googleCalendarEventId: initialReminder?.googleCalendarEventId,
       completed: initialReminder?.completed || false,
       createdAt: initialReminder?.createdAt || new Date().toISOString(),
@@ -87,7 +93,6 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
         const googleEvent = await addReminderToGoogleCalendar(newOrUpdatedReminder);
         if (googleEvent && googleEvent.id) {
             newOrUpdatedReminder.googleCalendarEventId = googleEvent.id;
-            // Update local storage again with the event ID
             const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
             saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
         }
@@ -95,11 +100,9 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
       await syncCalendar(); 
     } catch (error) {
       console.error('Error saving reminder or syncing with Google Calendar:', error);
-      // Handle error (e.g., show a toast notification)
     }
     
     onSave(newOrUpdatedReminder);
-    // performSync(); // Consider if full data sync is needed or just calendar sync
   };
 
   return (
@@ -142,7 +145,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
                 <SelectValue placeholder="Select a contact" />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value={NO_ASSOCIATED_CONTACT_VALUE}>None</SelectItem>
                 {contacts.map((contact) => (
                     <SelectItem key={contact.id} value={contact.id}>
                         {contact.firstName} {contact.lastName} ({contact.email})
