@@ -84,7 +84,7 @@ export function useDataSync() {
                    headers: localCustomerData.headers,
                    rows: localCustomerData.rows
                };
-               console.log(`No data found on ${provider}. Uploading local data.`);
+               // console.log(`No data found on ${provider}. Uploading local data.`); // Debug log
                await (provider === 'onedrive'
                    ? uploadToOneDrive(localDataToUpload, authInfo)
                    : uploadToGoogleDrive(localDataToUpload, authInfo));
@@ -142,7 +142,7 @@ export function useDataSync() {
             }
 
               if (currentConflicts.length === 0 && mergedData.rows.length > 0) {
-                   console.log(`Uploading merged data to ${provider}.`);
+                   // console.log(`Uploading merged data to ${provider}.`); // Debug log
                    await (provider === 'onedrive'
                       ? uploadToOneDrive(mergedData, authInfo)
                       : uploadToGoogleDrive(mergedData, authInfo));
@@ -195,7 +195,7 @@ export function useDataSync() {
          setConflicts(encounteredConflicts);
          toast({ title: "Sync Complete with Conflicts", description: "Manual resolution needed for some data.", variant: "destructive" });
          setSyncStatus('conflict');
-         console.log("Conflicts detected:", encounteredConflicts);
+         // console.log("Conflicts detected:", encounteredConflicts); // Debug log
     }
 
        setIsSyncing(false);
@@ -281,7 +281,7 @@ export function useDataSync() {
             setLastSyncTime(new Date(storedLastSyncTimeString));
         }
         const intervalId = setInterval(() => {
-            console.log("Performing scheduled sync check...");
+            // console.log("Performing scheduled sync check..."); // Removed for production clarity
             performSync();
         }, SYNC_INTERVAL);
         return () => clearInterval(intervalId);
@@ -317,6 +317,10 @@ export function useDataSync() {
         }
     }, [conflicts, toast, performSync]);
 
+    // TODO: Replace this mock authentication with a real OAuth flow for production.
+    // This function currently simulates storing a token in localStorage.
+    // For a production app, you would redirect the user to the provider's OAuth screen
+    // and handle the callback to obtain and securely store the tokens.
     const initiateAuthentication = async (provider: 'onedrive' | 'googledrive') => {
         toast({ title: `Connecting ${provider}...`, description: "Attempting to authenticate (simulation)." });
 
@@ -356,7 +360,7 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
     const { toast } = useToast();
 
     useEffect(() => {
-        // console.log("ConflictResolutionUI conflicts updated:", conflicts);
+        // console.log("ConflictResolutionUI conflicts updated:", conflicts); // Debug log
          const initialManualValues: Record<number, string[]> = {};
          const initialResolutions: Record<number, 'local' | 'cloud' | 'manual'> = {};
 
@@ -507,3 +511,4 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
 
 
 export { ConflictResolutionUI };
+
