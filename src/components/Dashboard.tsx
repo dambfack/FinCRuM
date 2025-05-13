@@ -290,28 +290,30 @@ const Dashboard: FC = () => {
 
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-          <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-            <DialogTrigger asChild>
-                 <Button size="sm" variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="whitespace-normal text-center h-auto">
-                    <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
-                 </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
-                </DialogHeader>
-                <TaskForm
-                    task={editingTask}
-                    onSave={handleSaveTask}
-                    onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); }}
-                 />
-            </DialogContent>
-          </Dialog>
+          <div className="mt-2">
+            <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
+              <DialogTrigger asChild>
+                   <Button size="sm" variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-auto">
+                      <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
+                   </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                      <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                  </DialogHeader>
+                  <TaskForm
+                      task={editingTask}
+                      onSave={handleSaveTask}
+                      onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); }}
+                   />
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
             <TaskList onEditTask={(task) => { setEditingTask(task); setIsTaskFormOpen(true); }} />
@@ -319,28 +321,30 @@ const Dashboard: FC = () => {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
             <CardTitle className="flex items-center space-x-2">
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="whitespace-normal text-center h-auto">
-                        <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
-                    </DialogHeader>
-                    <ReminderForm
-                        initialReminder={editingReminder}
-                        onSave={handleSaveReminder}
-                        onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
-                    />
-                </DialogContent>
-            </Dialog>
+            <div className="mt-2">
+              <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
+                  <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-auto">
+                          <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                          <DialogTitle>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                      </DialogHeader>
+                      <ReminderForm
+                          initialReminder={editingReminder}
+                          onSave={handleSaveReminder}
+                          onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
+                      />
+                  </DialogContent>
+              </Dialog>
+            </div>
         </CardHeader>
         <CardContent>
             <ReminderList onEdit={(reminder) => { setEditingReminder(reminder); setIsReminderFormOpen(true); }} />
@@ -348,14 +352,15 @@ const Dashboard: FC = () => {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
+          <div className="mt-2">
             <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
                 <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="whitespace-normal text-center h-auto">
+                    <Button size="sm" variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-auto">
                         <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
                     </Button>
                 </DialogTrigger>
@@ -370,6 +375,7 @@ const Dashboard: FC = () => {
                     />
                 </DialogContent>
             </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
             <AppointmentList onEditAppointment={(appointment) => {setEditingAppointment(appointment); setIsAppointmentFormOpen(true);}} />
