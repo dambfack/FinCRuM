@@ -41,6 +41,7 @@ export default {
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			border: 'hsl(var(--border))',
+        'glass-border': 'hsla(var(--glass-border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			chart: {
@@ -62,9 +63,11 @@ export default {
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: 'var(--radius)', // Will be 0.75rem
+  			md: 'calc(var(--radius) - 0.25rem)', // 0.5rem
+  			sm: 'calc(var(--radius) - 0.5rem)', // 0.25rem
+        xl: 'calc(var(--radius) + 0.25rem)', // 1rem
+        '2xl': 'calc(var(--radius) + 0.5rem)', // 1.25rem
   		},
   		keyframes: {
   			'accordion-down': {

@@ -14,13 +14,16 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, Shapes, UserPlusIcon } from 'lucide-react'; // Changed UserPlus to UserPlusIcon
-import SyncManager from "@/components/SyncManager"; // Changed to default import
+import { LayoutDashboard, Table, Upload, UserPlusIcon, Settings } from 'lucide-react';
+import SyncManager from "@/components/SyncManager";
 import { Toaster } from "@/components/ui/toaster";
+import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
   title: 'Finsculpt CRM',
-  description: 'Basic CRM App',
+  description: 'Advanced CRM with Glassmorphism UI',
 };
 
 export default function RootLayout({
@@ -29,21 +32,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Added 'dark' class to enable dark mode by default
     <html lang="en" className="dark">
       <body
         className={cn(
           GeistSans.variable,
-          'antialiased font-sans flex min-h-screen flex-col'
+          'antialiased font-sans flex min-h-screen flex-col' // Removed bg-background, body style from globals.css will handle it
         )}
       >
         <SidebarProvider>
-          <Sidebar collapsible="icon">
+          <Sidebar collapsible="icon" className="bg-sidebar-background/50 dark:bg-sidebar-background/30 glass-effect-sidebar">
             <SidebarHeader>
               <div className="flex items-center justify-between">
-                 <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                    <Shapes className="h-6 w-6 text-accent"/>
-                    Finsculpt CRM
+                 <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
+                    {/* Simplified Logo - replace with actual SVG or Icon component if available */}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-accent"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                    <span className="group-data-[state=collapsed]:hidden">Finsculpt CRM</span>
                   </Link>
                   <SidebarTrigger className="md:hidden" />
               </div>
@@ -69,7 +72,7 @@ export default function RootLayout({
                  <SidebarMenuItem>
                    <SidebarMenuButton asChild tooltip="Add Customer">
                      <Link href="/add-customer">
-                       <UserPlusIcon /> 
+                       <UserPlusIcon />
                        <span>Add Customer</span>
                      </Link>
                    </SidebarMenuButton>
@@ -85,22 +88,47 @@ export default function RootLayout({
               </SidebarMenu>
             </SidebarContent>
           </Sidebar>
-          <SidebarInset className="flex flex-col">
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 md:px-6 lg:ml-0 md:ml-auto md:w-[calc(100%-var(--sidebar-width-icon))] peer-data-[state=expanded]:md:w-[calc(100%-var(--sidebar-width))] transition-[width]">
+          <SidebarInset className={cn(
+            "flex flex-col",
+            "bg-background/10 dark:bg-background/5 backdrop-blur-sm" // Main content area glass effect
+            // "m-0 md:m-2 md:rounded-xl md:border md:border-white/5 md:shadow-lg" // Optional: frame the inset area
+          )}>
+            <header className={cn(
+              "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
+              "bg-transparent glass-effect-header" // Header glass effect
+            )}>
               <div className="flex items-center gap-2 md:hidden">
                 <SidebarTrigger />
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                   <Shapes className="h-6 w-6 text-accent"/>
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-accent"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                    Finsculpt CRM
                  </Link>
               </div>
-              {/* Add Header content if needed, e.g., User profile */}
-              <SyncManager/>
-              <div className="ml-auto">
+              <div className="hidden md:block text-xl font-semibold">Finsculpt CRM</div>
+              
+              <div className="flex items-center gap-3">
+                <SyncManager/>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">
+                      <Settings className="h-5 w-5" />
+                      <span className="sr-only">Settings</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
+                    <BackgroundImageSwitcher />
+                  </PopoverContent>
+                </Popover>
                 {/* Placeholder for future elements like user avatar/settings */}
               </div>
             </header>
-            <main className="flex-1 p-4 md:p-6">{children}</main>
+            <main className={cn(
+              "flex-1 overflow-y-auto p-4 md:p-6",
+              // "glass-effect-main-content" // Apply this if main needs its own distinct glass panel
+              "bg-transparent" // Ensure main itself is transparent if SidebarInset provides the backdrop
+            )}>
+                {children}
+            </main>
             <Toaster />
           </SidebarInset>
         </SidebarProvider>

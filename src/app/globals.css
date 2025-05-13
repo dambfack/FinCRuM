@@ -4,13 +4,18 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  background-image: url('https://picsum.photos/1920/1080?grayscale&blur=2'); /* Default background */
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  data-ai-hint: "abstract gradient";
 }
 
 @layer base {
   :root {
-    --background: 220 15% 96%; /* Light Gray */
+    --background: 220 15% 96%; /* Light Gray - base for content area background */
     --foreground: 220 10% 20%; /* Dark Gray */
-    --card: 0 0% 100%;
+    --card: 0 0% 100%; /* White - base for card background */
     --card-foreground: 220 10% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 10% 20%;
@@ -24,7 +29,8 @@ body {
     --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 10% 90%; /* Lighter Gray border */
+    --border: 220 10% 90%; /* Lighter Gray border - general border */
+    --glass-border: 255 100% 100%; /* White for glass borders */
     --input: 220 10% 90%; /* Lighter Gray input */
     --ring: 180 100% 25%; /* Teal ring */
     --chart-1: 180 100% 25%; /* Teal chart color */
@@ -32,7 +38,7 @@ body {
     --chart-3: 180 60% 45%;
     --chart-4: 180 40% 55%;
     --chart-5: 180 20% 65%;
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Increased radius for more rounded look */
     --sidebar-background: 220 10% 92%; /* Slightly darker gray for sidebar */
     --sidebar-foreground: 220 10% 20%;
     --sidebar-primary: 180 100% 25%; /* Teal for primary sidebar elements */
@@ -43,9 +49,9 @@ body {
     --sidebar-ring: 180 100% 25%;
   }
   .dark {
-    --background: 220 10% 10%; /* Dark Gray */
+    --background: 220 10% 10%; /* Dark Gray - base for content area background */
     --foreground: 0 0% 98%; /* Light Gray */
-    --card: 220 10% 15%;
+    --card: 220 10% 15%; /* Base for card background */
     --card-foreground: 0 0% 98%;
     --popover: 220 10% 10%;
     --popover-foreground: 0 0% 98%;
@@ -59,7 +65,8 @@ body {
     --accent-foreground: 220 10% 10%; /* Dark text on accent */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 10% 25%; /* Darker Gray border */
+    --border: 220 10% 25%; /* Darker Gray border - general border */
+    --glass-border: 255 100% 100%; /* White for glass borders */
     --input: 220 10% 25%; /* Darker Gray input */
     --ring: 180 100% 35%; /* Lighter Teal ring */
     --chart-1: 180 100% 35%; /* Teal chart color */
@@ -80,9 +87,33 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Default border color */
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    /* Background image is set directly on body tag already */
   }
+}
+
+/* Glassmorphism utilities - can be applied to components */
+.glass-effect {
+  @apply backdrop-blur-lg shadow-xl border;
+  /* Base colors with opacity will be applied directly on components using Tailwind's opacity modifiers e.g. bg-card/70 */
+  border-color: hsla(var(--glass-border) / 0.1); /* Translucent white border */
+}
+
+.glass-effect-sidebar {
+  @apply backdrop-blur-xl shadow-2xl border-r;
+  border-color: hsla(var(--glass-border) / 0.1);
+}
+
+.glass-effect-header {
+  @apply backdrop-blur-lg shadow-lg border-b;
+  border-color: hsla(var(--glass-border) / 0.05);
+}
+
+.glass-effect-main-content {
+    @apply backdrop-blur-md shadow-lg border rounded-xl m-2;
+    background-color: hsla(var(--background) / 0.1); /* Very subtle background for main content area */
+    border-color: hsla(var(--glass-border) / 0.05);
 }
