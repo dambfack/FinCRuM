@@ -1,13 +1,12 @@
 // src/components/SyncManager.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Import useState and useEffect
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync.tsx';
-import { cn, formatDateTime } from '@/lib/utils';
-import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react'; // Added HelpCircle for loading state
-import { formatDistanceToNow } from 'date-fns';
+import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync';
+import { cn, formatDateTime, getData, saveData } from '@/lib/utils';
+import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const SyncManager = () => {
@@ -18,58 +17,68 @@ const SyncManager = () => {
     performSync,
     resolveConflict,
     initiateAuthentication,
+    syncStatus, // Added syncStatus
   } = useDataSync();
   const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
 
-  // State to track provider configuration, initialized to null (loading/unknown)
-  const [isProviderConfigured, setIsProviderConfigured] = useState<boolean | null>(null);
   const [isOneDriveConnected, setIsOneDriveConnected] = useState<boolean | null>(null);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState<boolean | null>(null);
+  
+  const isAnyProviderConfigured = useCallback(() => {
+    return isOneDriveConnected || isGoogleDriveConnected;
+  }, [isOneDriveConnected, isGoogleDriveConnected]);
 
-  // Check configuration only on the client side after mount
   useEffect(() => {
-    const oneDriveConfigured = !!localStorage.getItem('onedriveAccessToken');
-      const googleDriveConfigured = !!localStorage.getItem('googledriveAccessToken');
-      setIsOneDriveConnected(oneDriveConfigured);
-    setIsGoogleDriveConnected(googleDriveConfigured);
-    setIsProviderConfigured(oneDriveConfigured || googleDriveConfigured);
-  }, []); // Empty dependency array ensures this runs once on mount
+    const checkConfiguration = () => {
+      if (typeof window !== 'undefined') {
+        const oneDriveConfigured = !!localStorage.getItem('onedriveAccessToken');
+        const googleDriveConfigured = !!localStorage.getItem('googledriveAccessToken');
+        setIsOneDriveConnected(oneDriveConfigured);
+        setIsGoogleDriveConnected(googleDriveConfigured);
+      }
+    };
+    checkConfiguration();
+
+    // Optional: Listen to storage events if tokens can be set by other tabs/windows
+    // window.addEventListener('storage', checkConfiguration);
+    // return () => window.removeEventListener('storage', checkConfiguration);
+  }, [isSyncing]); // Re-check config if sync status changes, as auth might fail and clear tokens
 
   const renderProviderStatusIcon = () => {
-    if (isProviderConfigured === null) {
-      // Loading state
+    if (isOneDriveConnected === null || isGoogleDriveConnected === null) {
       return <HelpCircle className="h-5 w-5 text-muted-foreground animate-pulse" />;
-    }    
-      if (isSyncing) {
+    }
+    if (syncStatus === 'syncing') {
       return <Loader2 className="h-5 w-5 animate-spin" />;
     }
     if (conflicts.length > 0) {
       return <AlertTriangle className="h-5 w-5 text-orange-500" />;
     }
-    if (isProviderConfigured) {
+    if (isAnyProviderConfigured()) {
       return <CloudCog className="h-5 w-5 text-green-600" />;
     }
     return <CloudOff className="h-5 w-5 text-muted-foreground" />;
   };
 
   const renderSyncStatusText = () => {
-      if (isProviderConfigured === null) {
-          return "Checking configuration...";
-      }
-      if (isSyncing) {
-          return "Syncing in progress...";
-      }
-      if (conflicts.length > 0) {
-          return `${conflicts.length} conflict(s) need resolution`;
-      }
-      if (lastSyncTime) {
-          return `Last sync: ${formattedLastSyncTime}`;
-      }
-      if (isProviderConfigured) {
-          return "Ready to sync";
-      }
-     return "No cloud provider configured";
-  }
+    if (isOneDriveConnected === null || isGoogleDriveConnected === null) {
+      return "Checking cloud configuration...";
+    }
+    if (syncStatus === 'syncing') {
+      return "Syncing in progress...";
+    }
+    if (conflicts.length > 0) {
+      return `${conflicts.length} conflict(s) need resolution.`;
+    }
+    if (lastSyncTime) {
+      const timeAgo = formatDateTime(lastSyncTime); // Or use formatDistanceToNow
+      return `Last sync: ${timeAgo}`;
+    }
+    if (isAnyProviderConfigured()) {
+      return "Ready to sync.";
+    }
+    return "No cloud provider configured.";
+  };
 
   return (
     <>
@@ -77,24 +86,24 @@ const SyncManager = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {renderProviderStatusIcon()}
-             Data Synchronization
-           </CardTitle>
+            Data Synchronization
+          </CardTitle>
           <CardDescription>
-            Manage data backup and synchronization with cloud services. Data attempts to sync daily automatically.
+            Manage data backup and synchronization with cloud services.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md">
-                 <div>
+           <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:space-x-3 p-3 bg-secondary/50 rounded-md">
+                 <div className="min-w-0 flex-1"> {/* Allow text to take space and wrap/truncate */}
                      <p className="text-sm font-medium">Sync Status</p>
-                      {isProviderConfigured === null ? (
-                          <Skeleton className="h-4 w-32 mt-1" />
+                      {(isOneDriveConnected === null || isGoogleDriveConnected === null) ? (
+                          <Skeleton className="h-4 w-48 mt-1" />
                       ) : (
                          <p className={cn(
                              "text-xs",
-                              isSyncing ? "text-blue-600" :
-                              conflicts.length > 0 ? "text-orange-600" :
-                              lastSyncTime ? "text-green-600" :
+                              syncStatus === 'syncing' ? "text-blue-600 dark:text-blue-400" :
+                              conflicts.length > 0 ? "text-orange-600 dark:text-orange-400" :
+                              lastSyncTime && syncStatus === 'synced' ? "text-green-600 dark:text-green-400" :
                               "text-muted-foreground"
                          )}>
                             {renderSyncStatusText()}
@@ -102,28 +111,29 @@ const SyncManager = () => {
                       )}
                  </div>
                  <Button
-                    onClick={performSync}
-                    disabled={isSyncing || isProviderConfigured === null || !isProviderConfigured}
+                    onClick={() => performSync()} // Wrapped in arrow function
+                    disabled={syncStatus === 'syncing' || (isOneDriveConnected === null || isGoogleDriveConnected === null) || !isAnyProviderConfigured()}
                     size="sm"
+                    className="flex-shrink-0 self-start sm:self-center whitespace-nowrap" 
                  >
-                    <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
-                    {isSyncing ? 'Syncing...' : 'Sync Now'}
+                    <RefreshCw className={cn("mr-2 h-4 w-4", syncStatus === 'syncing' && "animate-spin")} />
+                    {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
                   </Button>
            </div>
 
-            {isProviderConfigured === false && ( 
+            {(isOneDriveConnected === false || isGoogleDriveConnected === false) && !(isOneDriveConnected === null || isGoogleDriveConnected === null) && (
                  <Card className="border-dashed border-accent">
                     <CardHeader>
                         <CardTitle className="text-base">Connect Cloud Storage</CardTitle>
                         <CardDescription>Connect your OneDrive or Google Drive account to enable data backup and sync.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-4">
-                         {isOneDriveConnected === false && ( // Show only if not connected
+                         {isOneDriveConnected === false && (
                             <Button onClick={() => initiateAuthentication('onedrive')} variant="outline">
                                 <Cloud className="mr-2 h-4 w-4"/> Connect OneDrive
                             </Button>
                          )}
-                         {isGoogleDriveConnected === false && ( // Show only if not connected
+                         {isGoogleDriveConnected === false && (
                              <Button onClick={() => initiateAuthentication('googledrive')} variant="outline">
                                  <Cloud className="mr-2 h-4 w-4"/> Connect Google Drive
                              </Button>
@@ -132,21 +142,26 @@ const SyncManager = () => {
                  </Card>
             )}
 
-            {isProviderConfigured === true && conflicts.length === 0 && !isSyncing && ( // Show only if configured and no conflicts/syncing
-                 <div className="text-sm text-green-700 flex items-center gap-2">
+            {isAnyProviderConfigured() && conflicts.length === 0 && syncStatus !== 'syncing' && syncStatus !== 'error' && syncStatus !== 'conflict' && (
+                 <div className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                      <CloudCog className="h-4 w-4" />
                      Data is up-to-date with configured cloud providers.
                  </div>
             )}
+             {syncStatus === 'error' && !isAnyProviderConfigured() && (isOneDriveConnected !== null && isGoogleDriveConnected !== null) && (
+                <div className="text-sm text-destructive flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Could not sync. Please configure a cloud provider.
+                </div>
+            )}
+
 
         </CardContent>
-        {/* Optionally add a footer for more actions or logs */}
-          {/* <CardFooter>
-              <p className="text-xs text-muted-foreground">Automatic daily sync is enabled.</p>
-          </CardFooter> */}
+        <CardFooter>
+              <p className="text-xs text-muted-foreground">Data attempts to sync automatically. Manual sync is also available.</p>
+          </CardFooter>
         </Card>
 
-      {/* Render Conflict Resolution UI */}
       {conflicts.length > 0 && (
         <ConflictResolutionUI conflicts={conflicts} onResolve={resolveConflict} />
       )}
