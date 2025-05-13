@@ -6,7 +6,8 @@ import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, P
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, DataItemType } from '@/lib/types';
+import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
+import { DataItemType } from '@/lib/types'; // Added import for DataItemType
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataSync } from '@/hooks/use-data-sync';
 import TaskList from './TaskList';
