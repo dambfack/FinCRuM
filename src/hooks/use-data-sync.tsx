@@ -5,7 +5,7 @@ import { uploadToOneDrive, downloadFromOneDrive } from '@/services/onedrive';
 import { uploadToGoogleDrive, downloadFromGoogleDrive } from '@/services/google-drive';
 import { getAuthInfo } from '@/services/auth';
 import { createCalendarEvent, deleteCalendarEvent, listCalendarEvents, updateCalendarEvent } from "@/services/google-calendar";
-import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, DataItemType as DIT } from '@/lib/types'; // Renamed DataItemType to DIT to avoid conflict
+import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types'; // Actual import of DataItemType
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from 'lucide-react';
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatDateTime, getData, saveData } from '@/lib/utils'; // Import getData, saveData and formatDateTime
+import { cn, formatDateTime, getData, saveData } from '@/lib/utils'; 
 
 export function useDataSync() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -67,10 +67,10 @@ export function useDataSync() {
            const authInfo = await getAuthInfo(provider);
            if (!authInfo) {
                console.warn(`Skipping ${provider}: Not authenticated.`);
-                toast({ title: `Skipping ${provider}`, description: `Authentication required.`, variant:"default" });
+                toast({ title: `Skipping ${provider}`, description: `Authentication required. Please connect the provider.`, variant:"default" }); // Updated message
                  setSyncStatus('error');
                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem(`${provider}AccessToken`); // Kept for direct access token removal
+                    localStorage.removeItem(provider === 'onedrive' ? DataItemType.OneDriveAccessToken : DataItemType.GoogleDriveAccessToken);
                  }
                 continue;
             }
@@ -101,8 +101,8 @@ export function useDataSync() {
               } else if (!localCustomerData) {
                 mergedData = cloudData;
               } else {
-                const localRowsMap = new Map(mergedData.rows.map(row => [row[0], row])); // Assuming ID is the first column
-                const cloudRowsMap = new Map(cloudData.rows.map(row => [row[0], row])); // Assuming ID is the first column
+                const localRowsMap = new Map(mergedData.rows.map(row => [row[0], row])); 
+                const cloudRowsMap = new Map(cloudData.rows.map(row => [row[0], row])); 
 
                const allKeys = new Set([...localRowsMap.keys(), ...cloudRowsMap.keys()]);
                for (const key of allKeys) {
@@ -112,12 +112,12 @@ export function useDataSync() {
                   if (localRow && cloudRow) {
                        if (JSON.stringify(localRow) !== JSON.stringify(cloudRow)) {
                            currentConflicts.push({
-                                rowIndex: tempMergedRows.length, // This logic might need adjustment if rows are not simply appended
+                                rowIndex: tempMergedRows.length, 
                                 localValue: localRow,
                                 cloudValue: cloudRow,
                                 headers: mergedData.headers
                            });
-                             tempMergedRows.push(localRow); // Default to local in case of conflict before resolution UI
+                             tempMergedRows.push(localRow); 
                         } else {
                             tempMergedRows.push(localRow);
                         }
@@ -131,11 +131,10 @@ export function useDataSync() {
               }
              encounteredConflicts = [...encounteredConflicts, ...currentConflicts];
 
-            // Data sanitization (example for contact objects, might not be needed if structure is always string[][])
             if (mergedData && mergedData.rows) {
                 for (let i = 0; i < mergedData.rows.length; i++) {
                     const row = mergedData.rows[i];
-                    const contactIndex = mergedData.headers.indexOf('contact'); // Example header
+                    const contactIndex = mergedData.headers.indexOf('contact'); 
                     if (contactIndex > -1 && typeof row[contactIndex] === 'string') {
                         // Potentially parse or validate if needed
                     }
@@ -153,25 +152,32 @@ export function useDataSync() {
            }
        } catch (error: any) {
            console.error(`Error syncing with ${provider}:`, error);
-           let errorMessage = `Failed to sync data.`;
-            if (error?.response?.status === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('Token')) {
-               errorMessage = `Authentication failed for ${provider}. Please reconnect.`;
-               setSyncStatus('error');
-               if (typeof window !== 'undefined') {
-                    localStorage.removeItem(`${provider}AccessToken`); // Kept for direct access token removal
-                }
-            } else if (error instanceof Error) {
-                errorMessage += ` ${error.message}`;
-            }
-            toast({ title: `Sync Error with ${provider}`, description: errorMessage, variant: "destructive" });
+           let toastMessage = `Failed to sync data with ${provider}.`;
+           const errorMessageText = error.message ? error.message.toLowerCase() : "";
+
+           if (errorMessageText.includes('status 401') || 
+               errorMessageText.includes('status 403') ||
+               errorMessageText.includes('unauthorized') ||
+               errorMessageText.includes('authentication failed') ||
+               errorMessageText.includes('invalid credentials') ||
+               errorMessageText.includes('token')) {
+              toastMessage = `Authentication error with ${provider}. Please reconnect. Details: ${error.message}`;
+              setSyncStatus('error');
+              if (typeof window !== 'undefined') {
+                   localStorage.removeItem(provider === 'onedrive' ? DataItemType.OneDriveAccessToken : DataItemType.GoogleDriveAccessToken);
+               }
+           } else if (error instanceof Error) {
+               toastMessage += ` ${error.message}`;
+           }
+           toast({ title: `Sync Error with ${provider}`, description: toastMessage, variant: "destructive" });
         }
     }
-      // Sanitize mergedData before saving (ensure contact objects are stringified if needed)
+      
        if (mergedData && mergedData.rows) {
          mergedData.rows.forEach(row => {
-             const contactIndex = mergedData.headers.indexOf('contact'); // Example header
+             const contactIndex = mergedData.headers.indexOf('contact'); 
              if (contactIndex > -1 && typeof row[contactIndex] !== 'string' && row[contactIndex] !== null && row[contactIndex] !== undefined) {
-                  row[contactIndex] = JSON.stringify(row[contactIndex]); // Example sanitization
+                  row[contactIndex] = JSON.stringify(row[contactIndex]); 
               }
          });
        }
@@ -197,7 +203,7 @@ export function useDataSync() {
 
 
   const syncCalendar = useCallback(async () => {
-    const authInfo = await getAuthInfo('googledrive'); // Assuming Google Drive auth is used for Calendar
+    const authInfo = await getAuthInfo('googledrive'); 
     if (!authInfo) {
       toast({ title: "Google Calendar Sync Failed", description: "Not authenticated with Google.", variant: "destructive"});
       return;
@@ -251,7 +257,7 @@ export function useDataSync() {
                  await updateCalendarEvent(appointment.googleCalendarEventId, appointment, eventType);
                  syncedAppointments.push(appointment);
              } else {
-                 const googleEvent = await createCalendarEvent(appointment, eventType); // Changed from createGoogleCalendarEvent to generic createCalendarEvent
+                 const googleEvent = await createCalendarEvent(appointment, eventType); 
                  if (googleEvent && googleEvent.id) {
                     syncedAppointments.push({ ...appointment, googleCalendarEventId: googleEvent.id });
                  } else {
@@ -312,14 +318,21 @@ export function useDataSync() {
     }, [conflicts, toast, performSync]);
 
     const initiateAuthentication = async (provider: 'onedrive' | 'googledrive') => {
-        toast({ title: `Connecting ${provider}...`, description: "Redirecting for authentication (simulation)." });
+        toast({ title: `Connecting ${provider}...`, description: "Attempting to authenticate (simulation)." });
 
         if (typeof window !== 'undefined') {
             const mockToken = `mock-${provider}-token-${Date.now()}`;
             const tokenKey = provider === 'onedrive' ? DataItemType.OneDriveAccessToken : DataItemType.GoogleDriveAccessToken;
-            localStorage.setItem(tokenKey, mockToken); // Use DataItemType for token keys
-            toast({ title: `Connected ${provider} (Mock)`, description: "Mock token stored. Please refresh or sync." });
-             setTimeout(() => performSync(), 500);
+            localStorage.setItem(tokenKey, mockToken); 
+            toast({ title: `Connected to ${provider} (Mock)`, description: "Mock token stored. Sync will use this." });
+            // Trigger state update in SyncManager or relevant components
+             setTimeout(() => {
+                // This is a bit of a hack; ideally, SyncManager would listen to localStorage changes or have a shared state.
+                // For now, forcing a sync implies it will re-check auth.
+                performSync();
+                // A more direct way would be to pass a callback to update the SyncManager's internal state if possible,
+                // or use a global state management solution (Context API, Zustand, Redux) for auth status.
+             }, 500);
         }
     };
 
@@ -333,8 +346,6 @@ export function useDataSync() {
     resolveConflict,
     initiateAuthentication,
     syncCalendar,
-    // Expose generic getData and saveData if needed by other parts of the app directly through this hook,
-    // though it's generally better for components to import them from lib/utils
     getLocalData: getData, 
     setLocalData: saveData
   };
@@ -345,7 +356,7 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
     const { toast } = useToast();
 
     useEffect(() => {
-        console.log("ConflictResolutionUI conflicts updated:", conflicts);
+        // console.log("ConflictResolutionUI conflicts updated:", conflicts);
          const initialManualValues: Record<number, string[]> = {};
          const initialResolutions: Record<number, 'local' | 'cloud' | 'manual'> = {};
 
@@ -364,7 +375,7 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
     const handleManualInputChange = (rowIndex: number, colIndex: number, value: string) => {
         setManualValues(prev => {
             const currentRow = prev[rowIndex] ? [...prev[rowIndex]] : [];
-             if (colIndex >= 0) {
+             if (colIndex >= 0 && colIndex < (conflicts.find(c => c.rowIndex === rowIndex)?.headers?.length || Infinity)) {
                 currentRow[colIndex] = value;
              }
             return { ...prev, [rowIndex]: currentRow };
