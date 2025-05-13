@@ -3,7 +3,7 @@
 
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon, RefreshCw } from 'lucide-react';
+import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon, RefreshCw as RefreshCwIcon } from 'lucide-react'; // Renamed RefreshCw to RefreshCwIcon
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -177,8 +177,6 @@ const Dashboard: FC = () => {
 
     const refreshData = useCallback(() => {
         loadDashboardData();
-        // Trigger a re-fetch of list components manually if they don't auto-update
-        // For now, assuming Dashboard's re-render or form save callbacks handle list updates.
         toast({ title: "Data Refreshed", description: "Dashboard data has been reloaded." });
     }, [loadDashboardData, toast]);
 
@@ -196,7 +194,7 @@ const Dashboard: FC = () => {
                 {isGoogleCalendarLinked ? 'Unlink Google Calendar' : 'Link Google Calendar'}
             </Button>
             <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="whitespace-nowrap">
-                <RefreshCw className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 {syncStatus === 'syncing' ? 'Syncing...' : (lastSyncTime ? `Last Sync: ${formatDateTime(lastSyncTime).split(',')[0]}` : 'Sync Now')}
             </Button>
           </div>
@@ -258,12 +256,7 @@ const Dashboard: FC = () => {
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
-          <Link href="/add-customer">
-            <Button size="sm" variant="outline" className="whitespace-normal text-center h-auto">
-                <UserPlusIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">Add New Customer</span>
-            </Button>
-          </Link>
+          {/* Button moved below to CardContent */}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -285,6 +278,14 @@ const Dashboard: FC = () => {
           ) : (
             <p className="text-sm text-muted-foreground">No contacts found. <Link href="/import" className="text-accent underline hover:text-accent/80">Import data</Link> or <Link href="/add-customer" className="text-accent underline hover:text-accent/80">add a customer</Link>.</p>
           )}
+           <div className="mt-6 pt-4 border-t border-border/20 flex justify-start">
+            <Button asChild variant="outline" className="whitespace-normal h-11 px-4 py-3">
+              <Link href="/add-customer">
+                <UserPlusIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span>Add New Customer</span>
+              </Link>
+            </Button>
+          </div>
          </CardContent>
       </Card>
 
@@ -295,10 +296,10 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-          <div className="mt-2">
+          <div className="mt-4">
             <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
               <DialogTrigger asChild>
-                   <Button size="sm" variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-auto">
+                   <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3">
                       <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
                    </Button>
               </DialogTrigger>
@@ -326,10 +327,10 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <div className="mt-2">
+            <div className="mt-4">
               <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
                   <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-auto">
+                      <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3">
                           <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
                       </Button>
                   </DialogTrigger>
@@ -357,10 +358,10 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <div className="mt-2">
+          <div className="mt-4">
             <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
                 <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-auto">
+                    <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3">
                         <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
                     </Button>
                 </DialogTrigger>
@@ -387,4 +388,3 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
-
