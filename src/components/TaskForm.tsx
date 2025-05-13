@@ -9,6 +9,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { cn } from '@/lib/utils';
 
 interface TaskFormProps {
   task?: Task;
@@ -90,6 +91,15 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     onSave(); // Call the onSave callback
   };
 
+  const datePickerInputClassName = cn(
+    "flex h-10 w-full rounded-md border px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "bg-neutral-100 dark:bg-neutral-900",
+    "border-neutral-300 dark:border-neutral-700",
+    "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
+    "mt-1" // Specific margin for this form
+  );
+
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -119,9 +129,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
           selected={dueDate}
           onChange={(date: Date | null) => setDueDate(date)}
           dateFormat="MM/dd/yyyy"
-          className="w-full mt-1 block border rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 h-10"
+          className={datePickerInputClassName}
           wrapperClassName="w-full"
           placeholderText="Select a due date"
+          popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
         />
       </div>
 

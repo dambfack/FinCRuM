@@ -53,7 +53,7 @@ body {
     --foreground: 0 0% 98%; /* Light Gray */
     --card: 220 10% 15%; /* Base for card background */
     --card-foreground: 0 0% 98%;
-    --popover: 220 10% 10%;
+    --popover: 220 10% 10%; /* Dark popover for consistency with dialogs */
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%; /* Light Gray for primary elements */
     --primary-foreground: 220 10% 10%; /* Dark text on primary */
@@ -67,7 +67,7 @@ body {
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 25%; /* Darker Gray border - general border */
     --glass-border: 255 100% 100%; /* White for glass borders */
-    --input: 220 10% 25%; /* Darker Gray input */
+    --input: 220 10% 18%; /* Darker gray input - slightly darker than card */
     --ring: 180 100% 35%; /* Lighter Teal ring */
     --chart-1: 180 100% 35%; /* Teal chart color */
     --chart-2: 180 80% 45%;
@@ -116,4 +116,209 @@ body {
     @apply backdrop-blur-md shadow-lg border rounded-xl m-2;
     background-color: hsla(var(--background) / 0.1); /* Very subtle background for main content area */
     border-color: hsla(var(--glass-border) / 0.05);
+}
+
+/* Custom styles for react-datepicker */
+.react-datepicker-popper {
+  z-index: 50 !important; /* Ensure it's on top of dialogs */
+}
+
+.react-datepicker {
+  @apply rounded-lg border shadow-xl font-sans text-sm;
+  /* Using popover variables for base, then specific overrides for dark */
+  background-color: hsl(var(--popover) / 0.8);
+  border-color: hsla(var(--glass-border) / 0.1);
+  color: hsl(var(--popover-foreground));
+  @apply backdrop-blur-md;
+}
+.dark .react-datepicker {
+  background-color: hsl(var(--popover) / 0.85); /* Slightly more opaque dark popover */
+  border-color: hsla(var(--glass-border) / 0.15);
+  color: hsl(var(--popover-foreground));
+}
+
+
+.react-datepicker__header {
+  @apply bg-transparent pt-2 px-2 pb-1 mb-1;
+  border-bottom: 1px solid hsla(var(--border) / 0.5);
+}
+.dark .react-datepicker__header {
+  border-bottom-color: hsla(var(--border) / 0.3);
+}
+
+
+.react-datepicker__current-month,
+.react-datepicker-time__header {
+  @apply font-medium;
+  color: hsl(var(--popover-foreground));
+}
+.react-datepicker__day-name {
+  @apply font-medium w-9 h-9 flex items-center justify-center; /* Ensure alignment */
+  color: hsl(var(--muted-foreground)); /* Day names are muted */
+}
+.dark .react-datepicker__day-name {
+  color: hsl(var(--muted-foreground));
+}
+
+
+.react-datepicker__navigation {
+  @apply top-3;
+}
+.react-datepicker__navigation-icon::before {
+  border-color: hsl(var(--popover-foreground));
+  @apply h-2 w-2 border-2 opacity-70 hover:opacity-100;
+}
+.react-datepicker__navigation--previous {
+  @apply left-2;
+}
+.react-datepicker__navigation--next {
+  @apply right-2;
+}
+
+.react-datepicker__month-container {
+  @apply px-1 pb-1;
+}
+
+.react-datepicker__week, .react-datepicker__day-names {
+  @apply flex justify-around;
+}
+
+.react-datepicker__day {
+  @apply w-9 h-9 m-0.5 flex items-center justify-center rounded-md cursor-pointer;
+  color: hsl(var(--popover-foreground));
+}
+.react-datepicker__day:hover {
+  background-color: hsl(var(--accent) / 0.2);
+}
+.dark .react-datepicker__day:hover {
+  background-color: hsl(var(--accent) / 0.3);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--in-selecting-range:hover,
+.react-datepicker__day--in-range:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--in-selecting-range,
+.dark .react-datepicker__day--in-range {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.dark .react-datepicker__day--selected:hover,
+.dark .react-datepicker__day--in-selecting-range:hover,
+.dark .react-datepicker__day--in-range:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+
+.react-datepicker__day--keyboard-selected {
+   background-color: hsl(var(--primary) / 0.8);
+   color: hsl(var(--primary-foreground));
+   @apply ring-2 ring-ring;
+}
+
+.react-datepicker__day--today {
+  @apply font-semibold border border-accent/50;
+  color: hsl(var(--accent));
+}
+.dark .react-datepicker__day--today {
+  color: hsl(var(--accent));
+  border-color: hsl(var(--accent) / 0.7);
+}
+
+
+.react-datepicker__day--outside-month {
+  color: hsl(var(--muted-foreground) / 0.5);
+  @apply cursor-default hover:bg-transparent dark:hover:bg-transparent;
+}
+.dark .react-datepicker__day--outside-month {
+   color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.react-datepicker__day--disabled {
+  color: hsl(var(--muted-foreground) / 0.3) !important;
+  @apply cursor-not-allowed bg-transparent hover:bg-transparent !important;
+}
+.dark .react-datepicker__day--disabled {
+  color: hsl(var(--muted-foreground) / 0.2) !important;
+}
+
+/* Time picker styles */
+.react-datepicker__time-container {
+  @apply border-l pl-0 ml-0;
+  border-left-color: hsla(var(--border) / 0.5);
+  width: 90px; /* Adjust width as needed */
+}
+.dark .react-datepicker__time-container {
+  border-left-color: hsla(var(--border) / 0.3);
+}
+
+.react-datepicker__time-container .react-datepicker__time {
+  @apply bg-transparent; /* Ensure time section also follows main bg */
+}
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+  @apply w-full p-0;
+}
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
+  @apply list-none m-0 p-0 h-[calc(198px)] overflow-y-scroll; /* Adjust height based on day box count */
+  /* Custom scrollbar for time list */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--accent) / 0.5) transparent;
+}
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
+   scrollbar-color: hsl(var(--accent) / 0.7) transparent;
+}
+
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {
+  @apply p-2 text-center cursor-pointer;
+  color: hsl(var(--popover-foreground));
+}
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+  background-color: hsl(var(--accent) / 0.2);
+}
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+  background-color: hsl(var(--accent) / 0.4);
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+  @apply font-semibold;
+  background-color: hsl(var(--primary)) !important; /* important to override hover */
+  color: hsl(var(--primary-foreground)) !important;
+}
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--disabled {
+  color: hsl(var(--muted-foreground) / 0.3) !important;
+  @apply cursor-not-allowed hover:bg-transparent !important;
+}
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--disabled {
+   color: hsl(var(--muted-foreground) / 0.2) !important;
+}
+
+
+.react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::before,
+.react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::after {
+  /* In dark mode, triangle should match the dark popover background */
+}
+.dark .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::before,
+.dark .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle::after {
+    border-bottom-color: hsl(var(--popover)); /* Use popover color directly */
+}
+
+
+/* Remove default triangle if custom styling is complex or it doesn't fit the glassmorphic theme */
+.react-datepicker__triangle {
+  @apply hidden;
 }

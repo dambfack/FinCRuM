@@ -9,6 +9,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import DatePicker from 'react-datepicker'; // Using react-datepicker
 import "react-datepicker/dist/react-datepicker.css";
+import { cn } from '@/lib/utils';
 
 
 interface AppointmentFormProps {
@@ -120,6 +121,15 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
     // triggerSync(); // This might be too broad, consider specific sync needs
   };
 
+  const datePickerInputClassName = cn(
+    "flex h-10 w-full rounded-md border px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "bg-neutral-100 dark:bg-neutral-900",
+    "border-neutral-300 dark:border-neutral-700",
+    "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
+    "mt-1", // Specific margin for this form
+    errors.date ? 'border-destructive' : ''
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -147,9 +157,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
           <DatePicker
             selected={appointmentDate}
             onChange={(date: Date | null) => setAppointmentDate(date)}
-            className={`w-full ${errors.date ? 'border-destructive' : ''} mt-1 block border rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 h-10`}
+            className={datePickerInputClassName}
             wrapperClassName="w-full"
             dateFormat="MM/dd/yyyy"
+            popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
           />
           {errors.date && <p className="text-sm text-destructive mt-1">{errors.date}</p>}
         </div>
@@ -180,11 +191,16 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
             multiple
             value={invitedContactIds}
             onChange={(e) => setInvitedContactIds(Array.from(e.target.selectedOptions, option => option.value))}
-            className="mt-1 block w-full border border-input rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2"
+            className={cn(
+                "mt-1 block w-full rounded-md border px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                "bg-neutral-100 dark:bg-neutral-900",
+                "border-neutral-300 dark:border-neutral-700",
+                "text-foreground"
+            )}
             size={5}
         >
             {allContacts.map(contact => (
-                <option key={contact.id} value={contact.id}>
+                <option key={contact.id} value={contact.id} className="dark:bg-neutral-800 dark:text-neutral-100">
                     {contact.firstName} {contact.lastName} ({contact.email})
                 </option>
             ))}

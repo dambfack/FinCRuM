@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
-import { getData, parseDate, formatDateTime } from '@/lib/utils';
+import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -184,6 +184,9 @@ const Dashboard: FC = () => {
     const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); refreshData(); };
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
 
+    const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
+
+
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -303,7 +306,7 @@ const Dashboard: FC = () => {
                       <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
                    </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className={dialogContentClassName}>
                   <DialogHeader>
                       <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                   </DialogHeader>
@@ -334,7 +337,7 @@ const Dashboard: FC = () => {
                           <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
                       </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className={dialogContentClassName}>
                       <DialogHeader>
                           <DialogTitle>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
                       </DialogHeader>
@@ -365,7 +368,7 @@ const Dashboard: FC = () => {
                         <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className={dialogContentClassName}>
                     <DialogHeader>
                         <DialogTitle>{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
                     </DialogHeader>

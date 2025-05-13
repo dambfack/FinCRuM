@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'; // Assuming ShadCN Select
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { cn } from '@/lib/utils';
 
 
 interface ReminderFormProps {
@@ -24,7 +25,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reminderDateTime, setReminderDateTime] = useState<Date | null>(null);
-  const [associatedContactId, setAssociatedContactId] = useState(''); 
+  const [associatedContactId, setAssociatedContactId] = useState<string>(NO_ASSOCIATED_CONTACT_VALUE); 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { syncCalendar } = useDataSync();
@@ -38,15 +39,12 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
       setTitle(initialReminder.title);
       setDescription(initialReminder.description || '');
       setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
-      // If associatedContactId is undefined or an empty string, set state to an empty string to show placeholder.
-      // Otherwise, use the existing contact ID.
-      setAssociatedContactId(initialReminder.associatedContactId || '');
+      setAssociatedContactId(initialReminder.associatedContactId || NO_ASSOCIATED_CONTACT_VALUE);
     } else {
-      // For new reminders, initialize fields to empty or null to allow placeholders or default states.
       setTitle('');
       setDescription('');
       setReminderDateTime(null);
-      setAssociatedContactId(''); // Empty string will show placeholder
+      setAssociatedContactId(NO_ASSOCIATED_CONTACT_VALUE); 
     }
   }, [initialReminder]);
 
@@ -70,7 +68,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
       title,
       description,
       dateTime: reminderDateTime.toISOString(), 
-      associatedContactId: associatedContactId === NO_ASSOCIATED_CONTACT_VALUE || associatedContactId === '' ? undefined : associatedContactId,
+      associatedContactId: associatedContactId === NO_ASSOCIATED_CONTACT_VALUE ? undefined : associatedContactId,
       googleCalendarEventId: initialReminder?.googleCalendarEventId,
       completed: initialReminder?.completed || false,
       createdAt: initialReminder?.createdAt || new Date().toISOString(),
@@ -105,6 +103,15 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
     onSave(newOrUpdatedReminder);
   };
 
+  const datePickerInputClassName = cn(
+    "flex h-10 w-full rounded-md border px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    "bg-neutral-100 dark:bg-neutral-900",
+    "border-neutral-300 dark:border-neutral-700",
+    "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
+    "mt-1", // Specific margin for this form
+    errors.dateTime ? 'border-destructive' : ''
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -133,8 +140,9 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
             onChange={(date: Date | null) => setReminderDateTime(date)}
             showTimeSelect
             dateFormat="MM/dd/yyyy h:mm aa"
-            className={`w-full ${errors.dateTime ? 'border-destructive' : ''} mt-1 block border rounded-md shadow-sm focus:ring-ring focus:border-ring sm:text-sm p-2 h-10`}
+            className={datePickerInputClassName}
             wrapperClassName="w-full"
+            popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
         />
         {errors.dateTime && <p className="text-sm text-destructive mt-1">{errors.dateTime}</p>}
       </div>
