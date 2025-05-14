@@ -5,7 +5,7 @@
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon } from 'lucide-react';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -27,6 +27,7 @@ import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'd
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
+import { useTheme } from 'next-themes';
 
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -56,12 +57,12 @@ const mockContacts: Contact[] = [
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-// Define colors for ApexCharts using HSLA with CSS variables for HSL part and 0.8 for alpha
-const themedPieChartColorsWithOpacity = [
-  'hsla(var(--chart-pie-1), 0.8)', // Open - Teal
-  'hsla(var(--chart-pie-2), 0.8)', // Closed - Blue
-  'hsla(var(--chart-pie-3), 0.8)', // Missed - Yellow/Orange
-  'hsla(var(--chart-pie-4), 0.8)', // Other - Gray
+// Define CSS variable names for pie chart colors
+const PIE_CHART_CSS_VAR_NAMES = [
+  '--chart-pie-1',
+  '--chart-pie-2',
+  '--chart-pie-3',
+  '--chart-pie-4',
 ];
 
 
@@ -79,6 +80,10 @@ const Dashboard: FC = () => {
 
     const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
+    const [computedPieChartColors, setComputedPieChartColors] = useState<string[]>([]);
+
+    const { resolvedTheme } = useTheme();
+
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -168,12 +173,12 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (status !== 'approached' && statusCounts.hasOwnProperty(status)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
-                } else if (status !== 'approached') {
+                 if (statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
+                } else {
                     statusCounts.other++;
                 }
             });
@@ -200,6 +205,22 @@ const Dashboard: FC = () => {
     useEffect(() => {
         loadDashboardData();
     }, [loadDashboardData]);
+
+
+     useEffect(() => {
+        if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
+            const rootStyle = getComputedStyle(document.documentElement);
+            const colors = PIE_CHART_CSS_VAR_NAMES.map(varName => {
+                const hslValue = rootStyle.getPropertyValue(varName).trim();
+                if (hslValue) {
+                    return `hsla(${hslValue}, 0.8)`; // Append 80% alpha
+                }
+                return 'hsla(0, 0%, 50%, 0.8)'; // Default fallback color with alpha
+            }).slice(0, dealStatusLabels.length); // Ensure colors match number of labels
+            setComputedPieChartColors(colors);
+        }
+    }, [resolvedTheme, dealStatusLabels]);
+
 
     const handleGoogleCalendarAuth = useCallback(async () => {
       if (isGoogleCalendarLinked) {
@@ -351,9 +372,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: themedPieChartColorsWithOpacity, // Use the HSLA strings with embedded CSS vars
+      colors: computedPieChartColors.length > 0 ? computedPieChartColors : PIE_CHART_CSS_VAR_NAMES.map(() => 'hsla(0, 0%, 70%, 0.8)'), // Fallback if computed colors not ready
       fill: {
-        opacity: 1, // Set to 1 because opacity is in the color strings
+        opacity: 1, // Opacity is now part of the color string
       },
       stroke: {
         show: true,
@@ -842,3 +863,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
