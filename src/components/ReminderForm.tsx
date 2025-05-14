@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Reminder, Contact, DataItemType } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
@@ -7,54 +8,95 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'; // Assuming ShadCN Select
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { cn } from '@/lib/utils';
-
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { X } from 'lucide-react';
+import { Badge } from './ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReminderFormProps {
   initialReminder?: Reminder;
-  initialSelectedContactId?: string; // New prop
+  initialSelectedContactId?: string;
   onSave: (reminder: Reminder) => void;
   onCancel: () => void;
 }
-
-const NO_ASSOCIATED_CONTACT_VALUE = "__NO_ASSOCIATED_CONTACT__";
 
 const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSelectedContactId, onSave, onCancel }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reminderDateTime, setReminderDateTime] = useState<Date | null>(null);
-  const [associatedContactId, setAssociatedContactId] = useState<string>(NO_ASSOCIATED_CONTACT_VALUE); 
+  
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contactSearchInput, setContactSearchInput] = useState('');
+  const [contactSuggestions, setContactSuggestions] = useState<Contact[]>([]);
+  const [showContactSuggestions, setShowContactSuggestions] = useState(false);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { syncCalendar } = useDataSync();
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || [];
-    setContacts(loadedContacts);
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+    setAllContacts(loadedContacts);
+
+    let contactToSelect: Contact | null = null;
+    if (initialReminder?.associatedContactId) {
+      contactToSelect = loadedContacts.find(c => c.id === initialReminder.associatedContactId) || null;
+    } else if (initialSelectedContactId) {
+      contactToSelect = loadedContacts.find(c => c.id === initialSelectedContactId) || null;
+    }
+    
+    setSelectedContact(contactToSelect);
+    if (contactToSelect) {
+        setContactSearchInput(`${contactToSelect.firstName} ${contactToSelect.lastName} (${contactToSelect.email})`);
+    }
+
 
     if (initialReminder) {
       setTitle(initialReminder.title);
       setDescription(initialReminder.description || '');
       setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
-      setAssociatedContactId(initialReminder.associatedContactId || NO_ASSOCIATED_CONTACT_VALUE);
-    } else if (initialSelectedContactId) {
+    } else {
       setTitle('');
       setDescription('');
       setReminderDateTime(null);
-      setAssociatedContactId(initialSelectedContactId);
-    }
-    else {
-      setTitle('');
-      setDescription('');
-      setReminderDateTime(null);
-      setAssociatedContactId(NO_ASSOCIATED_CONTACT_VALUE); 
     }
   }, [initialReminder, initialSelectedContactId]);
 
+
+  const handleContactSearchChange = (value: string) => {
+    setContactSearchInput(value);
+    if (value.trim().length > 0) {
+      setShowContactSuggestions(true);
+      const suggestions = allContacts.filter(contact =>
+        `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
+        contact.email.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 5);
+      setContactSuggestions(suggestions);
+    } else {
+      setShowContactSuggestions(true); // Keep open to show 'type to search' or clear
+      setContactSuggestions([]);
+      setSelectedContact(null); // Clear selection if input is empty
+    }
+  };
+
+  const selectContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setContactSearchInput(`${contact.firstName} ${contact.lastName} (${contact.email})`);
+    setShowContactSuggestions(false);
+    setContactSuggestions([]);
+  };
+
+  const clearSelectedContact = () => {
+    setSelectedContact(null);
+    setContactSearchInput('');
+    setContactSuggestions([]);
+    setShowContactSuggestions(false);
+  };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -75,7 +117,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       title,
       description,
       dateTime: reminderDateTime.toISOString(), 
-      associatedContactId: associatedContactId === NO_ASSOCIATED_CONTACT_VALUE ? undefined : associatedContactId,
+      associatedContactId: selectedContact?.id || undefined,
       googleCalendarEventId: initialReminder?.googleCalendarEventId,
       completed: initialReminder?.completed || false,
       createdAt: initialReminder?.createdAt || new Date().toISOString(),
@@ -100,28 +142,29 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
 
       if (!googleTokens || !googleTokens.access_token) {
         console.warn("No Google tokens found, skipping calendar sync for reminder.");
+         toast({ title: "Google Calendar Sync Skipped", description: "Not authenticated with Google. Please link Google Calendar.", variant: "default"});
       } else {
+        let result;
         if (initialReminder?.googleCalendarEventId) {
-          await updateReminderInGoogleCalendar(initialReminder.googleCalendarEventId, newOrUpdatedReminder, 'reminder', googleTokens);
+          result = await updateReminderInGoogleCalendar(initialReminder.googleCalendarEventId, newOrUpdatedReminder, 'reminder', googleTokens);
         } else {
-          const result = await addReminderToGoogleCalendar(newOrUpdatedReminder, 'reminder', googleTokens);
-          if (result.event && result.event.id) {
-              newOrUpdatedReminder.googleCalendarEventId = result.event.id;
-              const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
-              saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
-          }
-          if (result.newTokens) {
-             if (typeof window !== 'undefined') {
-                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
-                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
-                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
-             }
-          }
+          result = await addReminderToGoogleCalendar(newOrUpdatedReminder, 'reminder', googleTokens);
+        }
+        if (result.event && result.event.id && !newOrUpdatedReminder.googleCalendarEventId) {
+            newOrUpdatedReminder.googleCalendarEventId = result.event.id;
+            const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
+            saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
+        }
+        if (result.newTokens && typeof window !== 'undefined') {
+            if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
+            if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
+            if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
         }
         await syncCalendar(); 
       }
     } catch (error) {
       console.error('Error saving reminder or syncing with Google Calendar:', error);
+      toast({ title: "Google Calendar Error", description: `Failed to sync reminder: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
     }
     
     onSave(newOrUpdatedReminder);
@@ -170,22 +213,54 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
         />
         {errors.dateTime && <p className="text-sm text-destructive mt-1">{errors.dateTime}</p>}
       </div>
+      
       <div>
-        <Label htmlFor="associatedContact">Associated Contact (Optional)</Label>
-        <Select value={associatedContactId} onValueChange={setAssociatedContactId}>
-            <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Select a contact" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value={NO_ASSOCIATED_CONTACT_VALUE}>None</SelectItem>
-                {contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                        {contact.firstName} {contact.lastName} ({contact.email})
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <Label htmlFor="associatedContactSearch">Associated Contact (Optional)</Label>
+        <Command shouldFilter={false} className="relative rounded-md border mt-1 overflow-visible">
+          <CommandInput
+            id="associatedContactSearch"
+            value={contactSearchInput}
+            onValueChange={handleContactSearchChange}
+            onFocus={() => setShowContactSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowContactSuggestions(false), 150)}
+            placeholder="Search or type contact name/email..."
+            className="h-10"
+          />
+          {showContactSuggestions && (
+            <div className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover shadow-lg">
+              <CommandList>
+                {contactSuggestions.length === 0 && contactSearchInput.trim().length > 0 ? (
+                  <CommandEmpty>No matching contacts found.</CommandEmpty>
+                ) : contactSuggestions.length === 0 && contactSearchInput.trim().length === 0 ? (
+                   <CommandEmpty>Type to search for contacts.</CommandEmpty>
+                ) : (
+                  contactSuggestions.map(contact => (
+                    <CommandItem
+                      key={contact.id}
+                      value={`${contact.firstName} ${contact.lastName} (${contact.email})`}
+                      onSelect={() => selectContact(contact)}
+                      className="cursor-pointer"
+                    >
+                      {contact.firstName} {contact.lastName} ({contact.email})
+                    </CommandItem>
+                  ))
+                )}
+              </CommandList>
+            </div>
+          )}
+        </Command>
+        {selectedContact && (
+          <div className="mt-2 flex items-center">
+            <Badge variant="secondary" className="flex items-center gap-1 text-sm">
+              {selectedContact.firstName} {selectedContact.lastName}
+              <button type="button" onClick={clearSelectedContact} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
       </div>
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
