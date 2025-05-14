@@ -81,20 +81,37 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (contactId: string) => {
-    console.log(`[CustomersPage] handleDelete HAS BEEN CALLED WITH: ${contactId}`);
+    console.log('[CustomersPage] handleDelete HAS BEEN CALLED WITH:', contactId);
 
-    const contactToDelete = contacts.find(c => c.id === contactId);
-    if (!contactToDelete || !currentUser) {
-        console.error("Delete aborted: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
-        toast({ title: "Error", description: "Could not proceed with delete. Contact not found or user not authenticated.", variant: "destructive"});
-        return;
-    }
-    
     // Use setTimeout to ensure the confirm dialog is not suppressed
     setTimeout(() => {
-      const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
+      console.log('[CustomersPage] Inside setTimeout for delete. About to call window.confirm for contact ID:', contactId);
+      const contactToDeleteFromTimeout = contacts.find(c => c.id === contactId); // Find inside timeout for freshest data
+      const confirmMessage = contactToDeleteFromTimeout
+        ? `Are you sure you want to ${contactToDeleteFromTimeout.contactStatus === 'pending_deletion' && currentUser?.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDeleteFromTimeout.firstName} ${contactToDeleteFromTimeout.lastName}?`
+        : 'Are you sure you want to delete this contact?';
 
-      if (confirm(`Are you sure you want to ${contactToDelete.contactStatus === 'pending_deletion' && currentUser.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
+      const userConfirmed = window.confirm(confirmMessage);
+      console.log('[CustomersPage] window.confirm result:', userConfirmed, 'for contact ID:', contactId);
+      alert(`[CustomersPage] Confirm result for contact ${contactId}: ${userConfirmed}`);
+
+      if (userConfirmed) {
+        console.log('[CustomersPage] User confirmed deletion for contact ID:', contactId);
+        // Re-fetch contactToDelete within this scope after confirmation to ensure it's still valid
+        // and we have the latest version of 'contacts' state if other operations occurred.
+        // However, for simplicity in this debugging step, we rely on the 'contacts' state from when handleDelete was called.
+        // In a real scenario, you might refetch or ensure state is consistent.
+        const contactToDelete = contacts.find(c => c.id === contactId);
+
+
+        if (!contactToDelete || !currentUser) {
+            console.error("Delete aborted: Contact not found or user not authenticated after confirm.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
+            toast({ title: "Error", description: "Could not proceed with delete. Contact not found or user not authenticated.", variant: "destructive"});
+            return;
+        }
+    
+        const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
+
         if (currentUser.role === 'employee') {
           if (contactToDelete.contactStatus === 'pending_deletion') {
               toast({title: "Action Not Allowed", description: "This contact is already pending deletion.", variant: "default"});
@@ -163,6 +180,9 @@ export default function CustomersPage() {
               });
           }
         }
+      } else {
+        console.log('[CustomersPage] User cancelled deletion for contact ID:', contactId);
+        toast({ title: "Deletion Cancelled", description: "No action was taken.", variant: "default"});
       }
     }, 0); // Zero delay defers execution to the next event loop tick
   };
@@ -329,3 +349,5 @@ export default function CustomersPage() {
     </div>
   );
 }
+
+    
