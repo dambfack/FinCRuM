@@ -12,10 +12,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   pinSetupRequiredForUser: User | null;
+  appLogoUrl: string | null; // New: For custom app logo
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
+  updateAppLogo: (dataUri: string) => void; // New: Function to update app logo
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,10 +27,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
+  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null); // New state for app logo
   const { toast } = useToast();
 
   useEffect(() => {
     setIsLoadingAuth(true);
+
+    // Load custom app logo
+    const storedAppLogo = getData<string>(DataItemType.AppLogo);
+    if (storedAppLogo) {
+      setAppLogoUrl(storedAppLogo);
+    }
 
     // Check for users and create default admin if none exist
     let users = getData<User[]>(DataItemType.Users) || [];
@@ -39,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: 'admin@example.com',
         role: 'partner',
         pin: '0000',
-        profilePictureUrl: `https://placehold.co/128x128.png?text=A`, // Placeholder avatar
+        profilePictureUrl: `https://placehold.co/128x128.png?text=A`, 
       };
       users = [defaultAdmin];
       saveData<User[]>(DataItemType.Users, users);
@@ -48,14 +57,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "No users found. Default 'Admin' (partner) created with PIN 0000.",
         duration: 7000,
       });
-      // Trigger a dataChanged event so PinLoginScreen re-fetches users
       window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Users, data: users } }));
     }
 
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      // Ensure 'users' is up-to-date if default admin was just created
-      const currentUsers = getData<User[]>(DataItemType.Users) || [];
+      const currentUsers = getData<User[]>(DataItemType.Users) || []; // Re-fetch in case default admin was just created
       const user = currentUsers.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
@@ -65,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     setIsLoadingAuth(false);
-  }, [toast]); // Added toast to dependency array
+  }, [toast]);
 
   const login = async (selectedUserId: string, pinInput: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -78,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
-    // If user has no PIN, prompt to set one, regardless of role
     if (!userToLogin.pin) {
       toast({
         title: "PIN Setup Required",
@@ -149,11 +155,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
     users[userIndex] = updatedUser;
     saveData<User[]>(DataItemType.Users, users);
-    setCurrentUser(updatedUser); // Update current user in context
+    setCurrentUser(updatedUser); 
 
     toast({ title: "Profile Picture Updated", description: "Your profile picture has been changed." });
     setIsLoadingAuth(false);
     return true;
+  };
+
+  const updateAppLogo = (dataUri: string) => {
+    setAppLogoUrl(dataUri);
+    saveData<string>(DataItemType.AppLogo, dataUri);
+    toast({ title: "App Logo Updated", description: "The application logo has been changed." });
   };
 
   const logout = () => {
@@ -165,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser, login, logout, completePinSetupAndLogin, updateUserProfilePicture }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser, appLogoUrl, login, logout, completePinSetupAndLogin, updateUserProfilePicture, updateAppLogo }}>
       {children}
     </AuthContext.Provider>
   );
@@ -178,4 +190,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

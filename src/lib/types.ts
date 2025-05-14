@@ -195,6 +195,7 @@ export enum DataItemType {
   Users = 'users',
   CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
   Notifications = 'notifications', // For notifications
+  AppLogo = 'appLogo', // For storing custom app logo data URI
 }
 
 /**
@@ -211,6 +212,7 @@ export interface LocalData {
   notifications?: Notification[]; // Added notifications
   customerData?: ExcelData; // For imported excel data
   lastSyncTime?: string; // ISO string
+  appLogo?: string; // Data URI for custom app logo
 }
 
 /**
