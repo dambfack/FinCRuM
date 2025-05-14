@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Appointment, Contact, DataItemType, AppointmentAttendee } from '../lib/types';
+import type { Appointment, Contact, DataItemType, AppointmentAttendee } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar';
 import { getData, saveData, parseDate } from '../lib/utils';
@@ -90,7 +90,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
 
   const handleAttendeeInputChange = (value: string) => {
     setAttendeeInput(value);
-    if (value.trim().length > 1) {
+    if (value.trim().length > 0) { // Changed from > 1 to > 0
         const suggestions = allContacts.filter(contact =>
             `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
             contact.email.toLowerCase().includes(value.toLowerCase())
@@ -313,7 +313,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
                     onValueChange={handleAttendeeInputChange}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
                     onFocus={() => {
-                      if (attendeeInput.trim().length > 1 && contactSuggestions.length > 0) {
+                      if (attendeeInput.trim().length > 0 && contactSuggestions.length > 0) { // Changed from > 1 to > 0
                         setShowSuggestions(true);
                       }
                     }}
@@ -375,4 +375,3 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
 };
 
 export default AppointmentForm;
-
