@@ -76,7 +76,7 @@ export default function RootLayout({
                       <Logo />
                       <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                    <SidebarTrigger /> {/* Removed md:hidden to make it visible on desktop */}
+                    <SidebarTrigger />
                 </div>
               </SidebarHeader>
               <SidebarContent>
@@ -85,7 +85,7 @@ export default function RootLayout({
                     <SidebarMenuButton asChild tooltip="Dashboard">
                       <Link href="/">
                         <LayoutDashboard />
-                        <span>Dashboard</span>
+                        <span className="group-data-[state=collapsed]:hidden">Dashboard</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -93,7 +93,7 @@ export default function RootLayout({
                     <SidebarMenuButton asChild tooltip="All Customers">
                       <Link href="/customers">
                         <Users />
-                        <span>All Customers</span>
+                        <span className="group-data-[state=collapsed]:hidden">All Customers</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -101,7 +101,7 @@ export default function RootLayout({
                     <SidebarMenuButton asChild tooltip="Data Grid">
                       <Link href="/data-grid">
                         <Table />
-                        <span>Data Grid</span>
+                        <span className="group-data-[state=collapsed]:hidden">Data Grid</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -109,7 +109,7 @@ export default function RootLayout({
                      <SidebarMenuButton asChild tooltip="Add Customer">
                        <Link href="/add-customer">
                          <UserPlusIcon />
-                         <span>Add Customer</span>
+                         <span className="group-data-[state=collapsed]:hidden">Add Customer</span>
                        </Link>
                      </SidebarMenuButton>
                    </SidebarMenuItem>
@@ -117,7 +117,7 @@ export default function RootLayout({
                     <SidebarMenuButton asChild tooltip="Import Data">
                       <Link href="/import">
                         <Upload />
-                        <span>Import Data</span>
+                        <span className="group-data-[state=collapsed]:hidden">Import Data</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
