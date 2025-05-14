@@ -5,11 +5,11 @@
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare } from 'lucide-react';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
+import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataSync } from '@/hooks/use-data-sync';
@@ -70,7 +70,8 @@ const Dashboard: FC = () => {
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [allContactsState, setAllContactsState] = useState<Contact[]>([]); // Holds all contacts for various calculations
+    const [allContactsState, setAllContactsState] = useState<Contact[]>([]); 
+    const [allUsersState, setAllUsersState] = useState<User[]>([]); 
     const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
 
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
@@ -109,6 +110,8 @@ const Dashboard: FC = () => {
         try {
             const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || [];
             let loadedContacts: Contact[] = [...customerDataStore];
+            const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+            setAllUsersState(loadedUsers);
 
             if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') { 
                 loadedContacts = mockContacts; 
@@ -264,24 +267,20 @@ const Dashboard: FC = () => {
     }
 
     const handleContactUpdatedFromDashboardModal = (updatedContact: Contact) => {
-      // Update the main allContactsState list
       setAllContactsState(prevContacts =>
         prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
       );
-      // Update recent contacts if the updated contact is in that list
       setRecentContacts(prevRecent =>
         prevRecent.map(c => (c.id === updatedContact.id ? updatedContact : c))
       );
-      // If this contact was the one being viewed in the detail modal, update that state too
       if (selectedContactForModal && selectedContactForModal.id === updatedContact.id) {
         setSelectedContactForModal(updatedContact);
       }
-      // Refresh dashboard stats and charts that might depend on this contact
-      loadDashboardData(); // This might be slightly redundant if allContactsState is the source, but safe
+      loadDashboardData(); 
     };
     
-    const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70"; // General purpose
-    const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70"; // For TaskForm
+    const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70"; 
+    const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70"; 
     const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
@@ -329,6 +328,12 @@ const Dashboard: FC = () => {
         return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
     };
 
+    const getUserName = (userId?: string) => {
+        if (!userId) return null;
+        const user = allUsersState.find(u => u.id === userId);
+        return user ? user.name : `User ID: ${userId}`;
+    };
+
     const statCards = [
       { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts in system", link: "/customers" },
       { title: "New Today", value: `+${stats.newCustomersTodayCount}`, icon: UserPlusIcon, note: "Customers added today", action: handleShowNewCustomersToday },
@@ -346,9 +351,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: PIE_CHART_CSS_VARS, // Ensure these are full HSL strings, not just numbers
+      colors: PIE_CHART_CSS_VARS, 
       fill: {
-        opacity: 0.8, // Apply opacity here for translucency
+        opacity: 0.8, 
       },
       stroke: {
         show: true,
@@ -403,12 +408,12 @@ const Dashboard: FC = () => {
             hover: {
               filter: {
                 type: 'lighten',
-                value: 0.25, // Increased from 0.1 for more pop
+                value: 0.25, 
               }
             },
-            active: { // Optional: if you want a different active state
+            active: { 
               filter: {
-                type: 'none', // or 'darken', value: 0.1
+                type: 'none', 
               }
             }
           }
@@ -417,22 +422,21 @@ const Dashboard: FC = () => {
       dataLabels: {
         enabled: true,
         formatter: (val: number, opts: any) => {
-          // Handle case where total is 0 to avoid NaN%
           if (opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) === 0) return '0%';
           const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
           return `${percentage}%`;
         },
         style: {
           fontSize: '12px',
-          colors: ["hsl(var(--foreground))"] // Ensure data labels are visible
+          colors: ["hsl(var(--foreground))"] 
         },
         dropShadow: {
-          enabled: false, // Disable drop shadow for data labels for clarity
+          enabled: false, 
         }
       },
       tooltip: {
         theme: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-        fillSeriesColor: false, // Set to false so tooltip background is standard
+        fillSeriesColor: false, 
         y: {
             formatter: (val: number) => `${val} client(s)`
         }
@@ -700,6 +704,11 @@ const Dashboard: FC = () => {
                                   For: {getContactName(task.associatedContactId) || 'N/A'}
                                 </p>
                             )}
+                             {task.assignedToUserId && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Assigned to: {getUserName(task.assignedToUserId) || 'N/A'}
+                                </p>
+                            )}
                             {task.description && <p className={cn("text-xs text-muted-foreground mt-0.5", task.status === 'done' && "line-through")}>{task.description}</p>}
                             {task.checklist && task.checklist.length > 0 && (
                                 <div className="mt-1.5 space-y-0.5">
@@ -735,6 +744,11 @@ const Dashboard: FC = () => {
                                 {formatDateTime(appt.date as string).split(',')[1]} 
                                 {appt.location && ` - ${appt.location}`}
                             </p>
+                            {appt.assignedToUserId && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Assigned to: {getUserName(appt.assignedToUserId) || 'N/A'}
+                                </p>
+                            )}
                             {appt.attendeesList && appt.attendeesList.length > 0 && (
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                     Attendees: {appt.attendeesList.map(a => a.displayName || a.email).join(', ')}
@@ -802,7 +816,7 @@ const Dashboard: FC = () => {
         onAddAppointmentRequest={handleAddAppointmentRequestFromDetail}
         onAddReminderRequest={handleAddReminderRequestFromDetail}
         onAddTaskRequest={handleAddTaskRequestFromDetail}
-        onContactUpdate={handleContactUpdatedFromDashboardModal} // Pass the new handler
+        onContactUpdate={handleContactUpdatedFromDashboardModal} 
       />
 
     <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {

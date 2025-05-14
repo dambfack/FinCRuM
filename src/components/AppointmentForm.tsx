@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DataItemType, type Appointment, type Contact, type AppointmentAttendee } from '../lib/types';
+import { DataItemType, type Appointment, type Contact, type AppointmentAttendee, type User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar';
 import { getData, saveData, parseDate } from '../lib/utils';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { X, UserPlus } from 'lucide-react';
 import { Badge } from './ui/badge';
 
@@ -37,16 +38,21 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
   const [contactSuggestions, setContactSuggestions] = useState<Contact[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const [assignedUserId, setAssignedUserId] = useState<string | undefined>(initialData?.assignedToUserId);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { syncCalendar } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
 
-  // Load all contacts once on mount
+  // Load all contacts and users once on mount
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
     setAllContacts(loadedContacts);
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAllUsers(loadedUsers);
   }, []);
 
   // Effect for handling initialData, initialSelectedContactId and resetting form
@@ -57,6 +63,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
         setAppointmentDate(initialData.date ? parseDate(initialData.date as string) : null);
         setTime(initialData.time || '');
         setLocation(initialData.location || '');
+        setAssignedUserId(initialData.assignedToUserId);
 
         if (initialData.attendeesList) {
             setCurrentAttendees(initialData.attendeesList);
@@ -85,6 +92,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       setAppointmentDate(null);
       setTime('');
       setLocation('');
+      setAssignedUserId(undefined);
       const contact = allContacts.find(c => c.id === initialSelectedContactId);
       if (contact) {
         setCurrentAttendees([{
@@ -102,6 +110,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       setAppointmentDate(null);
       setTime('');
       setLocation('');
+      setAssignedUserId(undefined);
       setCurrentAttendees([]);
     }
   }, [initialData, initialSelectedContactId, allContacts]);
@@ -206,6 +215,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       location,
       attendeesList: currentAttendees, 
       invitedContacts: currentAttendees.filter(a => a.contactId).map(a => a.contactId!), 
+      assignedToUserId: assignedUserId,
       googleCalendarEventId: initialData?.googleCalendarEventId,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -379,6 +389,23 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
         )}
       </div>
 
+      <div>
+        <Label htmlFor="assignedToUserIdAppointment">Assign to User (Optional)</Label>
+        <Select value={assignedUserId} onValueChange={(value) => setAssignedUserId(value === 'none' ? undefined : value)}>
+          <SelectTrigger id="assignedToUserIdAppointment" className="w-full mt-1">
+            <SelectValue placeholder="Select user to assign" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {allUsers.map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name} ({user.role})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -392,4 +419,3 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
 };
 
 export default AppointmentForm;
-

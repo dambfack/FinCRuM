@@ -1,42 +1,46 @@
+
 import React, { useEffect, useState } from 'react';
-import { Appointment, DataItemType } from '../lib/types'; // Updated import
+import { Appointment, DataItemType, Contact, User } from '../lib/types'; // Updated import
 import { useDataSync } from '../hooks/use-data-sync';
 import { getData, deleteItemById, formatDateTime } from '../lib/utils'; // Updated import
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Trash2, Edit, Eye } from 'lucide-react'; // Icons
-
+import { Trash2, Edit, Eye, User as UserIcon } from 'lucide-react'; // Icons
+import { Badge } from './ui/badge'; // Added Badge
+import { cn } from '@/lib/utils'; // Added cn
 
 interface AppointmentListProps {
   onEditAppointment: (appointment: Appointment) => void;
-  // handleViewDetails?: (appointmentId: string) => void; // Optional
 }
 
 
 const AppointmentList: React.FC<AppointmentListProps> = ({ onEditAppointment }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const { triggerSync } = useDataSync(); // Assuming this is for broader sync, not just appointments
+  const [users, setUsers] = useState<User[]>([]); // State for users
+  const { triggerSync } = useDataSync(); 
 
   useEffect(() => {
-    loadAppointments();
+    loadAppointmentsAndUsers();
   }, []);
 
-  const loadAppointments = () => {
+  const loadAppointmentsAndUsers = () => {
     const storedAppointments = getData<Appointment[]>(DataItemType.Appointments) || [];
-    setAppointments(storedAppointments);
+    const storedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAppointments(storedAppointments.sort((a,b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime()));
+    setUsers(storedUsers);
   };
-
-  // const handleViewDetails = (appointmentId: string) => {
-  //   console.log(`View details for appointment: ${appointmentId}`);
-  //   // Implement view logic, e.g., open a modal
-  // };
 
   const handleDeleteAppointment = (appointmentId: string) => {
     const updatedAppointments = deleteItemById<Appointment>(DataItemType.Appointments, appointmentId);
     if (updatedAppointments) {
       setAppointments(updatedAppointments);
     }
-    // triggerSync(); // Consider if needed immediately or handled by form save/global sync
+  };
+
+  const getUserName = (userId?: string) => {
+    if (!userId) return null;
+    const user = users.find(u => u.id === userId);
+    return user ? user.name : `User ID: ${userId}`;
   };
 
 
@@ -56,11 +60,20 @@ const AppointmentList: React.FC<AppointmentListProps> = ({ onEditAppointment }) 
                 Date: {formatDateTime(appointment.date)} {/* Assuming 'date' holds the primary datetime */}
               </p>
               {appointment.location && <p className="text-xs text-muted-foreground mt-0.5">Location: {appointment.location}</p>}
+               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs">
+                {appointment.assignedToUserId && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                        <UserIcon className="h-3 w-3" /> Assigned: {getUserName(appointment.assignedToUserId)}
+                    </Badge>
+                )}
+                {appointment.attendeesList && appointment.attendeesList.length > 0 && (
+                     <Badge variant="secondary" className="flex items-center gap-1">
+                        Attendees: {appointment.attendeesList.map(a => a.displayName || a.email).join(', ').substring(0, 30)}{appointment.attendeesList.map(a => a.displayName || a.email).join(', ').length > 30 ? '...' : ''}
+                    </Badge>
+                )}
+               </div>
             </div>
             <div className="flex space-x-1 rtl:space-x-reverse shrink-0">
-              {/* <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleViewDetails(appointment.id)}>
-                <Eye className="h-4 w-4" />
-              </Button> */}
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditAppointment(appointment)}>
                 <Edit className="h-4 w-4" />
               </Button>

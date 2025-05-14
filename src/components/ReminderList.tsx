@@ -1,41 +1,53 @@
+
 import React, { useEffect, useState } from 'react';
-import { Reminder, DataItemType } from '../lib/types';
+import { Reminder, DataItemType, Contact, User } from '../lib/types'; // Added Contact, User
 import { useDataSync } from '../hooks/use-data-sync';
-import { getData, deleteItemById, formatDateTime } from '../lib/utils'; // Added formatDateTime
-import { Button } from './ui/button'; // Assuming Button component is available
+import { getData, deleteItemById, formatDateTime } from '../lib/utils'; 
+import { Button } from './ui/button'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Trash2, Edit, Eye } from 'lucide-react'; // Icons
+import { Trash2, Edit, Eye, User as UserIcon } from 'lucide-react'; // Added UserIcon
+import { Badge } from './ui/badge'; // Added Badge
+import { cn } from '@/lib/utils'; // Added cn
 
 interface ReminderListProps {
-  onEdit: (reminder: Reminder) => void; // Added onEdit prop
-  // onViewDetails: (reminder: Reminder) => void; // Can be added if needed
-  // onMarkDismissed: (reminderId: string) => void;
+  onEdit: (reminder: Reminder) => void; 
 }
 
-const ReminderList: React.FC<ReminderListProps> = ({
-  onEdit,
-  // onViewDetails,
-  // onMarkDismissed,
-}) => {
+const ReminderList: React.FC<ReminderListProps> = ({ onEdit }) => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const { triggerSync } = useDataSync(); // Assuming triggerSync is still relevant for other data types
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const { triggerSync } = useDataSync(); 
 
   useEffect(() => {
-    const fetchReminders = () => { // Removed async as getData is synchronous
-      const storedReminders = getData<Reminder[]>(DataItemType.Reminders);
-      if (storedReminders) {
-        setReminders(storedReminders);
-      }
+    const fetchRemindersData = () => { 
+      const storedReminders = getData<Reminder[]>(DataItemType.Reminders) || [];
+      const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      const storedUsers = getData<User[]>(DataItemType.Users) || [];
+      setReminders(storedReminders.sort((a, b) => new Date(a.dateTime as string).getTime() - new Date(b.dateTime as string).getTime()));
+      setContacts(storedContacts);
+      setUsers(storedUsers);
     };
-    fetchReminders();
+    fetchRemindersData();
   }, []);
 
-  const handleDelete = (reminderId: string) => { // Removed async
+  const handleDelete = (reminderId: string) => { 
     const updatedReminders = deleteItemById<Reminder>(DataItemType.Reminders, reminderId);
     if (updatedReminders) {
       setReminders(updatedReminders);
     }
-    // triggerSync(); // Re-evaluate if sync is needed immediately after every delete
+  };
+
+  const getContactName = (contactId?: string) => {
+    if (!contactId) return null;
+    const contact = contacts.find(c => c.id === contactId);
+    return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
+  };
+
+  const getUserName = (userId?: string) => {
+    if (!userId) return null;
+    const user = users.find(u => u.id === userId);
+    return user ? user.name : `User ID: ${userId}`;
   };
 
   if (reminders.length === 0) {
@@ -52,12 +64,20 @@ const ReminderList: React.FC<ReminderListProps> = ({
                 <p className="text-xs text-muted-foreground mt-1">
                   Due: {formatDateTime(reminder.dateTime)}
                 </p>
-                {reminder.associatedContactId && <p className="text-xs text-muted-foreground mt-0.5">For: Contact ID {reminder.associatedContactId}</p>}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs">
+                    {reminder.associatedContactId && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                            <UserIcon className="h-3 w-3" /> For: {getContactName(reminder.associatedContactId)}
+                        </Badge>
+                    )}
+                    {reminder.assignedToUserId && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                            <UserIcon className="h-3 w-3" /> Assigned: {getUserName(reminder.assignedToUserId)}
+                        </Badge>
+                    )}
+                </div>
               </div>
               <div className="flex space-x-1 rtl:space-x-reverse shrink-0">
-                {/* <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetails(reminder)}>
-                  <Eye className="h-4 w-4" />
-                </Button> */}
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(reminder)}>
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -66,9 +86,6 @@ const ReminderList: React.FC<ReminderListProps> = ({
                 </Button>
               </div>
             </div>
-            {/* {!reminder.dismissed && (
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => onMarkDismissed(reminder.id)}>Mark Dismissed</Button>
-            )} */}
           </li>
         ))}
       </ul>

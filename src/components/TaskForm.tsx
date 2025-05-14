@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { type Task, DataItemType, type Contact, type ChecklistItem } from '../lib/types';
+import { type Task, DataItemType, type Contact, type ChecklistItem, type User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { getData, saveData, parseDate } from '../lib/utils';
 import DatePicker from 'react-datepicker';
@@ -42,6 +42,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(task?.checklist || []);
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
+  const [assignedUserId, setAssignedUserId] = useState<string | undefined>(task?.assignedToUserId);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { syncCalendar } = useDataSync();
   const { toast } = useToast();
@@ -49,6 +52,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
     setAllContacts(loadedContacts);
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAllUsers(loadedUsers);
 
     let contactToSelect: Contact | null = null;
     if (task?.associatedContactId) {
@@ -70,6 +75,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       setPriority(task.priority || 'medium');
       setStatus(task.status || 'todo');
       setChecklistItems(task.checklist || []);
+      setAssignedUserId(task.assignedToUserId);
     } else {
       // Reset for new task
       setTitle('');
@@ -78,6 +84,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       setPriority('medium');
       setStatus('todo');
       setChecklistItems([]);
+      setAssignedUserId(undefined);
     }
   }, [task, initialSelectedContactId]);
 
@@ -149,6 +156,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       completed: status === 'done',
       associatedContactId: selectedContact?.id || undefined,
       checklist: checklistItems,
+      assignedToUserId: assignedUserId,
       createdAt: task?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       googleCalendarEventId: task?.googleCalendarEventId
@@ -291,6 +299,23 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
             </Badge>
           </div>
         )}
+      </div>
+
+      <div>
+        <Label htmlFor="assignedToUserId">Assign to User (Optional)</Label>
+        <Select value={assignedUserId} onValueChange={(value) => setAssignedUserId(value === 'none' ? undefined : value)}>
+          <SelectTrigger className="w-full mt-1">
+            <SelectValue placeholder="Select user to assign" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {allUsers.map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name} ({user.role})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">

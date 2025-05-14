@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Reminder, Contact, DataItemType } from '../lib/types';
+import { Reminder, Contact, DataItemType, User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { createCalendarEvent as addReminderToGoogleCalendar, updateCalendarEvent as updateReminderInGoogleCalendar } from '../services/google-calendar';
 import { getData, saveData, parseDate } from '../lib/utils';
@@ -12,6 +12,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { cn } from '@/lib/utils';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { X } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,9 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
   const [contactSuggestions, setContactSuggestions] = useState<Contact[]>([]);
   const [showContactSuggestions, setShowContactSuggestions] = useState(false);
 
+  const [assignedUserId, setAssignedUserId] = useState<string | undefined>(initialReminder?.assignedToUserId);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { syncCalendar } = useDataSync();
@@ -42,6 +46,8 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
     setAllContacts(loadedContacts);
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAllUsers(loadedUsers);
 
     let contactToSelect: Contact | null = null;
     if (initialReminder?.associatedContactId) {
@@ -60,10 +66,12 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       setTitle(initialReminder.title);
       setDescription(initialReminder.description || '');
       setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
+      setAssignedUserId(initialReminder.assignedToUserId);
     } else {
       setTitle('');
       setDescription('');
       setReminderDateTime(null);
+      setAssignedUserId(undefined);
     }
   }, [initialReminder, initialSelectedContactId]);
 
@@ -118,6 +126,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       description,
       dateTime: reminderDateTime.toISOString(), 
       associatedContactId: selectedContact?.id || undefined,
+      assignedToUserId: assignedUserId,
       googleCalendarEventId: initialReminder?.googleCalendarEventId,
       completed: initialReminder?.completed || false,
       createdAt: initialReminder?.createdAt || new Date().toISOString(),
@@ -259,6 +268,23 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
             </Badge>
           </div>
         )}
+      </div>
+
+      <div>
+        <Label htmlFor="assignedToUserIdReminder">Assign to User (Optional)</Label>
+        <Select value={assignedUserId} onValueChange={(value) => setAssignedUserId(value === 'none' ? undefined : value)}>
+          <SelectTrigger id="assignedToUserIdReminder" className="w-full mt-1">
+            <SelectValue placeholder="Select user to assign" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {allUsers.map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name} ({user.role})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex justify-end space-x-2">

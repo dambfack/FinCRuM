@@ -1,11 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
-import { type Task, DataItemType, type Contact } from '../lib/types'; // Changed import for DataItemType
+import { type Task, DataItemType, type Contact, type User } from '../lib/types'; // Changed import for DataItemType
 import { useDataSync } from '../hooks/use-data-sync';
 import { getData, saveData, deleteItemById, formatDateTime } from '../lib/utils';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
-import { Trash2, Edit, User, CheckSquare, Square } from 'lucide-react';
+import { Trash2, Edit, User as UserIcon, CheckSquare, Square } from 'lucide-react'; // Renamed User to UserIcon
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -17,13 +17,16 @@ interface TaskListProps {
 const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const fetchTasksAndContacts = () => {
       const storedTasks = getData<Task[]>(DataItemType.Tasks) || [];
       const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      const storedUsers = getData<User[]>(DataItemType.Users) || [];
       setTasks(storedTasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
       setContacts(storedContacts);
+      setUsers(storedUsers);
     };
     fetchTasksAndContacts();
   }, []);
@@ -56,6 +59,12 @@ const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
     if (!contactId) return null;
     const contact = contacts.find(c => c.id === contactId);
     return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
+  };
+
+  const getUserName = (userId?: string) => {
+    if (!userId) return null;
+    const user = users.find(u => u.id === userId);
+    return user ? user.name : `User ID: ${userId}`;
   };
 
   if (tasks.length === 0) {
@@ -106,7 +115,12 @@ const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
                 )}
                 {task.associatedContactId && (
                   <Badge variant="outline" className={cn("flex items-center gap-1", task.completed && "opacity-60")}>
-                    <User className="h-3 w-3" /> {getContactName(task.associatedContactId)}
+                    <UserIcon className="h-3 w-3" /> For: {getContactName(task.associatedContactId)}
+                  </Badge>
+                )}
+                 {task.assignedToUserId && (
+                  <Badge variant="outline" className={cn("flex items-center gap-1", task.completed && "opacity-60")}>
+                    <UserIcon className="h-3 w-3" /> Assigned: {getUserName(task.assignedToUserId)}
                   </Badge>
                 )}
               </div>
