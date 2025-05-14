@@ -122,7 +122,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
               <Logo />
-              <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
+              {/* <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span> Removed text */}
             </Link>
              {/* SidebarTrigger was here, moved to footer */}
           </div>
@@ -321,4 +321,3 @@ export default function RootLayout({
     </html>
   );
 }
-
