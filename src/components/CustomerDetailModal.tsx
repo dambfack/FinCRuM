@@ -43,7 +43,6 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
     const dateString = formatDateTime(value as string);
     const pClasses = ["text-sm", "text-foreground"];
     if (isTruncateRequested) {
-      // Apply individual properties for robust truncation
       pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
     }
     valueNode = (
@@ -55,7 +54,6 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
     const valueString = String(value);
     const pClasses = ["text-sm", "text-foreground"];
     if (isTruncateRequested) {
-      // Apply individual properties for robust truncation
       pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
     }
     valueNode = (
@@ -183,14 +181,14 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="space-y-1 max-h-[55vh] overflow-y-auto pr-2">
+          <TabsContent value="details" className="space-y-1 max-h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <DetailItem icon={Mail} label="Email" value={contact.email} />
             {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
             {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
-            {contact.profilePictureUrl && <DetailItem icon={ImageIcon} label="Profile Picture URL" value={contact.profilePictureUrl} className="truncate" />}
+            {contact.profilePictureUrl && <DetailItem icon={ImageIcon} label="Profile Picture URL" value={contact.profilePictureUrl} className="truncate w-full" />}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
@@ -245,5 +243,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-
-    
