@@ -2,7 +2,7 @@
 'use client';
 
 import type { Metadata } from 'next';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image'; // Keep for other images, but Logo will be SVG
 import { GeistSans } from 'geist/font/sans';
 import { Anton, Montserrat } from 'next/font/google';
 import './globals.css';
@@ -49,23 +49,27 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-// Updated Logo component to use next/image with a PNG
+// Updated Logo component to use SVG
 const Logo = () => (
-  <Image
-    src="/f_logo.png" // Assumes f_logo.png is in the public directory
-    alt="Finsculpt CRM F Logo"
-    width={24} // Desired display width
-    height={24} // Desired display height
-    className="h-6 w-6" // Tailwind classes to control displayed size
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className="h-6 w-6 text-accent" // Ensure styling is applied
     data-ai-hint="stylized f logo"
-  />
+  >
+    <path
+      d="M13.07,4H10.93A0.93,0.93,0,0,0,10,4.93V10H5V7A1,1,0,0,0,4,6H6A1,1,0,0,0,7,5V4A2,2,0,0,0,5,2H4A2,2,0,0,0,2,4V10a2,2,0,0,0,2,2H8v3a1,1,0,0,0,1,1H9a1,1,0,0,0,1-1V12h3.07A0.93,0.93,0,0,0,14,11.07V4.93A0.93,0.93,0,0,0,13.07,4ZM20,2a2,2,0,0,0-2,2V15a2,2,0,0,0,2,2h1a1,1,0,0,0,1-1V15h-2V13h2V10h-2V8h2V5a1,1,0,0,0-1-1H18a1,1,0,0,0-1,1v9H15V4a2,2,0,0,0-2-2H12V6h1a1,1,0,0,0,1-1V4h1V20H4a2,2,0,0,0-2,2H20a2,2,0,0,0,2-2V2Z"
+      style={{ transform: 'scale(1.2) translate(-2px, -2px)' }} // Minor adjustment for visual centering if needed
+    />
+  </svg>
 );
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser, updateUserProfilePicture } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+  const { toast } = useToast(); // Initialize toast
 
   const [isCropperModalOpen, setIsCropperModalOpen] = useState(false);
   const [imageToCropSrc, setImageToCropSrc] = useState<string | null>(null);
@@ -79,7 +83,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           description: "Please select an image smaller than 2MB.",
           variant: "destructive",
         });
-        if (fileInputRef.current) {
+         if (fileInputRef.current) { // Clear the file input
           fileInputRef.current.value = '';
         }
         return;
@@ -91,7 +95,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         setIsCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
-      if (fileInputRef.current) {
+      if (fileInputRef.current) { // Clear the file input
         fileInputRef.current.value = '';
       }
     }
@@ -131,7 +135,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultPinnedOpen={true}>
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
+        <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
               <Logo />
             </Link>
