@@ -1,9 +1,10 @@
+
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Anton, Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { ThemeProvider } from '@/components/ThemeProvider'; // Import ThemeProvider
+import { ThemeProvider } from '@/components/ThemeProvider';
 import {
   SidebarProvider,
   Sidebar,
@@ -16,10 +17,10 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Users, Settings } from 'lucide-react'; // Removed Sun, Moon, Laptop as they are in ThemeSwitcher
+import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Users, Settings } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
-import ThemeSwitcher from '@/components/ThemeSwitcher'; // Import ThemeSwitcher
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
@@ -68,15 +69,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider>
+          <SidebarProvider defaultPinnedOpen={true}> {/* Ensures cookie can be set */}
             <Sidebar variant="floating" collapsible="icon">
               <SidebarHeader>
                 <div className="flex items-center justify-between">
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                       <Logo />
+                      {/* This span's visibility is controlled by group-data-[state=collapsed] in sidebar.tsx styles */}
                       <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                    <SidebarTrigger />
+                    <SidebarTrigger /> {/* This trigger is for desktop */}
                 </div>
               </SidebarHeader>
               <SidebarContent>
@@ -126,13 +128,13 @@ export default function RootLayout({
             </Sidebar>
             <SidebarInset className={cn(
               "flex flex-col",
-              "bg-background/10 dark:bg-background/5 backdrop-blur-sm" 
+              "bg-background/10 dark:bg-background/5 backdrop-blur-sm"
             )}>
               <header className={cn(
                 "sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg",
-                "glass-effect", 
+                "glass-effect",
                 "bg-background/50 dark:bg-background/40",
-                "hover:shadow-2xl transition-shadow duration-300" 
+                "hover:shadow-2xl transition-shadow duration-300"
               )}>
                 <div className="flex items-center gap-2 md:hidden"> {/* This trigger is for mobile sheet */}
                   <SidebarTrigger />
