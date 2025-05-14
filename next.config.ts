@@ -16,7 +16,27 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Prevent these Node.js specific modules from being bundled on the client.
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        child_process: false,
+        os: false,
+        net: false, 
+        tls: false,
+      };
+    }
+    return config;
   },
 };
 

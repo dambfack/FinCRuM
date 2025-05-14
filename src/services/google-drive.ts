@@ -1,27 +1,45 @@
-import type { ExcelData, FileMetadata } from '@/lib/types';
-// Buffer import is not typically needed in modern Node.js/browser environments for string to Blob conversion.
-// If it were for specific Buffer operations, ensure it's correctly polyfilled or handled for the target environment.
-// For this context, it seems unused.
 
-/** 
- * Represents the authentication information for Google Drive.
- */
-export interface GoogleDriveAuthInfo {
-  accessToken: string;
-}
+import type { ExcelData, FileMetadata, GoogleTokens } from '@/lib/types';
+import { google } from 'googleapis'; // For types if needed, direct fetch for API calls
 
-// Use a consistent filename for storing the CRM data on Google Drive
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
+
+
 const CRM_DATA_FILENAME = 'finsculpt_crm_data.json';
 const BASE_GDRIVE_URL = 'https://www.googleapis.com/drive/v3';
 const BASE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3';
 
-/**
- * Handles API errors from Google Drive, parsing the response and throwing a standardized error.
- * @param response The fetch Response object.
- * @param operationName The name of the operation being performed (e.g., "find file", "upload").
- * @param requestUrl The URL that was requested.
- * @throws Will throw an error with a detailed message.
- */
+
+async function getAuthenticatedClient(passedTokens: GoogleTokens): Promise<import('google-auth-library').OAuth2Client> {
+  // Dynamically import to avoid issues in environments where 'google-auth-library' might not be fully tree-shaken or polyfilled for client
+  const { OAuth2Client: Client } = await import('google-auth-library');
+  const client = new Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+  client.setCredentials(passedTokens);
+
+  if (passedTokens.expiry_date && passedTokens.expiry_date < Date.now() + 60000) { // Refresh if expiring soon
+    if (passedTokens.refresh_token) {
+      try {
+        console.log('Google Drive access token expired or expiring soon, attempting to refresh...');
+        const { credentials } = await client.refreshAccessToken();
+        client.setCredentials(credentials); // Update client with new tokens
+        console.log('Google Drive access token refreshed.');
+        // The new credentials (including potentially a new access_token) are now set on the client.
+        // The calling function will receive this client instance with updated credentials.
+      } catch (refreshError: any) {
+        console.error('Error refreshing Google Drive access token:', refreshError.response?.data || refreshError.message);
+        throw new Error('Failed to refresh Google Drive access token. Please re-authenticate.');
+      }
+    } else {
+      console.warn('Google Drive access token expired, but no refresh token available. User may need to re-authenticate.');
+      throw new Error('Google Drive access token expired and no refresh token. Please re-authenticate.');
+    }
+  }
+  return client;
+}
+
+
 async function handleGoogleDriveError(response: Response, operationName: string, requestUrl: string): Promise<never> {
   let apiMessage = response.statusText;
   let parsedErrorBody: any = null;
@@ -36,217 +54,174 @@ async function handleGoogleDriveError(response: Response, operationName: string,
     // console.warn(`Could not parse error response body as JSON for Google Drive API ${operationName} error.`);
   }
 
-  console.error(
-    `Received API Error from Google Drive during ${operationName}: Status ${response.status} for ${requestUrl}. API Message: ${apiMessage}. Response body:`,
-    parsedErrorBody || '<empty or non-JSON response>'
-  );
+  const fullMessage = `Google Drive API Error during ${operationName}: Status ${response.status} for ${requestUrl}. Message: ${apiMessage}. Response body:`;
+  console.error(fullMessage, parsedErrorBody || '<empty or non-JSON response>');
 
   let userFriendlyMessage = `Google Drive ${operationName} failed: ${apiMessage} (Status ${response.status})`;
   if (response.status === 401 || response.status === 403) {
     userFriendlyMessage = `Google Drive authentication failed during ${operationName} (Status ${response.status}): ${apiMessage}. Please try reconnecting Google Drive.`;
   }
   
-  throw new Error(userFriendlyMessage);
+  const error = new Error(userFriendlyMessage) as any;
+  error.statusCode = response.status;
+  error.originalError = parsedErrorBody;
+  throw error;
 }
 
-
-/**
- * Finds the file ID of the CRM data file in Google Drive.
- *
- * @param authInfo The authentication information for Google Drive.
- * @returns A promise that resolves to the file ID string or null if not found.
- * @throws Will throw an error if the API request fails.
- */
-async function findFileId(authInfo: GoogleDriveAuthInfo): Promise<string | null> {
+async function findFileId(accessToken: string): Promise<string | null> {
   const query = `name='${CRM_DATA_FILENAME}' and 'root' in parents and trashed=false`;
   const url = `${BASE_GDRIVE_URL}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
 
   try {
     const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${authInfo.accessToken}`,
-      },
+      headers: { 'Authorization': `Bearer ${accessToken}` },
     });
 
     if (!response.ok) {
-      // This will throw an error, so the function execution stops here.
       await handleGoogleDriveError(response, "find file ID", url);
     }
 
     const result = await response.json();
-    if (result.files && result.files.length > 0) {
-      return result.files[0].id;
-    }
-    return null; // File not found
+    return (result.files && result.files.length > 0) ? result.files[0].id : null;
 
   } catch (error) {
-     // If handleGoogleDriveError threw, or fetch itself threw, re-throw.
-     // console.error('Error during Google Drive find file request:', error);
     throw error;
   }
 }
 
-/**
- * Asynchronously uploads CRM data (as JSON) to a specific file in Google Drive.
- * Creates the file if it doesn't exist, otherwise updates it.
- *
- * @param data The ExcelData object to upload.
- * @param authInfo The authentication information for Google Drive.
- * @returns A promise that resolves when the data is uploaded successfully.
- * @throws Will throw an error if the upload fails.
- */
-export async function uploadToGoogleDrive(data: ExcelData, authInfo: GoogleDriveAuthInfo): Promise<void> {
-  const fileId = await findFileId(authInfo); 
+export async function uploadToGoogleDrive(
+  data: ExcelData,
+  tokens: GoogleTokens
+): Promise<{ success: boolean, newTokens?: GoogleTokens }> {
+  if (!tokens.access_token) throw new Error("Access token is required for Google Drive upload.");
+  
+  const client = await getAuthenticatedClient(tokens);
+  const currentAccessToken = client.credentials.access_token;
+  if (!currentAccessToken) throw new Error("Failed to obtain a valid access token after potential refresh.");
+
+  const fileId = await findFileId(currentAccessToken);
   const jsonData = JSON.stringify(data, null, 2);
-  // Using Blob for consistent body creation
   const fileContentBlob = new Blob([jsonData], { type: 'application/json' });
 
   let url: string;
   let method: string;
   let body: BodyInit;
-  const headers: HeadersInit = {
-    'Authorization': `Bearer ${authInfo.accessToken}`,
-  };
+  const headers: HeadersInit = { 'Authorization': `Bearer ${currentAccessToken}` };
 
   if (fileId) {
     url = `${BASE_UPLOAD_URL}/files/${fileId}?uploadType=media`;
     method = 'PATCH';
-    body = fileContentBlob; 
-    headers['Content-Type'] = 'application/json'; // Required for PATCH media upload by some Drive API versions/setups
+    body = fileContentBlob;
+    headers['Content-Type'] = 'application/json';
   } else {
     url = `${BASE_UPLOAD_URL}/files?uploadType=multipart`;
     method = 'POST';
-    const metadata = {
-      name: CRM_DATA_FILENAME,
-      mimeType: 'application/json',
-      parents: ['root'],
-    };
+    const metadata = { name: CRM_DATA_FILENAME, mimeType: 'application/json', parents: ['root'] };
     const formData = new FormData();
     formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    formData.append('file', fileContentBlob, CRM_DATA_FILENAME); // Added filename to blob part
+    formData.append('file', fileContentBlob, CRM_DATA_FILENAME);
     body = formData;
-    // For FormData, Content-Type is set by browser/fetch with boundary.
   }
 
   try {
-    const response = await fetch(url, {
-      method: method,
-      headers: headers,
-      body: body,
-    });
-
+    const response = await fetch(url, { method, headers, body });
     if (!response.ok) {
       await handleGoogleDriveError(response, fileId ? "update file" : "create file", url);
     }
-
     const responseData = await response.json();
     console.log(`Data successfully ${fileId ? 'updated' : 'created'} in Google Drive:`, responseData.name || CRM_DATA_FILENAME);
-
+    return { success: true, newTokens: client.credentials };
   } catch (error) {
-    // console.error('Error during Google Drive upload request:', error);
-    throw error; 
-  }
-}
-
-/**
- * Asynchronously downloads CRM data (as JSON) from a specific file in Google Drive.
- *
- * @param authInfo The authentication information for Google Drive.
- * @returns A promise that resolves to the parsed ExcelData object or null if the file doesn't exist or is empty.
- * @throws Will throw an error if the download fails for reasons other than not found.
- */
-export async function downloadFromGoogleDrive(authInfo: GoogleDriveAuthInfo): Promise<ExcelData | null> {
-  const fileId = await findFileId(authInfo);
-
-  if (!fileId) {
-    console.log(`Google Drive file '${CRM_DATA_FILENAME}' not found. This may be the first sync.`);
-    return null;
-  }
-
-  const url = `${BASE_GDRIVE_URL}/files/${fileId}?alt=media`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authInfo.accessToken}`,
-      },
-    });
-
-    if (response.status === 404) { // Double check for 404, though findFileId should catch it
-        console.log(`Google Drive file '${CRM_DATA_FILENAME}' not found during download attempt. Returning null.`);
-        return null;
-    }
-
-    if (!response.ok) {
-       await handleGoogleDriveError(response, "download file", url);
-    }
-    
-    const textData = await response.text();
-    if (!textData) {
-        console.warn(`Google Drive file '${CRM_DATA_FILENAME}' is empty. Returning null.`);
-        return null;
-    }
-
-    const jsonData = JSON.parse(textData);
-
-    if (jsonData && Array.isArray(jsonData.headers) && Array.isArray(jsonData.rows)) {
-      console.log('Data successfully downloaded from Google Drive:', CRM_DATA_FILENAME);
-      return jsonData as ExcelData;
-    } else {
-      console.warn(`Downloaded data from Google Drive ('${CRM_DATA_FILENAME}') has unexpected format. Returning null. Content:`, jsonData);
-      return null;
-    }
-
-  } catch (error) {
-    // If error is already from handleGoogleDriveError, or JSON.parse fails
-    // console.error('Error during Google Drive download request:', error);
-    if (error instanceof SyntaxError) { // JSON.parse error
-        console.error(`Failed to parse JSON from Google Drive file '${CRM_DATA_FILENAME}': ${error.message}`);
-        throw new Error(`Invalid JSON format in Google Drive file '${CRM_DATA_FILENAME}'.`);
-    }
+    console.error('Error during Google Drive uploadToGoogleDrive:', error);
     throw error;
   }
 }
 
+export async function downloadFromGoogleDrive(
+  tokens: GoogleTokens
+): Promise<{ data: ExcelData | null, newTokens?: GoogleTokens }> {
+  if (!tokens.access_token) throw new Error("Access token is required for Google Drive download.");
 
-/**
- * Fetches metadata for the CRM data file from Google Drive.
- *
- * @param authInfo The authentication information for Google Drive.
- * @returns A promise that resolves to the file metadata or null if the file doesn't exist.
- * @throws Will throw an error if the API request fails.
- */
-export async function fetchFileMetadata(authInfo: GoogleDriveAuthInfo): Promise<FileMetadata | null> {
-    const fileId = await findFileId(authInfo);
-    if (!fileId) {
-        console.log(`Google Drive file metadata for '${CRM_DATA_FILENAME}' not found.`);
-        return null;
+  const client = await getAuthenticatedClient(tokens);
+  const currentAccessToken = client.credentials.access_token;
+   if (!currentAccessToken) throw new Error("Failed to obtain a valid access token after potential refresh for download.");
+
+  const fileId = await findFileId(currentAccessToken);
+  if (!fileId) {
+    console.log(`Google Drive file '${CRM_DATA_FILENAME}' not found.`);
+    return { data: null, newTokens: client.credentials };
+  }
+
+  const url = `${BASE_GDRIVE_URL}/files/${fileId}?alt=media`;
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${currentAccessToken}` },
+    });
+
+    if (response.status === 404) {
+      return { data: null, newTokens: client.credentials };
+    }
+    if (!response.ok) {
+      await handleGoogleDriveError(response, "download file", url);
+    }
+    
+    const textData = await response.text();
+    if (!textData) {
+      return { data: null, newTokens: client.credentials };
     }
 
-    const url = `${BASE_GDRIVE_URL}/files/${fileId}?fields=id,name,modifiedTime,size`;
+    const jsonData = JSON.parse(textData);
+    if (jsonData && Array.isArray(jsonData.headers) && Array.isArray(jsonData.rows)) {
+      return { data: jsonData as ExcelData, newTokens: client.credentials };
+    } else {
+      console.warn(`Downloaded data from Google Drive ('${CRM_DATA_FILENAME}') has unexpected format.`);
+      return { data: null, newTokens: client.credentials };
+    }
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON format in Google Drive file '${CRM_DATA_FILENAME}'.`);
+    }
+    console.error('Error during Google Drive downloadFromGoogleDrive:', error);
+    throw error;
+  }
+}
 
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authInfo.accessToken}`,
-            },
-        });
+export async function fetchFileMetadata(
+  tokens: GoogleTokens
+): Promise<{ metadata: FileMetadata | null, newTokens?: GoogleTokens }> {
+  if (!tokens.access_token) throw new Error("Access token is required for fetching Google Drive metadata.");
 
-        if (!response.ok) {
-            await handleGoogleDriveError(response, "fetch file metadata", url);
-        }
+  const client = await getAuthenticatedClient(tokens);
+  const currentAccessToken = client.credentials.access_token;
+  if (!currentAccessToken) throw new Error("Failed to obtain a valid access token after potential refresh for metadata fetch.");
 
-        const fileMetadata = await response.json();
-        return {
+  const fileId = await findFileId(currentAccessToken);
+  if (!fileId) {
+    return { metadata: null, newTokens: client.credentials };
+  }
+
+  const url = `${BASE_GDRIVE_URL}/files/${fileId}?fields=id,name,modifiedTime,size`;
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${currentAccessToken}` },
+    });
+    if (!response.ok) {
+      await handleGoogleDriveError(response, "fetch file metadata", url);
+    }
+    const fileMetadata = await response.json();
+    return {
+        metadata: {
             id: fileMetadata.id,
             name: fileMetadata.name,
-            lastModified: fileMetadata.modifiedTime, // Google Drive uses modifiedTime
+            lastModified: fileMetadata.modifiedTime,
             size: fileMetadata.size ? parseInt(fileMetadata.size, 10) : undefined,
-        } as FileMetadata;
-    } catch (error) {
-        // console.error('Error during Google Drive fetch metadata request:', error);
-        throw error;
-    }
+        } as FileMetadata,
+        newTokens: client.credentials
+    };
+  } catch (error) {
+     console.error('Error during Google Drive fetchFileMetadata:', error);
+    throw error;
+  }
 }

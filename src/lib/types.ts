@@ -105,6 +105,7 @@ export interface Appointment {
  */
 export interface CloudAuthInfo {
   accessToken: string;
+  refreshToken?: string; // Optional refresh token
   provider: 'onedrive' | 'googledrive';
 }
 
@@ -131,7 +132,9 @@ export enum DataItemType {
   LocalData = 'localData', // For a monolithic local data object if ever used
   LastSyncTime = 'lastSyncTime',
   OneDriveAccessToken = 'onedriveAccessToken',
+  OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
+  GoogleDriveRefreshToken = 'googledriveRefreshToken',
 }
 
 /**
@@ -157,4 +160,13 @@ export interface FileMetadata {
   lastModified?: string; // ISO string, or from provider
   modifiedTime?: string; // Specifically for Google Drive
   size?: number;
+}
+
+// Credentials structure from google-auth-library
+export interface GoogleTokens {
+  access_token?: string | null;
+  refresh_token?: string | null;
+  scope?: string | null;
+  token_type?: string | null;
+  expiry_date?: number | null;
 }
