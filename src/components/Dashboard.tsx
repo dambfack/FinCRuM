@@ -4,6 +4,7 @@
 
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
@@ -15,33 +16,34 @@ import { useDataSync } from '@/hooks/use-data-sync';
 import TaskList from './TaskList';
 import AppointmentList from './AppointmentList';
 import ReminderList from './ReminderList';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
 import CustomerDetailModal from './CustomerDetailModal';
-import CustomerForm from './CustomerForm'; // Import CustomerForm for editing
+import CustomerForm from './CustomerForm';
 import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
+import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from 'next/dynamic';
+import { Badge } from '@/components/ui/badge';
+
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 
 interface DashboardStats {
   totalCustomers: number;
-  newCustomersToday: number;
+  newCustomersTodayCount: number; // Renamed for clarity
   tasksPending: number;
-  appointmentsToday: number;
+  appointmentsTodayCount: number; // Renamed for clarity
 }
 
 const initialStats: DashboardStats = {
   totalCustomers: 0,
-  newCustomersToday: 0,
+  newCustomersTodayCount: 0,
   tasksPending: 0,
-  appointmentsToday: 0,
+  appointmentsTodayCount: 0,
 };
 
 const mockContacts: Contact[] = [
@@ -87,43 +89,47 @@ const Dashboard: FC = () => {
     const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
     const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
     
-    // State for editing customer from dashboard
     const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
     const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
 
     const isGoogleCalendarLinked = isGoogleDriveConnected;
+
+    // State for new modals
+    const [isNewCustomersModalOpen, setNewCustomersModalOpen] = useState(false);
+    const [newCustomersTodayList, setNewCustomersTodayList] = useState<Contact[]>([]);
+    const [isTodaysTasksModalOpen, setTodaysTasksModalOpen] = useState(false);
+    const [todaysTasksList, setTodaysTasksList] = useState<TaskType[]>([]);
+    const [isTodaysAppointmentsModalOpen, setTodaysAppointmentsModalOpen] = useState(false);
+    const [todaysAppointmentsList, setTodaysAppointmentsList] = useState<AppointmentType[]>([]);
 
 
     const loadDashboardData = useCallback(() => {
         setLoading(true);
         try {
             const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || [];
-            // Removed merging logic with DataItemType.CustomerData to simplify and focus on Contacts
             let loadedContacts: Contact[] = [...customerDataStore];
 
-            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') { // Populate with mock only if empty and in dev
+            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') { 
                 loadedContacts = mockContacts; 
-                // Optionally save mock contacts to local storage for persistence in dev
-                // saveData<Contact[]>(DataItemType.Contacts, mockContacts);
             }
             setAllContactsState(loadedContacts);
 
             const tasks = getData<TaskType[]>(DataItemType.Tasks) || [];
             const appointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
-            const today = new Date().toISOString().split('T')[0];
+            const todayDateString = new Date().toISOString().split('T')[0];
 
             const newCustomersToday = loadedContacts.filter(c => {
                 const createdAtDate = c.createdAt ? (parseDate(c.createdAt as string)?.toISOString().split('T')[0]) : null;
-                return createdAtDate === today;
+                return createdAtDate === todayDateString;
             }).length;
 
             setStats({
                 totalCustomers: loadedContacts.length,
-                newCustomersToday: newCustomersToday,
+                newCustomersTodayCount: newCustomersToday,
                 tasksPending: tasks.filter(t => t.status !== 'done').length,
-                appointmentsToday: appointments.filter(a => {
+                appointmentsTodayCount: appointments.filter(a => {
                      const apptDate = a.date ? (parseDate(a.date as string)?.toISOString().split('T')[0]) : null;
-                     return apptDate === today;
+                     return apptDate === todayDateString;
                 }).length,
             });
 
@@ -158,13 +164,11 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                if (status === 'approached') { // Map 'approached' to 'other' or handle as per new logic
-                    statusCounts.other++;
-                } else if (statusCounts.hasOwnProperty(status)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
+                 if (statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
                 } else {
                     statusCounts.other++; 
                 }
@@ -180,7 +184,7 @@ const Dashboard: FC = () => {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setRecentContacts(mockContacts.slice(0,5)); // Fallback to mock if error
+            setRecentContacts(mockContacts.slice(0,5)); 
             setCustomerGrowthChartData([]);
             setDealStatusSeries([]);
             setDealStatusLabels([]);
@@ -208,7 +212,7 @@ const Dashboard: FC = () => {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-      loadDashboardData();
+      loadDashboardData(); // Refresh data to update connection status
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
@@ -223,7 +227,7 @@ const Dashboard: FC = () => {
     const handleSaveCustomerEdit = () => {
       setIsEditCustomerDialogOpen(false);
       setCustomerToEdit(null);
-      refreshData(); // Refresh dashboard data after editing a customer
+      refreshData(); 
     };
 
     const handleViewContactDetails = (contact: Contact) => {
@@ -232,13 +236,61 @@ const Dashboard: FC = () => {
     };
 
     const handleEditRequestFromDetail = (contact: Contact) => {
-      setIsCustomerDetailModalOpen(false); // Close detail modal
-      setCustomerToEdit(contact);          // Set contact to edit
-      setIsEditCustomerDialogOpen(true);   // Open edit dialog on dashboard
+      setIsCustomerDetailModalOpen(false); 
+      setCustomerToEdit(contact);          
+      setIsEditCustomerDialogOpen(true);   
     };
     
     const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
+    const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
+
+
+    const handleShowNewCustomersToday = () => {
+      const allContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const filtered = allContacts.filter(c => c.createdAt && (parseDate(c.createdAt as string)?.toISOString().split('T')[0] === todayString));
+      setNewCustomersTodayList(filtered);
+      setNewCustomersModalOpen(true);
+    };
+
+    const handleShowTodaysTasks = () => {
+      const allTasks = getData<TaskType[]>(DataItemType.Tasks) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const priorityOrder: Record<TaskType['priority'] & string, number> = { high: 1, medium: 2, low: 3 };
+      
+      const filtered = allTasks
+        .filter(t => t.dueDate && (parseDate(t.dueDate as string)?.toISOString().split('T')[0] === todayString))
+        .sort((a, b) => (priorityOrder[a.priority || 'low'] || 4) - (priorityOrder[b.priority || 'low'] || 4));
+      setTodaysTasksList(filtered);
+      setTodaysTasksModalOpen(true);
+    };
+
+    const handleShowTodaysAppointments = () => {
+      const allAppointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const filtered = allAppointments.filter(a => a.date && (parseDate(a.date as string)?.toISOString().split('T')[0] === todayString));
+      setTodaysAppointmentsList(filtered);
+      setTodaysAppointmentsModalOpen(true);
+    };
+
+    const getTaskPriorityBadgeVariant = (priority?: 'low' | 'medium' | 'high') => {
+      switch (priority) {
+        case 'high': return 'destructive';
+        case 'medium': return 'secondary'; 
+        case 'low': return 'outline';
+        default: return 'outline';
+      }
+    };
+
+
+    const statCards = [
+      { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts in system", link: "/customers" },
+      { title: "New Today", value: `+${stats.newCustomersTodayCount}`, icon: UserPlusIcon, note: "Customers added today", action: handleShowNewCustomersToday },
+      { title: "Pending Tasks", value: stats.tasksPending, icon: ListTodo, note: "Tasks due today, by priority", action: handleShowTodaysTasks },
+      { title: "Appointments Today", value: stats.appointmentsTodayCount, icon: Calendar, note: "Scheduled for today", action: handleShowTodaysAppointments }
+    ];
+
 
     const apexPieChartOptions: ApexCharts.ApexOptions = {
       chart: {
@@ -320,6 +372,7 @@ const Dashboard: FC = () => {
       dataLabels: {
         enabled: true,
         formatter: (val: number, opts: any) => {
+          if (opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) === 0) return '0%';
           const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
           return `${percentage}%`;
         },
@@ -351,13 +404,6 @@ const Dashboard: FC = () => {
       }]
     };
 
-    const statCards = [
-      { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts", link: "/customers" },
-      { title: "New Today", value: `+${stats.newCustomersToday}`, icon: UserPlusIcon, note: "Customers added today", link: "/customers" },
-      { title: "Pending Tasks", value: stats.tasksPending, icon: ListTodo, note: "Tasks not yet completed", action: () => { setEditingTask(undefined); setIsTaskFormOpen(true); } },
-      { title: "Appointments Today", value: stats.appointmentsToday, icon: Calendar, note: "Scheduled for today", action: () => { setEditingAppointment(undefined); setIsAppointmentFormOpen(true); } }
-    ];
-
 
     return (
       <div className="space-y-6">
@@ -377,9 +423,29 @@ const Dashboard: FC = () => {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map(stat => (
-            stat.link ? (
-              <Link href={stat.link} key={stat.title} passHref>
-                <Card className="cursor-pointer">
+            <Card 
+              key={stat.title} 
+              onClick={stat.action ? stat.action : undefined} 
+              className={cn("hover:shadow-2xl hover:scale-102 hover:-translate-y-1 transition-all duration-300 ease-in-out", stat.link || stat.action ? "cursor-pointer" : "")}
+              role={stat.action ? "button" : undefined}
+              tabIndex={stat.action ? 0 : undefined}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && stat.action) stat.action(); }}
+            >
+              {stat.link ? (
+                <Link href={stat.link} passHref legacyBehavior>
+                  <a className="block h-full"> {/* Anchor tag for link behavior */}
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
+                      <stat.icon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
+                      <p className="text-xs text-muted-foreground">{stat.note}</p>
+                    </CardContent>
+                  </a>
+                </Link>
+              ) : (
+                <>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
@@ -388,27 +454,9 @@ const Dashboard: FC = () => {
                     {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
                     <p className="text-xs text-muted-foreground">{stat.note}</p>
                   </CardContent>
-                </Card>
-              </Link>
-            ) : (
-              <Card 
-                key={stat.title} 
-                onClick={stat.action} 
-                className="cursor-pointer"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') stat.action?.(); }}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
-                  <p className="text-xs text-muted-foreground">{stat.note}</p>
-                </CardContent>
-              </Card>
-            )
+                </>
+              )}
+            </Card>
           ))}
         </div>
 
@@ -445,7 +493,7 @@ const Dashboard: FC = () => {
                         color: 'hsl(var(--popover-foreground))',
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
-                        backdropFilter: 'blur(8px)', // Added blur for tooltip
+                        backdropFilter: 'blur(8px)', 
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
@@ -465,7 +513,7 @@ const Dashboard: FC = () => {
           <CardContent>
             {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusSeries.length > 0 ? (
                 <div className="h-[300px] w-full">
-                  <ReactApexChart
+                   <ReactApexChart
                     options={apexPieChartOptions}
                     series={dealStatusSeries}
                     type="donut"
@@ -533,18 +581,6 @@ const Dashboard: FC = () => {
            </Button>
         </CardHeader>
         <CardContent>
-          <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-              <DialogContent className={dialogContentClassName}>
-                  <DialogHeader>
-                      <DialogTitle className="font-heading tracking-wide">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
-                  </DialogHeader>
-                  <TaskForm
-                      task={editingTask}
-                      onSave={handleSaveTask}
-                      onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); }}
-                   />
-              </DialogContent>
-            </Dialog>
             <TaskList onEditTask={(task) => { setEditingTask(task); setIsTaskFormOpen(true); }} />
         </CardContent>
       </Card>
@@ -560,18 +596,6 @@ const Dashboard: FC = () => {
             </Button>
         </CardHeader>
         <CardContent>
-            <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
-                  <DialogContent className={dialogContentClassName}>
-                      <DialogHeader>
-                          <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
-                      </DialogHeader>
-                      <ReminderForm
-                          initialReminder={editingReminder}
-                          onSave={handleSaveReminder}
-                          onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
-                      />
-                  </DialogContent>
-            </Dialog>
             <ReminderList onEdit={(reminder) => { setEditingReminder(reminder); setIsReminderFormOpen(true); }} />
         </CardContent>
       </Card>
@@ -587,22 +611,113 @@ const Dashboard: FC = () => {
           </Button>
         </CardHeader>
         <CardContent>
-            <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
-                <DialogContent className={dialogContentClassName}>
-                    <DialogHeader>
-                        <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
-                    </DialogHeader>
-                    <AppointmentForm
-                        initialData={editingAppointment}
-                        onSave={handleSaveAppointment}
-                        onCancel={() => {setIsAppointmentFormOpen(false); setEditingAppointment(undefined);}}
-                    />
-                </DialogContent>
-            </Dialog>
             <AppointmentList onEditAppointment={(appointment) => {setEditingAppointment(appointment); setIsAppointmentFormOpen(true);}} />
         </CardContent>
       </Card>
     </div>
+
+    {/* Modals for Dashboard cards */}
+    <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
+        <DialogContent className={listModalContentClassName}>
+            <DialogHeader>
+                <DialogTitle className="font-heading tracking-wide">Customers Added Today</DialogTitle>
+            </DialogHeader>
+            {newCustomersTodayList.length > 0 ? (
+                <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {newCustomersTodayList.map(contact => (
+                        <li key={contact.id} className="p-2 border-b text-sm">
+                            <p className="font-medium">{contact.firstName} {contact.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{contact.email}</p>
+                        </li>
+                    ))}
+                </ul>
+            ) : <p className="text-sm text-muted-foreground">No new customers added today.</p>}
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={isTodaysTasksModalOpen} onOpenChange={setTodaysTasksModalOpen}>
+        <DialogContent className={listModalContentClassName}>
+            <DialogHeader>
+                <DialogTitle className="font-heading tracking-wide">Tasks for Today</DialogTitle>
+            </DialogHeader>
+            {todaysTasksList.length > 0 ? (
+                <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {todaysTasksList.map(task => (
+                        <li key={task.id} className="p-2 border-b text-sm">
+                            <div className="flex justify-between items-center">
+                                <span className={cn(task.status === 'done' && "line-through text-muted-foreground")}>{task.title}</span>
+                                <div>
+                                    {task.priority && <Badge variant={getTaskPriorityBadgeVariant(task.priority)} className="capitalize text-xs mr-1">{task.priority}</Badge>}
+                                    <Badge variant={task.status === 'done' ? 'default' : 'secondary'} className="capitalize text-xs">{task.status?.replace('-', ' ') || 'To Do'}</Badge>
+                                </div>
+                            </div>
+                             {task.description && <p className={cn("text-xs text-muted-foreground mt-1", task.status === 'done' && "line-through")}>{task.description}</p>}
+                        </li>
+                    ))}
+                </ul>
+            ) : <p className="text-sm text-muted-foreground">No tasks due today.</p>}
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={isTodaysAppointmentsModalOpen} onOpenChange={setTodaysAppointmentsModalOpen}>
+        <DialogContent className={listModalContentClassName}>
+            <DialogHeader>
+                <DialogTitle className="font-heading tracking-wide">Appointments for Today</DialogTitle>
+            </DialogHeader>
+            {todaysAppointmentsList.length > 0 ? (
+                <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {todaysAppointmentsList.map(appt => (
+                        <li key={appt.id} className="p-2 border-b text-sm">
+                            <p className="font-medium">{appt.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {formatDateTime(appt.date).split(',')[1]} {/* Show time */}
+                                {appt.location && ` - ${appt.location}`}
+                            </p>
+                            {appt.description && <p className="text-xs text-muted-foreground mt-1">{appt.description}</p>}
+                        </li>
+                    ))}
+                </ul>
+            ) : <p className="text-sm text-muted-foreground">No appointments scheduled for today.</p>}
+        </DialogContent>
+    </Dialog>
+
+    {/* Task, Reminder, Appointment Forms in Dialogs */}
+    <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
+        <DialogContent className={dialogContentClassName}>
+            <DialogHeader>
+                <DialogTitle className="font-heading tracking-wide">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+            </DialogHeader>
+            <TaskForm
+                task={editingTask}
+                onSave={handleSaveTask}
+                onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); }}
+             />
+        </DialogContent>
+      </Dialog>
+    <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
+            <DialogContent className={dialogContentClassName}>
+                <DialogHeader>
+                    <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                </DialogHeader>
+                <ReminderForm
+                    initialReminder={editingReminder}
+                    onSave={handleSaveReminder}
+                    onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
+                />
+            </DialogContent>
+      </Dialog>
+    <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
+          <DialogContent className={dialogContentClassName}>
+              <DialogHeader>
+                  <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
+              </DialogHeader>
+              <AppointmentForm
+                  initialData={editingAppointment}
+                  onSave={handleSaveAppointment}
+                  onCancel={() => {setIsAppointmentFormOpen(false); setEditingAppointment(undefined);}}
+              />
+          </DialogContent>
+      </Dialog>
 
     {/* Customer Detail Modal */}
     <CustomerDetailModal
@@ -612,7 +727,7 @@ const Dashboard: FC = () => {
             setIsCustomerDetailModalOpen(false);
             setSelectedContactForModal(null);
         }}
-        onEditRequest={handleEditRequestFromDetail} // New prop for edit from detail view
+        onEditRequest={handleEditRequestFromDetail} 
       />
 
     {/* Customer Edit Dialog for Dashboard */}
@@ -639,3 +754,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
