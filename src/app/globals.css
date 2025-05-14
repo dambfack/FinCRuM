@@ -54,7 +54,7 @@ body {
     --card: 220 10% 15%; /* Base for card background */
     --card-foreground: 0 0% 98%;
     --popover: 220 10% 10%; /* Dark popover for consistency with dialogs */
-    --popover-foreground: 0 0% 98%;
+    --popover-foreground: 0 0% 98%; /* White/Very Light Gray text for popovers */
     --primary: 0 0% 98%; /* Light Gray for primary elements */
     --primary-foreground: 220 10% 10%; /* Dark text on primary */
     --secondary: 220 10% 20%; /* Slightly lighter dark gray */
@@ -62,7 +62,7 @@ body {
     --muted: 220 10% 20%;
     --muted-foreground: 220 10% 65%; /* Muted light gray */
     --accent: 180 100% 35%; /* Lighter Teal */
-    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent (OVERRIDDEN from dark text for general use) */
+    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 25%; /* Darker Gray border - general border */
@@ -131,9 +131,9 @@ body {
   @apply backdrop-blur-lg; /* Stronger blur for datepicker popup */
 }
 .dark .react-datepicker {
-  background-color: hsl(var(--popover) / 0.75); /* More translucent in dark mode */
+  background-color: hsl(var(--popover) / 0.65); /* More translucent in dark mode, and slightly darker to help text pop */
   border-color: hsla(var(--glass-border) / 0.15);
-  color: hsl(var(--popover-foreground)); /* Should be light gray/white */
+  color: hsl(0 0% 95%); /* Default text color to very light gray/white */
 }
 
 
@@ -143,13 +143,18 @@ body {
 }
 .dark .react-datepicker__header {
   border-bottom-color: hsla(var(--border) / 0.2);
+  background-color: hsla(var(--popover) / 0.3); /* Slight darkening for header */
 }
 
 
 .react-datepicker__current-month,
 .react-datepicker-time__header {
   @apply font-medium;
-  color: hsl(var(--popover-foreground)); /* Uses popover-foreground (light in dark) */
+  color: hsl(var(--popover-foreground));
+}
+.dark .react-datepicker__current-month,
+.dark .react-datepicker-time__header {
+  color: hsl(0 0% 98%) !important; /* Force white text for current month in dark mode */
 }
 
 .react-datepicker__day-name {
@@ -157,7 +162,7 @@ body {
   color: hsl(var(--muted-foreground)); /* Day names are muted for light mode */
 }
 .dark .react-datepicker__day-name {
-  color: hsl(0 0% 95%); /* Very light gray/white for dark mode */
+  color: hsl(0 0% 90%) !important; /* Very light gray/white for day names in dark mode */
 }
 
 
@@ -168,6 +173,10 @@ body {
   border-color: hsl(var(--popover-foreground)); /* Navigation arrows color */
   @apply h-2 w-2 border-2 opacity-70 hover:opacity-100;
 }
+.dark .react-datepicker__navigation-icon::before {
+    border-color: hsl(0 0% 95%) !important; /* White arrows in dark mode */
+}
+
 .react-datepicker__navigation--previous {
   @apply left-2;
 }
@@ -185,13 +194,18 @@ body {
 
 .react-datepicker__day {
   @apply w-9 h-9 m-0.5 flex items-center justify-center rounded-md cursor-pointer;
-  color: hsl(var(--popover-foreground)); /* Default day text color (light in dark) */
+  color: hsl(var(--popover-foreground));
 }
+.dark .react-datepicker__day {
+  color: hsl(0 0% 95%) !important; /* Force white day text in dark mode */
+}
+
 .react-datepicker__day:hover {
-  background-color: hsl(var(--accent) / 0.15); /* Lighter accent hover */
+  background-color: hsl(var(--accent) / 0.15);
 }
 .dark .react-datepicker__day:hover {
-  background-color: hsl(var(--accent) / 0.25); /* Lighter accent hover for dark */
+  background-color: hsl(var(--accent) / 0.25);
+  color: hsl(0 0% 98%) !important; /* Ensure text stays white on hover */
 }
 
 /* Selected day styling */
@@ -199,7 +213,7 @@ body {
 .react-datepicker__day--in-selecting-range,
 .react-datepicker__day--in-range {
   background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground)); /* Uses accent foreground (light on dark accent for light mode) */
+  color: hsl(var(--accent-foreground));
 }
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--in-selecting-range:hover,
@@ -211,20 +225,20 @@ body {
 .dark .react-datepicker__day--selected,
 .dark .react-datepicker__day--in-selecting-range,
 .dark .react-datepicker__day--in-range {
-  background-color: hsl(var(--accent)); /* Accent color for background (Lighter Teal) */
-  color: hsl(0 0% 98%) !important; /* Forcing white/very light gray text for selected day in dark mode */
+  background-color: hsl(var(--accent));
+  color: hsl(0 0% 98%) !important; /* Force white text for selected day in dark mode */
 }
 .dark .react-datepicker__day--selected:hover,
 .dark .react-datepicker__day--in-selecting-range:hover,
 .dark .react-datepicker__day--in-range:hover {
-  background-color: hsl(var(--accent) / 0.85); /* Slightly darker accent on hover */
-  color: hsl(0 0% 98%) !important; /* Forcing white/very light gray text */
+  background-color: hsl(var(--accent) / 0.85);
+  color: hsl(0 0% 98%) !important;
 }
 
 
 .react-datepicker__day--keyboard-selected {
-   background-color: hsl(var(--accent) / 0.8); /* Use accent for keyboard selection too */
-   color: hsl(var(--accent-foreground)); /* Light mode */
+   background-color: hsl(var(--accent) / 0.8);
+   color: hsl(var(--accent-foreground));
    @apply ring-2 ring-ring;
 }
 .dark .react-datepicker__day--keyboard-selected {
@@ -234,34 +248,34 @@ body {
 
 .react-datepicker__day--today {
   @apply font-semibold border border-accent/50;
-  color: hsl(var(--accent)); /* Today's date text is accent color */
+  color: hsl(var(--accent));
 }
 .dark .react-datepicker__day--today {
-  color: hsl(var(--accent)); /* Accent color (Lighter Teal) */
+  color: hsl(var(--accent)) !important; /* Ensure today's date text is also visible (accent color, which is light teal in dark) */
   border-color: hsl(var(--accent) / 0.7);
 }
 
 
 .react-datepicker__day--outside-month {
-  color: hsl(var(--muted-foreground) / 0.4); /* More translucent for outside month */
+  color: hsl(var(--muted-foreground) / 0.4);
   @apply cursor-default hover:bg-transparent dark:hover:bg-transparent;
 }
 .dark .react-datepicker__day--outside-month {
-   color: hsl(var(--muted-foreground) / 0.3); /* Even more translucent */
+   color: hsl(var(--muted-foreground) / 0.3) !important; /* Even more translucent but still white-ish */
 }
 
 .react-datepicker__day--disabled {
-  color: hsl(var(--muted-foreground) / 0.2) !important; /* Very faint for disabled */
+  color: hsl(var(--muted-foreground) / 0.2) !important;
   @apply cursor-not-allowed bg-transparent hover:bg-transparent !important;
 }
 .dark .react-datepicker__day--disabled {
-  color: hsl(var(--muted-foreground) / 0.15) !important; /* Almost invisible */
+  color: hsl(var(--muted-foreground) / 0.15) !important; /* Almost invisible, white-ish */
 }
 
 /* Time picker styles */
 .react-datepicker__time-container {
   @apply border-l pl-0 ml-0;
-  border-left-color: hsla(var(--border) / 0.3); /* More translucent border */
+  border-left-color: hsla(var(--border) / 0.3);
   width: 90px;
 }
 .dark .react-datepicker__time-container {
@@ -277,42 +291,47 @@ body {
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
   @apply list-none m-0 p-0 h-[calc(198px)] overflow-y-scroll;
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--accent) / 0.4) transparent; /* More translucent scrollbar thumb */
+  scrollbar-color: hsl(var(--accent) / 0.4) transparent;
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
-   scrollbar-color: hsl(var(--accent) / 0.5) transparent; /* Slightly more visible in dark */
+   scrollbar-color: hsl(var(--accent) / 0.5) transparent;
 }
 
 
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {
   @apply p-2 text-center cursor-pointer;
-  color: hsl(var(--popover-foreground)); /* Time item text (light in dark) */
+  color: hsl(var(--popover-foreground));
 }
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {
+  color: hsl(0 0% 95%) !important; /* White time item text in dark mode */
+}
+
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
-  background-color: hsl(var(--accent) / 0.15); /* Lighter accent hover */
+  background-color: hsl(var(--accent) / 0.15);
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
   background-color: hsl(var(--accent) / 0.25);
+  color: hsl(0 0% 98%) !important;
 }
 
 /* Selected time styling */
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
   @apply font-semibold;
   background-color: hsl(var(--accent)) !important;
-  color: hsl(var(--accent-foreground)) !important; /* Light mode */
+  color: hsl(var(--accent-foreground)) !important;
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
-  background-color: hsl(var(--accent)) !important; /* Accent color (Lighter Teal) */
-  color: hsl(0 0% 98%) !important; /* Forcing white/very light gray text */
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(0 0% 98%) !important; /* Forcing white text for selected time in dark */
 }
 
 
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--disabled {
-  color: hsl(var(--muted-foreground) / 0.2) !important; /* Very faint for disabled */
+  color: hsl(var(--muted-foreground) / 0.2) !important;
   @apply cursor-not-allowed hover:bg-transparent !important;
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--disabled {
-   color: hsl(var(--muted-foreground) / 0.15) !important; /* Almost invisible */
+   color: hsl(var(--muted-foreground) / 0.15) !important; /* White-ish */
 }
 
 /* Triangle - often hidden for cleaner glass look, but if shown: */
@@ -323,5 +342,3 @@ body {
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
-    
