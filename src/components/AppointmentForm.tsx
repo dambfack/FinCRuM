@@ -96,11 +96,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
             contact.email.toLowerCase().includes(value.toLowerCase())
         ).slice(0, 5); 
         setContactSuggestions(suggestions);
-        setShowSuggestions(true); // Always try to show if there's input
+        setShowSuggestions(true); 
     } else {
         setContactSuggestions([]);
-        // setShowSuggestions(false); // Let onBlur handle closing, or rely on CommandEmpty
-        setShowSuggestions(true); // Keep popover open to show CommandEmpty if input is cleared
+        setShowSuggestions(true); 
     }
   };
 
@@ -307,20 +306,20 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       <div className="space-y-2">
         <Label htmlFor="attendeeInput">Attendees</Label>
         <div className="flex items-center gap-2">
-            <Command shouldFilter={false} className="relative rounded-md border">
+            <Command shouldFilter={false} className="relative rounded-md border overflow-visible">
                 <CommandInput
                     id="attendeeInput"
                     value={attendeeInput}
                     onValueChange={handleAttendeeInputChange}
-                    onFocus={() => setShowSuggestions(true)} // Always attempt to show on focus
+                    onFocus={() => setShowSuggestions(true)} 
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
                     placeholder="Type name or email..."
                     className="h-10"
                 />
                 {showSuggestions && (
-                    <div className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover shadow-lg"> {/* Increased z-index and shadow */}
+                    <div className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover shadow-lg">
                         <CommandList>
-                            {contactSuggestions.length === 0 && attendeeInput.trim().length > 0 ? ( // Show only if input is not empty but no suggestions
+                            {contactSuggestions.length === 0 && attendeeInput.trim().length > 0 ? ( 
                                 <CommandEmpty>No matching contacts found.</CommandEmpty>
                             ) : contactSuggestions.length === 0 && attendeeInput.trim().length === 0 ? (
                                 <CommandEmpty>Type to search for contacts.</CommandEmpty>
@@ -374,3 +373,4 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
 };
 
 export default AppointmentForm;
+
