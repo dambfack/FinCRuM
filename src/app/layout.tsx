@@ -51,16 +51,13 @@ const montserrat = Montserrat({
 
 // Updated Logo component to use next/image with a PNG
 const Logo = () => (
-  // Replace 'https://placehold.co/64x64.png' with the path to your actual logo.
-  // If your logo is in public/your-logo.png, use src="/your-logo.png"
-  // Ensure width and height match your logo's aspect ratio or desired display size.
   <Image
-    src="https://placehold.co/64x64.png" // Placeholder for user's logo
-    alt="Finsculpt CRM F Logo" // Updated Alt Text
+    src="/f_logo.png" // Assumes f_logo.png is in the public directory
+    alt="Finsculpt CRM F Logo"
     width={24} // Desired display width
     height={24} // Desired display height
     className="h-6 w-6" // Tailwind classes to control displayed size
-    data-ai-hint="stylized f logo" // Updated hint
+    data-ai-hint="stylized f logo"
   />
 );
 
@@ -334,4 +331,3 @@ export default function RootLayout({
     </html>
   );
 }
-
