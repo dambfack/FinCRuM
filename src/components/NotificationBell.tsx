@@ -23,12 +23,14 @@ const NotificationBell: React.FC = () => {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasReadNotifications, setHasReadNotifications] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const loadNotifications = useCallback(() => {
     if (!currentUser) {
       setNotifications([]);
       setUnreadCount(0);
+      setHasReadNotifications(false);
       return;
     }
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
@@ -37,6 +39,7 @@ const NotificationBell: React.FC = () => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setNotifications(userNotifications);
     setUnreadCount(userNotifications.filter(n => !n.read).length);
+    setHasReadNotifications(userNotifications.some(n => n.read));
   }, [currentUser]);
 
   useEffect(() => {
@@ -52,19 +55,18 @@ const NotificationBell: React.FC = () => {
       n.id === notificationId ? { ...n, read: true } : n
     );
     saveData<Notification[]>(DataItemType.Notifications, updatedNotifications);
-    loadNotifications(); // Refresh the list
-    // toast({ title: "Notification Dismissed" }); // Toasting on dismiss might be too noisy
+    loadNotifications(); 
   };
 
-  const markAllAsRead = () => {
-    if (!currentUser || unreadCount === 0) return;
+  const clearReadNotifications = () => {
+    if (!currentUser || !hasReadNotifications) return;
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
-    const updatedNotifications = allNotifications.map(n =>
-      (n.recipientUserId === currentUser.id && !n.read) ? { ...n, read: true } : n
+    const remainingNotifications = allNotifications.filter(n => 
+      n.recipientUserId !== currentUser.id || (n.recipientUserId === currentUser.id && !n.read)
     );
-    saveData<Notification[]>(DataItemType.Notifications, updatedNotifications);
+    saveData<Notification[]>(DataItemType.Notifications, remainingNotifications);
     loadNotifications();
-    toast({ title: "All Unread Notifications Cleared" });
+    toast({ title: "Read Notifications Cleared" });
   };
 
   const handleApprovalAction = (notification: Notification, action: 'approve' | 'reject') => {
@@ -139,8 +141,7 @@ const NotificationBell: React.FC = () => {
         saveData<Contact[]>(DataItemType.Contacts, contacts);
       }
     }
-    // Future: Add similar logic for other DataItemTypes if they have approval flows
-
+    
     markAsRead(notification.id); 
     loadNotifications(); 
     if (itemUpdated && itemType === DataItemType.Contacts) {
@@ -187,9 +188,9 @@ const NotificationBell: React.FC = () => {
       <PopoverContent className="w-80 sm:w-96 p-0 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
         <div className="p-4 border-b border-border/20 flex justify-between items-center">
           <h4 className="font-medium text-sm font-heading tracking-wide">Notifications</h4>
-           {notifications.length > 0 && unreadCount > 0 && (
-             <Button variant="link" size="sm" onClick={markAllAsRead} className="h-auto p-0 text-xs flex items-center gap-1 text-accent hover:text-accent/80">
-                <History className="h-3 w-3" /> Clear All Unread
+           {hasReadNotifications && (
+             <Button variant="link" size="sm" onClick={clearReadNotifications} className="h-auto p-0 text-xs flex items-center gap-1 text-accent hover:text-accent/80">
+                <History className="h-3 w-3" /> Clear Read
              </Button>
            )}
         </div>
