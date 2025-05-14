@@ -29,10 +29,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setIsLoadingAuth(true);
+
+    // Check for users and create default admin if none exist
+    let users = getData<User[]>(DataItemType.Users) || [];
+    if (users.length === 0) {
+      const defaultAdmin: User = {
+        id: `user-${Date.now()}-admin`,
+        name: 'Admin',
+        email: 'admin@example.com',
+        role: 'partner',
+        pin: '0000',
+        profilePictureUrl: `https://placehold.co/128x128.png?text=A`, // Placeholder avatar
+      };
+      users = [defaultAdmin];
+      saveData<User[]>(DataItemType.Users, users);
+      toast({
+        title: "Default Admin Created",
+        description: "No users found. Default 'Admin' (partner) created with PIN 0000.",
+        duration: 7000,
+      });
+      // Trigger a dataChanged event so PinLoginScreen re-fetches users
+      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Users, data: users } }));
+    }
+
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      const users = getData<User[]>(DataItemType.Users) || [];
-      const user = users.find(u => u.id === storedUserId);
+      // Ensure 'users' is up-to-date if default admin was just created
+      const currentUsers = getData<User[]>(DataItemType.Users) || [];
+      const user = currentUsers.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
         setIsAuthenticated(true);
@@ -41,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     setIsLoadingAuth(false);
-  }, []);
+  }, [toast]); // Added toast to dependency array
 
   const login = async (selectedUserId: string, pinInput: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -54,24 +78,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
+    // If user has no PIN, prompt to set one, regardless of role
     if (!userToLogin.pin) {
-      toast({ 
-        title: "PIN Setup Required", 
-        description: `Welcome ${userToLogin.name}! Please set your 4-digit PIN to continue.`, 
-        variant: "default" 
+      toast({
+        title: "PIN Setup Required",
+        description: `Welcome ${userToLogin.name}! Please set your 4-digit PIN to continue.`,
+        variant: "default"
       });
       setPinSetupRequiredForUser(userToLogin);
       setIsAuthenticated(false);
       setCurrentUser(null);
       localStorage.removeItem(DataItemType.CurrentUserId);
       setIsLoadingAuth(false);
-      return false; 
+      return false;
     }
 
     if (userToLogin.pin && pinInput === userToLogin.pin) {
       setCurrentUser(userToLogin);
       setIsAuthenticated(true);
-      setPinSetupRequiredForUser(null); 
+      setPinSetupRequiredForUser(null);
       saveData<string>(DataItemType.CurrentUserId, userToLogin.id);
       toast({ title: "Login Successful", description: `Welcome back, ${userToLogin.name}!` });
       setIsLoadingAuth(false);
