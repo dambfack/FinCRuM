@@ -75,10 +75,13 @@ export default function CustomersPage() {
 
   }, [loadContacts]);
 
+  const handleEdit = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsEditModalOpen(true);
+  };
 
   const handleDelete = (contactId: string) => {
     console.log(`[CustomersPage] handleDelete HAS BEEN CALLED WITH: ${contactId}`);
-    // alert(`[CustomersPage] handleDelete CALLED FOR: ${contactId}`); // REMOVED aggressive debugging
 
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) {
@@ -172,6 +175,7 @@ export default function CustomersPage() {
   const handleSaveCustomer = () => {
     setIsEditModalOpen(false);
     setSelectedContact(null);
+    // loadContacts(); // Reload contacts after save, handled by dataChanged event now
   };
 
   const handleEditRequestFromDetail = (contact: Contact) => {
@@ -325,6 +329,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-
-
-    
