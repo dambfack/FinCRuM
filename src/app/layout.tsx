@@ -55,7 +55,7 @@ const Logo = () => (
   // If your logo is in public/your-logo.png, use src="/your-logo.png"
   // Ensure width and height match your logo's aspect ratio or desired display size.
   <Image
-    src="https://placehold.co/64x64.png" // Placeholder image
+    src="https://placehold.co/64x64.png" // Placeholder image for PNG logo
     alt="Finsculpt CRM Logo"
     width={24} // Desired display width
     height={24} // Desired display height
@@ -334,3 +334,4 @@ export default function RootLayout({
     </html>
   );
 }
+
