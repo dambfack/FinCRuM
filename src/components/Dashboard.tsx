@@ -351,6 +351,13 @@ const Dashboard: FC = () => {
       }]
     };
 
+    const statCards = [
+      { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts", link: "/customers" },
+      { title: "New Today", value: `+${stats.newCustomersToday}`, icon: UserPlusIcon, note: "Customers added today", link: "/customers" },
+      { title: "Pending Tasks", value: stats.tasksPending, icon: ListTodo, note: "Tasks not yet completed", action: () => { setEditingTask(undefined); setIsTaskFormOpen(true); } },
+      { title: "Appointments Today", value: stats.appointmentsToday, icon: Calendar, note: "Scheduled for today", action: () => { setEditingAppointment(undefined); setIsAppointmentFormOpen(true); } }
+    ];
+
 
     return (
       <div className="space-y-6">
@@ -369,22 +376,39 @@ const Dashboard: FC = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts" },
-            { title: "New Today", value: `+${stats.newCustomersToday}`, icon: UserPlusIcon, note: "Customers added today" },
-            { title: "Pending Tasks", value: stats.tasksPending, icon: ListTodo, note: "Tasks not yet completed" },
-            { title: "Appointments Today", value: stats.appointmentsToday, icon: Calendar, note: "Scheduled for today" }
-          ].map(stat => (
-            <Card key={stat.title}>
+          {statCards.map(stat => (
+            stat.link ? (
+              <Link href={stat.link} key={stat.title} passHref>
+                <Card className="cursor-pointer">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
+                    <p className="text-xs text-muted-foreground">{stat.note}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ) : (
+              <Card 
+                key={stat.title} 
+                onClick={stat.action} 
+                className="cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') stat.action?.(); }}
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
-                <p className="text-xs text-muted-foreground">{stat.note}</p>
+                  {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
+                  <p className="text-xs text-muted-foreground">{stat.note}</p>
                 </CardContent>
-            </Card>
+              </Card>
+            )
           ))}
         </div>
 
