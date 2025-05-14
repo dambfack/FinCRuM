@@ -49,12 +49,12 @@ const mockContacts: Contact[] = [
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-const PIE_CHART_COLORS = [
-  'hsla(var(--chart-pie-1), 0.8)', // Teal for 'Open'
-  'hsla(var(--chart-pie-2), 0.8)', // Blue for 'Closed'
-  'hsla(var(--chart-pie-3), 0.8)', // Yellow/Orange for 'Missed'
-  'hsla(var(--chart-pie-4), 0.8)', // Gray for 'Other'
-  'hsla(var(--chart-5), 0.8)', // Fallback
+const PIE_CHART_CSS_VARS = [
+  'hsl(var(--chart-pie-1))', // Teal for 'Open'
+  'hsl(var(--chart-pie-2))', // Blue for 'Closed'
+  'hsl(var(--chart-pie-3))', // Yellow/Orange for 'Missed'
+  'hsl(var(--chart-pie-4))', // Gray for 'Other'
+  'hsl(var(--chart-5))', // Fallback
 ];
 
 
@@ -326,7 +326,7 @@ const Dashboard: FC = () => {
                             cy="50%"
                             labelLine={false}
                             outerRadius={100}
-                            fill="#8884d8"
+                            fill="#8884d8" // Default fill, will be overridden by Cell
                             dataKey="value"
                             label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
                                 const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -340,7 +340,11 @@ const Dashboard: FC = () => {
                             }}
                         >
                         {dealStatusChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={PIE_CHART_CSS_VARS[index % PIE_CHART_CSS_VARS.length]} 
+                              fillOpacity={0.8} 
+                            />
                         ))}
                         </Pie>
                         <Tooltip
@@ -486,6 +490,3 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
-
-
-    
