@@ -50,75 +50,89 @@ const montserrat = Montserrat({
 });
 
 const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const ultimateFallbackPngLogo = "/f_logo.png"; 
+  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming you have this in public/
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-  const [currentSrc, setCurrentSrc] = useState(ultimateFallbackPngLogo);
+  const [currentSrc, setCurrentSrc] = useState<string>(ultimateFallbackPngLogo);
   const [imgError, setImgError] = useState(false);
   const [attemptCounter, setAttemptCounter] = useState(0); // Key to force re-render for img
 
   useEffect(() => {
-    let newSrc = props.appLogoUrl || props.defaultAppLogoUrl || ultimateFallbackPngLogo;
-    console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? `Exists (len ${props.appLogoUrl.length})` : 'No'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? `Exists (len ${props.defaultAppLogoUrl.length})` : 'No'}. Attempting to set src to: ${newSrc.substring(0,70)}...`);
-    setCurrentSrc(newSrc);
-    setImgError(false);
-    setAttemptCounter(prev => prev + 1); 
+    let newSrc: string | null = null;
+    if (props.appLogoUrl) {
+      newSrc = props.appLogoUrl;
+      // console.log(`[Logo Component] useEffect update. Prioritizing appLogoUrl. Length: ${newSrc?.length}`);
+    } else if (props.defaultAppLogoUrl) {
+      newSrc = props.defaultAppLogoUrl;
+      // console.log(`[Logo Component] useEffect update. Using defaultAppLogoUrl. Length: ${newSrc?.length}`);
+    } else {
+      newSrc = ultimateFallbackPngLogo;
+      // console.log(`[Logo Component] useEffect update. Using ultimateFallbackPngLogo: ${newSrc}`);
+    }
+    
+    setCurrentSrc(newSrc || ultimateFallbackPngLogo); // Ensure currentSrc is never null
+    setImgError(false); // Reset error state when props change
+    setAttemptCounter(prev => prev + 1);
   }, [props.appLogoUrl, props.defaultAppLogoUrl]);
 
-  let logoToDisplay = currentSrc;
-  if (imgError && currentSrc !== absoluteUltimatePlaceholder) { // If currentSrc failed, try absolute fallback
-    logoToDisplay = absoluteUltimatePlaceholder;
-     console.log(`[Logo Component] IMAGE ERROR, falling back to absolute placeholder: ${logoToDisplay}`);
-  } else if (imgError && currentSrc === absoluteUltimatePlaceholder) {
-    // Already tried absolute placeholder and it failed, nothing more to do.
-    console.log(`[Logo Component] Absolute placeholder also failed. Rendering nothing or broken image icon.`);
-    return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs">!</div>; // Minimal error display
+  const handleError = () => {
+    console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
+    setImgError(true); // Signal an error occurred
+
+    // Determine next fallback based on currentSrc and props
+    if (currentSrc === props.appLogoUrl && props.defaultAppLogoUrl) {
+      console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
+      setCurrentSrc(props.defaultAppLogoUrl);
+    } else if (currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) {
+      // If appLogoUrl failed (and no defaultAppLogoUrl was available for fallback 1)
+      // OR if defaultAppLogoUrl failed
+      console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo");
+      setCurrentSrc(ultimateFallbackPngLogo);
+    } else if (currentSrc === ultimateFallbackPngLogo) {
+      console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder");
+      setCurrentSrc(absoluteUltimatePlaceholder);
+    } else {
+      // All fallbacks attempted or currentSrc is already the absolute placeholder and it also failed
+      console.error("[Logo Component] All fallbacks failed or absolute placeholder error.");
+      // To prevent infinite loop if absoluteUltimatePlaceholder also errors, don't reset currentSrc here.
+      // The UI will show the minimal error div below.
+      return; // Exit early, minimal error div will be shown by render logic
+    }
+    setAttemptCounter(prev => prev + 1); // Increment attempt counter for new src
+    setImgError(false); // Reset error flag for the new attempt
+  };
+  
+  // If currentSrc is the placeholder and imgError is true for it, render minimal error
+  if (currentSrc === absoluteUltimatePlaceholder && imgError) {
+    console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed. Rendering minimal error.`);
+    return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
-  const isDataUri = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('data:');
-  console.log(`[Logo Component] Rendering with. Source: ${logoToDisplay.substring(0,70)}... (isDataUri: ${isDataUri}, attempt: ${attemptCounter})`);
+  const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
+  const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
+  const unoptimized = isDataUri || isPlaceholderCo;
 
-  // Use standard img tag for data URI for more direct rendering and error feedback
-  if (isDataUri) {
-    console.log(`[Logo Component] Using standard <img> for data URI: ${logoToDisplay.substring(0, 70)}...`);
-    return (
-      <img
-        key={`std-img-${logoToDisplay}-${attemptCounter}`} // Key to help React re-render if src changes
-        src={logoToDisplay}
-        alt="App Logo (Data URI)"
-        width={24}
-        height={24}
-        className="h-6 w-6 object-contain"
-        onError={(e) => {
-          console.error("[Logo Component] Standard <img> tag onError with Data URI:", logoToDisplay.substring(0,70), e);
-          if (!imgError) setImgError(true); // Prevent infinite loops if placeholder also errors
-        }}
-      />
-    );
-  }
+  // console.log(`[Logo Component] Rendering NextImage. Source: ${currentSrc.substring(0,70)}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
 
-  // Use NextImage for non-data URIs (like /f_logo.png or https://placehold.co)
-  console.log(`[Logo Component] Using NextImage for src: ${logoToDisplay}`);
   return (
     <NextImage 
-      key={`next-img-${logoToDisplay}-${attemptCounter}`}
-      src={logoToDisplay} // This will be /f_logo.png or the placeholder.co URL
+      key={`${currentSrc}-${attemptCounter}`} // Key to help React re-render if src changes
+      src={currentSrc}
       alt={
-        logoToDisplay === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo"
-        : "App Logo Placeholder"
+        currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo (Default)" :
+        currentSrc === absoluteUltimatePlaceholder ? "Logo Placeholder" :
+        "App Logo"
       }
       width={24}
       height={24}
       className="h-6 w-6 object-contain"
       data-ai-hint={
-        logoToDisplay === ultimateFallbackPngLogo ? "fallback f logo"
-        : "logo placeholder"
+        currentSrc === ultimateFallbackPngLogo ? "default f logo" :
+        currentSrc === absoluteUltimatePlaceholder ? "placeholder" :
+        "custom app logo"
       }
-      unoptimized={logoToDisplay.startsWith('https://placehold.co')} 
-      onError={(e) => {
-        console.error("[Logo Component] Next/Image onError for SRC:", logoToDisplay, "CurrentTarget src:", e.currentTarget.src);
-        if (!imgError) setImgError(true); // Prevent infinite loops
-      }}
+      unoptimized={unoptimized} 
+      onError={handleError}
     />
   );
 };
@@ -147,9 +161,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
 
-  if (typeof window !== 'undefined') {
-    console.log("[AppContent] Rendering. Context values - appLogoUrl:", appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null');
-  }
+
+  // if (typeof window !== 'undefined') {
+  //   console.log("[AppContent] Rendering. Context values - appLogoUrl:", appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null');
+  // }
 
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,8 +226,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoCropSave = (croppedDataUri: string) => {
-    console.log("[AppContent] handleAppLogoCropSave called. CroppedDataUri length:", croppedDataUri.length);
-    console.log("[AppContent] Calling updateAppLogo from AuthContext...");
+    // console.log("[AppContent] handleAppLogoCropSave called. CroppedDataUri length:", croppedDataUri.length);
+    // console.log("[AppContent] Calling updateAppLogo from AuthContext...");
     updateAppLogo(croppedDataUri);
     setIsAppLogoCropperOpen(false);
     setAppLogoImageToCropSrc(null);
@@ -220,7 +235,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleSetCurrentLogoAsDefault = () => {
     if (appLogoUrl && currentUser?.role === 'partner') {
-      console.log("[AppContent] Calling setDefaultAppLogo from AuthContext with current appLogoUrl.");
+      // console.log("[AppContent] Calling setDefaultAppLogo from AuthContext with current appLogoUrl.");
       setDefaultAppLogo(appLogoUrl);
     } else {
       toast({ title: "Action Not Available", description: "No custom logo is currently set, or you don't have permission.", variant: "default"});

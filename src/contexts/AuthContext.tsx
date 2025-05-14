@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
   
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
-  const [defaultAppLogoUrl, _setDefaultAppLogoUrlInternal] = useState<string | null>(null);
+  const [_defaultAppLogoUrlInternal, _setDefaultAppLogoUrlInternal] = useState<string | null>(null);
   
   const { toast } = useToast();
 
@@ -40,13 +40,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(true);
 
     const storedAppLogo = getData<string>(DataItemType.AppLogo);
-    console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
+    // console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
 
     const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
-    console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
+    // console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
     if (storedDefaultAppLogo) {
       _setDefaultAppLogoUrlInternal(storedDefaultAppLogo);
     }
@@ -83,8 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     setIsLoadingAuth(false);
-    console.log('[AuthContext] Initial useEffect FINISHED.');
-  }, []); 
+    // console.log('[AuthContext] Initial useEffect FINISHED.');
+  }, [toast]); // Added toast to dependency array as it's used in the effect
 
   const login = async (selectedUserId: string, pinInput: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -184,57 +184,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateAppLogo = useCallback((dataUri: string | null) => {
     console.log('[AuthContext] updateAppLogo called. Data URI length:', dataUri?.length);
-    if (typeof window !== 'undefined') {
-      const beforeDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
-      console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', beforeDefault ? `len: ${beforeDefault.length}` : 'null', `Value: ${beforeDefault?.substring(0,70)}...`);
-    }
     
-    setAppLogoUrl(dataUri); // This updates the override
+    // if (typeof window !== 'undefined') {
+    //   const beforeDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
+    //   console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', beforeDefault ? `len: ${beforeDefault.length}` : 'null', `Value: ${beforeDefault?.substring(0,70)}...`);
+    // }
+    
+    setAppLogoUrl(dataUri); 
     
     if (dataUri) {
       saveData<string>(DataItemType.AppLogo, dataUri);
-      console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
+      // console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
       toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
     } else {
       if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.AppLogo);
-      console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
+      // console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
       toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
     }
 
-    if (typeof window !== 'undefined') {
-      const afterDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
-      console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', afterDefault ? `len: ${afterDefault.length}` : 'null', `Value: ${afterDefault?.substring(0,70)}...`);
-    }
+    // if (typeof window !== 'undefined') {
+    //   const afterDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
+    //   console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', afterDefault ? `len: ${afterDefault.length}` : 'null', `Value: ${afterDefault?.substring(0,70)}...`);
+    // }
   }, [toast]);
 
   const setDefaultAppLogo = useCallback((dataUri: string) => {
-    console.log("[AuthContext] setDefaultAppLogo CALLED. Data URI length:", dataUri?.length);
-    console.trace("[AuthContext] setDefaultAppLogo trace"); 
-    _setDefaultAppLogoUrlInternal(dataUri); // This updates the default logo state
-    saveData<string>(DataItemType.DefaultAppLogo, dataUri); // Saves the new default logo to storage
-    console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
-    updateAppLogo(null); // Clear the current override, so the new default becomes active
+    // console.log("[AuthContext] setDefaultAppLogo CALLED. Data URI length:", dataUri?.length);
+    // console.trace("[AuthContext] setDefaultAppLogo trace"); 
+    _setDefaultAppLogoUrlInternal(dataUri); 
+    saveData<string>(DataItemType.DefaultAppLogo, dataUri); 
+    // console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
+    updateAppLogo(null); 
     toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   }, [toast, updateAppLogo]);
 
-  const contextValue: AuthContextType = {
+  const contextValue = React.useMemo(() => ({
     currentUser,
     isAuthenticated,
     isLoadingAuth,
     pinSetupRequiredForUser,
     appLogoUrl,
-    defaultAppLogoUrl, 
+    defaultAppLogoUrl: _defaultAppLogoUrlInternal, 
     login,
     logout,
     completePinSetupAndLogin,
     updateUserProfilePicture,
     updateAppLogo,
     setDefaultAppLogo,
-  };
+  }), [
+    currentUser, 
+    isAuthenticated, 
+    isLoadingAuth, 
+    pinSetupRequiredForUser, 
+    appLogoUrl, 
+    _defaultAppLogoUrlInternal,
+    logout, // Ensure all functions used in context are dependencies
+    login,
+    completePinSetupAndLogin,
+    updateUserProfilePicture,
+    updateAppLogo,
+    setDefaultAppLogo
+  ]);
   
-  if (typeof window !== 'undefined') { // Gated console log
-    console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', defaultAppLogoUrl?.length);
-  }
+  // if (typeof window !== 'undefined') { 
+  //   console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length);
+  // }
 
 
   return (
