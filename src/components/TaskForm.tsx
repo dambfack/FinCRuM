@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { Task, DataItemType } from '../lib/types'; // Import DataItemType
+import type { Task, DataItemType, Contact, ChecklistItem } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { getData, saveData, parseDate } from '../lib/utils'; // Import helpers
+import { getData, saveData, parseDate } from '../lib/utils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Button } from './ui/button';
@@ -10,14 +11,20 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { cn } from '@/lib/utils';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
+import { X, PlusCircle, Trash2 } from 'lucide-react';
+import { Badge } from './ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 interface TaskFormProps {
   task?: Task;
-  onSave: () => void; // Callback after save
+  initialSelectedContactId?: string;
+  onSave: () => void;
   onCancel: () => void;
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
+const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onSave, onCancel }) => {
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [dueDate, setDueDate] = useState<Date | null>(
@@ -25,35 +32,112 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
   );
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task?.priority || 'medium');
   const [status, setStatus] = useState<'todo' | 'in-progress' | 'done'>(task?.status || 'todo');
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contactSearchInput, setContactSearchInput] = useState('');
+  const [contactSuggestions, setContactSuggestions] = useState<Contact[]>([]);
+  const [showContactSuggestions, setShowContactSuggestions] = useState(false);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
 
-  const { syncCalendar } = useDataSync(); // Assuming syncData is a broader cloud sync
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>(task?.checklist || []);
+  const [newChecklistItemText, setNewChecklistItemText] = useState('');
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const { syncCalendar } = useDataSync();
+  const { toast } = useToast();
 
   useEffect(() => {
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+    setAllContacts(loadedContacts);
+
+    let contactToSelect: Contact | null = null;
+    if (task?.associatedContactId) {
+      contactToSelect = loadedContacts.find(c => c.id === task.associatedContactId) || null;
+    } else if (initialSelectedContactId) {
+      contactToSelect = loadedContacts.find(c => c.id === initialSelectedContactId) || null;
+    }
+    setSelectedContact(contactToSelect);
+    if (contactToSelect) {
+      setContactSearchInput(`${contactToSelect.firstName} ${contactToSelect.lastName} (${contactToSelect.email})`);
+    } else {
+      setContactSearchInput('');
+    }
+
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
       setDueDate(task.dueDate ? parseDate(task.dueDate as string) : null);
       setPriority(task.priority || 'medium');
       setStatus(task.status || 'todo');
+      setChecklistItems(task.checklist || []);
+    } else {
+      // Reset for new task
+      setTitle('');
+      setDescription('');
+      setDueDate(null);
+      setPriority('medium');
+      setStatus('todo');
+      setChecklistItems([]);
     }
-  }, [task]);
+  }, [task, initialSelectedContactId]);
+
+  const handleContactSearchChange = (value: string) => {
+    setContactSearchInput(value);
+    if (value.trim().length > 0) {
+      setShowContactSuggestions(true);
+      const suggestions = allContacts.filter(contact =>
+        `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
+        contact.email.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 5);
+      setContactSuggestions(suggestions);
+    } else {
+      setShowContactSuggestions(true);
+      setContactSuggestions([]);
+      setSelectedContact(null); 
+    }
+  };
+
+  const selectContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setContactSearchInput(`${contact.firstName} ${contact.lastName} (${contact.email})`);
+    setShowContactSuggestions(false);
+    setContactSuggestions([]);
+  };
+
+  const clearSelectedContact = () => {
+    setSelectedContact(null);
+    setContactSearchInput('');
+    setContactSuggestions([]);
+    setShowContactSuggestions(false);
+  };
+
+  const handleAddChecklistItem = () => {
+    if (newChecklistItemText.trim() === '') {
+      toast({ title: "Cannot add empty item", variant: "destructive" });
+      return;
+    }
+    setChecklistItems(prev => [...prev, { id: `chk-${Date.now()}`, text: newChecklistItemText.trim(), completed: false }]);
+    setNewChecklistItemText('');
+  };
+
+  const handleToggleChecklistItem = (itemId: string) => {
+    setChecklistItems(prev => prev.map(item => item.id === itemId ? { ...item, completed: !item.completed } : item));
+  };
+
+  const handleRemoveChecklistItem = (itemId: string) => {
+    setChecklistItems(prev => prev.filter(item => item.id !== itemId));
+  };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!title.trim()) {
-      newErrors.title = 'Title is required';
-    }
+    if (!title.trim()) newErrors.title = 'Title is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     const newTaskData: Task = {
       id: task?.id || Date.now().toString(),
@@ -62,10 +146,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
       dueDate: dueDate ? dueDate.toISOString() : undefined,
       priority,
       status,
-      completed: status === 'done', // Set completed based on status
+      completed: status === 'done',
+      associatedContactId: selectedContact?.id || undefined,
+      checklist: checklistItems,
       createdAt: task?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      googleCalendarEventId: task?.googleCalendarEventId // Preserve existing ID
+      googleCalendarEventId: task?.googleCalendarEventId
     };
 
     const tasks = getData<Task[]>(DataItemType.Tasks) || [];
@@ -79,16 +165,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     saveData<Task[]>(DataItemType.Tasks, tasks);
     
     try {
-      // Sync this specific task with Google Calendar
-      // This part needs to be adapted based on how create/updateCalendarEvent is structured in google-calendar.ts
-      // For simplicity, assuming a function that handles both create and update based on googleCalendarEventId
-      // await syncTaskToGoogleCalendar(newTaskData); 
-      await syncCalendar(); // This might sync all items, adjust if granular control is needed
+      await syncCalendar();
     } catch (error) {
-        console.error('Failed to sync task to Google Calendar:', error);
+      console.error('Failed to sync task to Google Calendar:', error);
+      toast({ title: "Calendar Sync Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
-
-    onSave(); // Call the onSave callback
+    onSave();
   };
 
   const datePickerInputClassName = cn(
@@ -96,12 +178,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     "bg-neutral-100 dark:bg-neutral-900",
     "border-neutral-300 dark:border-neutral-700",
     "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
-    "mt-1" // Specific margin for this form
+    "mt-1"
   );
 
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
       <div>
         <Label htmlFor="title">Title</Label>
         <Input
@@ -123,33 +204,34 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
         />
       </div>
 
-      <div>
-        <Label htmlFor="dueDate">Due Date</Label>
-        <DatePicker
-          selected={dueDate}
-          onChange={(date: Date | null) => setDueDate(date)}
-          dateFormat="MM/dd/yyyy"
-          className={datePickerInputClassName}
-          wrapperClassName="w-full"
-          placeholderText="Select a due date"
-          popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="dueDate">Due Date</Label>
+          <DatePicker
+            selected={dueDate}
+            onChange={(date: Date | null) => setDueDate(date)}
+            dateFormat="MM/dd/yyyy"
+            className={datePickerInputClassName}
+            wrapperClassName="w-full"
+            placeholderText="Select a due date"
+            popperClassName="react-datepicker-popper"
+          />
+        </div>
+        <div>
+          <Label htmlFor="priority">Priority</Label>
+          <Select value={priority} onValueChange={(value: 'low' | 'medium' | 'high') => setPriority(value)}>
+              <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+          </Select>
+        </div>
       </div>
-
-      <div>
-        <Label htmlFor="priority">Priority</Label>
-        <Select value={priority} onValueChange={(value: 'low' | 'medium' | 'high') => setPriority(value)}>
-            <SelectTrigger className="w-full mt-1">
-                <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-        </Select>
-      </div>
-
+      
       <div>
         <Label htmlFor="status">Status</Label>
         <Select value={status} onValueChange={(value: 'todo' | 'in-progress' | 'done') => setStatus(value)}>
@@ -163,8 +245,108 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
             </SelectContent>
         </Select>
       </div>
+      
+      <div>
+        <Label htmlFor="associatedContactSearch">Associated Contact (Optional)</Label>
+        <Command shouldFilter={false} className="relative rounded-md border mt-1 overflow-visible">
+          <CommandInput
+            id="associatedContactSearch"
+            value={contactSearchInput}
+            onValueChange={handleContactSearchChange}
+            onFocus={() => setShowContactSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowContactSuggestions(false), 150)}
+            placeholder="Search contact name/email..."
+            className="h-10"
+          />
+          {showContactSuggestions && (
+            <div className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover shadow-lg">
+              <CommandList>
+                {contactSuggestions.length === 0 && contactSearchInput.trim().length > 0 ? (
+                  <CommandEmpty>No matching contacts found.</CommandEmpty>
+                ) : contactSuggestions.length === 0 && contactSearchInput.trim().length === 0 ? (
+                   <CommandEmpty>Type to search for contacts.</CommandEmpty>
+                ) : (
+                  contactSuggestions.map(contact => (
+                    <CommandItem
+                      key={contact.id}
+                      value={`${contact.firstName} ${contact.lastName} (${contact.email})`}
+                      onSelect={() => selectContact(contact)}
+                      className="cursor-pointer"
+                    >
+                      {contact.firstName} {contact.lastName} ({contact.email})
+                    </CommandItem>
+                  ))
+                )}
+              </CommandList>
+            </div>
+          )}
+        </Command>
+        {selectedContact && (
+          <div className="mt-2 flex items-center">
+            <Badge variant="secondary" className="flex items-center gap-1 text-sm">
+              {selectedContact.firstName} {selectedContact.lastName}
+              <button type="button" onClick={clearSelectedContact} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
+      </div>
 
-      <div className="flex justify-end space-x-2">
+      <div className="space-y-3">
+        <Label>Checklist (Optional)</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            value={newChecklistItemText}
+            onChange={(e) => setNewChecklistItemText(e.target.value)}
+            placeholder="Add new checklist item"
+            className="h-10 flex-grow"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newChecklistItemText.trim() !== '') {
+                e.preventDefault();
+                handleAddChecklistItem();
+              }
+            }}
+          />
+          <Button type="button" onClick={handleAddChecklistItem} variant="outline" size="icon" title="Add checklist item" disabled={!newChecklistItemText.trim()}>
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+        </div>
+        {checklistItems.length > 0 && (
+          <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2 bg-muted/30">
+            {checklistItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-2 p-1.5 hover:bg-muted/50 rounded">
+                <div className="flex items-center gap-2 flex-grow">
+                  <Checkbox
+                    id={`chk-${item.id}`}
+                    checked={item.completed}
+                    onCheckedChange={() => handleToggleChecklistItem(item.id)}
+                  />
+                  <Label
+                    htmlFor={`chk-${item.id}`}
+                    className={cn("text-sm cursor-pointer", item.completed && "line-through text-muted-foreground")}
+                  >
+                    {item.text}
+                  </Label>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveChecklistItem(item.id)}
+                  className="h-6 w-6 text-destructive/70 hover:text-destructive"
+                  title="Remove item"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>

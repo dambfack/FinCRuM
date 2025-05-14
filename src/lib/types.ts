@@ -1,5 +1,4 @@
 
-
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -45,9 +44,18 @@ export interface Contact {
   company?: string; // Optional
   address?: string; // Optional
   notes?: string; // Optional
-  status?: 'open' | 'closed' | 'missed' | 'other'; // New field for deal status
+  status?: 'open' | 'closed' | 'missed' | 'other';
   createdAt: Date | string;
   updatedAt: Date | string;
+}
+
+/**
+ * Represents a single item in a task's checklist.
+ */
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
 }
 
 /**
@@ -61,6 +69,8 @@ export interface Task {
   completed: boolean;
   priority?: 'high' | 'medium' | 'low'; // Optional
   status?: 'todo' | 'in-progress' | 'done'; // Optional
+  associatedContactId?: string; // Optional: ID of the contact this task is for
+  checklist?: ChecklistItem[]; // Optional: Array of checklist items
   createdAt: Date | string;
   updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
@@ -73,7 +83,7 @@ export interface Reminder {
   id: string; // Unique identifier
   title: string;
   description?: string; // Optional
-  dateTime: Date | string; // Changed from remindAt for consistency
+  dateTime: Date | string;
   completed: boolean;
   associatedContactId?: string; // Optional: ID of the contact this reminder is for
   createdAt: Date | string;
@@ -100,10 +110,10 @@ export interface Appointment {
   id: string; // Unique identifier
   title: string;
   description?: string; // Optional
-  date: Date | string; // Date part
-  time: string; // Time part (e.g., "10:00")
-  start?: Date | string; // Combined datetime, can be derived or primary
-  end?: Date | string;   // Combined datetime, can be derived or primary
+  date: Date | string;
+  time: string;
+  start?: Date | string;
+  end?: Date | string;
   location?: string; // Optional
   invitedContacts?: string[]; // Array of contact IDs (can be derived from attendeesList or kept for legacy)
   attendeesList?: AppointmentAttendee[]; // New field to store detailed attendees

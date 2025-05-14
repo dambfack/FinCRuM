@@ -1,3 +1,4 @@
+
 // src/components/CustomerDetailModal.tsx
 'use client';
 
@@ -6,20 +7,21 @@ import type { Contact } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, cn } from '@/lib/utils';
-import { User, Mail, Phone, Building, FileText, Tag, CalendarDays, Edit, CalendarPlus, BellPlus } from 'lucide-react';
+import { User, Mail, Phone, Building, FileText, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus } from 'lucide-react';
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
   isOpen: boolean;
   onClose: () => void;
   onEditRequest?: (contact: Contact) => void; 
-  onAddAppointmentRequest?: (contact: Contact) => void; // New prop
-  onAddReminderRequest?: (contact: Contact) => void; // New prop
+  onAddAppointmentRequest?: (contact: Contact) => void;
+  onAddReminderRequest?: (contact: Contact) => void;
+  onAddTaskRequest?: (contact: Contact) => void; // New prop for adding task
 }
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value) return null;
-  const displayValue = value instanceof Date ? formatDateTime(value) : String(value);
+  const displayValue = value instanceof Date ? formatDateTime(value as string) : String(value); // Ensure string for formatDateTime
   return (
     <div className={cn("flex items-start space-x-3 py-2", className)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -44,7 +46,8 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     onClose, 
     onEditRequest, 
     onAddAppointmentRequest, 
-    onAddReminderRequest 
+    onAddReminderRequest,
+    onAddTaskRequest // New prop
 }) => {
   if (!contact) return null;
 
@@ -59,14 +62,21 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   const handleAddAppointmentClick = () => {
     if (contact && onAddAppointmentRequest) {
         onAddAppointmentRequest(contact);
-        onClose(); // Close detail modal after triggering appointment form
+        onClose();
     }
   };
 
   const handleAddReminderClick = () => {
     if (contact && onAddReminderRequest) {
         onAddReminderRequest(contact);
-        onClose(); // Close detail modal after triggering reminder form
+        onClose();
+    }
+  };
+
+  const handleAddTaskClick = () => {
+    if (contact && onAddTaskRequest) {
+        onAddTaskRequest(contact);
+        onClose();
     }
   };
 
@@ -94,6 +104,12 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {onAddTaskRequest && (
+            <Button type="button" variant="outline" onClick={handleAddTaskClick} className="h-11 px-4 py-3">
+              <ListPlus className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          )}
           {onAddAppointmentRequest && (
             <Button type="button" variant="outline" onClick={handleAddAppointmentClick} className="h-11 px-4 py-3">
               <CalendarPlus className="mr-2 h-4 w-4" />

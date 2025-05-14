@@ -1,59 +1,61 @@
+
 import React, { useEffect, useState } from 'react';
-import { Task, DataItemType } from '../lib/types';
+import type { Task, DataItemType, Contact } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { getData, saveData, deleteItemById, formatDateTime } from '../lib/utils'; // Added formatDateTime
+import { getData, saveData, deleteItemById, formatDateTime } from '../lib/utils';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Trash2, Edit, Eye } from 'lucide-react';
+import { Trash2, Edit, User, CheckSquare, Square } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 
 
 interface TaskListProps {
-  // onViewTask: (task: Task) => void; // Keep if a detailed view modal is planned
   onEditTask: (task: Task) => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({
-  // onViewTask,
-  onEditTask,
-}) => {
+const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  // const { triggerSync } = useDataSync(); // syncData from useDataSync is now called in TaskForm
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
-    const fetchTasks = () => { // Removed async
+    const fetchTasksAndContacts = () => {
       const storedTasks = getData<Task[]>(DataItemType.Tasks) || [];
-      setTasks(storedTasks);
+      const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      setTasks(storedTasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
+      setContacts(storedContacts);
     };
-    fetchTasks();
-  }, []); // Re-fetch if a task is saved (though TaskForm handles its own save)
+    fetchTasksAndContacts();
+  }, []);
 
-  const handleDeleteTask = (taskId: string) => { // Removed async
+  const handleDeleteTask = (taskId: string) => {
     const updatedTasks = deleteItemById<Task>(DataItemType.Tasks, taskId);
     if (updatedTasks) {
       setTasks(updatedTasks);
     }
-    // Consider if triggerSync is needed here or handled globally/periodically
   };
 
-  const handleToggleComplete = (taskId: string) => { // Removed async
+  const handleToggleComplete = (taskId: string) => {
     const updatedTasks = tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed, status: !task.completed ? 'done' : 'todo' } : task
     );
     setTasks(updatedTasks);
     saveData<Task[]>(DataItemType.Tasks, updatedTasks);
-    // Consider if triggerSync is needed here
   };
 
   const getPriorityBadgeVariant = (priority?: 'low' | 'medium' | 'high') => {
     switch (priority) {
       case 'high': return 'destructive';
-      case 'medium': return 'secondary'; // or 'warning' if you add that variant
+      case 'medium': return 'secondary';
       case 'low': return 'outline';
       default: return 'outline';
     }
+  };
+
+  const getContactName = (contactId?: string) => {
+    if (!contactId) return null;
+    const contact = contacts.find(c => c.id === contactId);
+    return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
   };
 
   if (tasks.length === 0) {
@@ -86,10 +88,10 @@ const TaskList: React.FC<TaskListProps> = ({
                   {task.description}
                 </p>
               )}
-              <div className="flex items-center space-x-2 mt-1.5 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs text-muted-foreground">
                 {task.dueDate && (
                   <span className={cn(task.completed && "line-through")}>
-                    Due: {formatDateTime(task.dueDate)}
+                    Due: {formatDateTime(task.dueDate as string)}
                   </span>
                 )}
                 {task.priority && (
@@ -102,12 +104,30 @@ const TaskList: React.FC<TaskListProps> = ({
                     {task.status.replace('-', ' ')}
                   </Badge>
                 )}
+                {task.associatedContactId && (
+                  <Badge variant="outline" className={cn("flex items-center gap-1", task.completed && "opacity-60")}>
+                    <User className="h-3 w-3" /> {getContactName(task.associatedContactId)}
+                  </Badge>
+                )}
               </div>
+              {task.checklist && task.checklist.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Checklist:</p>
+                  <ul className="space-y-0.5 pl-2">
+                    {task.checklist.map(item => (
+                      <li key={item.id} className="flex items-center gap-1.5 text-xs">
+                        {item.completed ? <CheckSquare className="h-3.5 w-3.5 text-green-600" /> : <Square className="h-3.5 w-3.5 text-muted-foreground/70" />}
+                        <span className={cn(item.completed && "line-through text-muted-foreground")}>{item.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                   <p className="text-xs text-muted-foreground/80 pl-2">
+                      ({task.checklist.filter(i => i.completed).length} of {task.checklist.length} completed)
+                    </p>
+                </div>
+              )}
             </div>
             <div className="flex space-x-1 rtl:space-x-reverse shrink-0">
-              {/* <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewTask(task)}>
-                <Eye className="h-4 w-4" />
-              </Button> */}
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditTask(task)}>
                 <Edit className="h-4 w-4" />
               </Button>

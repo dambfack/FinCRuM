@@ -5,7 +5,7 @@
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, MoreVertical, Eye, Edit, CalendarPlus, BellPlus } from 'lucide-react';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -27,7 +27,6 @@ import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'd
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -71,7 +70,7 @@ const Dashboard: FC = () => {
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
+    const [allContactsState, setAllContactsState] = useState<Contact[]>([]); // Holds all contacts for various calculations
     const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
 
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
@@ -93,7 +92,7 @@ const Dashboard: FC = () => {
     const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
     const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
 
-    const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null); // For pre-filling forms
+    const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
 
     const isGoogleCalendarLinked = isGoogleDriveConnected;
 
@@ -222,7 +221,7 @@ const Dashboard: FC = () => {
         toast({ title: "Data Refreshed", description: "Dashboard data has been reloaded." });
     }, [loadDashboardData, toast]);
 
-    const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); refreshData(); };
+    const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); setContactForNewActivity(null); refreshData(); };
     const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); setContactForNewActivity(null); refreshData(); };
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); setContactForNewActivity(null); refreshData(); };
     
@@ -246,18 +245,26 @@ const Dashboard: FC = () => {
     const handleAddAppointmentRequestFromDetail = (contact: Contact) => {
         setIsCustomerDetailModalOpen(false);
         setContactForNewActivity(contact);
-        setEditingAppointment(undefined); // Clear any existing edit data
+        setEditingAppointment(undefined);
         setIsAppointmentFormOpen(true);
     };
     
     const handleAddReminderRequestFromDetail = (contact: Contact) => {
         setIsCustomerDetailModalOpen(false);
         setContactForNewActivity(contact);
-        setEditingReminder(undefined); // Clear any existing edit data
+        setEditingReminder(undefined);
         setIsReminderFormOpen(true);
     };
+
+    const handleAddTaskRequestFromDetail = (contact: Contact) => {
+        setIsCustomerDetailModalOpen(false);
+        setContactForNewActivity(contact);
+        setEditingTask(undefined);
+        setIsTaskFormOpen(true);
+    }
     
-    const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
+    const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70"; // General purpose
+    const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70"; // For TaskForm
     const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
@@ -299,6 +306,11 @@ const Dashboard: FC = () => {
       }
     };
 
+    const getContactName = (contactId?: string) => {
+        if (!contactId) return null;
+        const contact = allContactsState.find(c => c.id === contactId);
+        return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
+    };
 
     const statCards = [
       { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts in system", link: "/customers" },
@@ -591,12 +603,12 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-           <Button variant="default" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+           <Button variant="default" onClick={() => { setEditingTask(undefined); setContactForNewActivity(null); setIsTaskFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
               <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
            </Button>
         </CardHeader>
         <CardContent>
-            <TaskList onEditTask={(task) => { setEditingTask(task); setIsTaskFormOpen(true); }} />
+            <TaskList onEditTask={(task) => { setEditingTask(task); setContactForNewActivity(null); setIsTaskFormOpen(true); }} />
         </CardContent>
       </Card>
 
@@ -658,14 +670,32 @@ const Dashboard: FC = () => {
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {todaysTasksList.map(task => (
                         <li key={task.id} className="p-2 border-b text-sm">
-                            <div className="flex justify-between items-center">
-                                <span className={cn(task.status === 'done' && "line-through text-muted-foreground")}>{task.title}</span>
-                                <div>
-                                    {task.priority && <Badge variant={getTaskPriorityBadgeVariant(task.priority)} className="capitalize text-xs mr-1">{task.priority}</Badge>}
+                            <div className="flex justify-between items-start mb-1">
+                                <span className={cn("font-medium", task.status === 'done' && "line-through text-muted-foreground")}>{task.title}</span>
+                                <div className="flex items-center gap-1.5">
+                                    {task.priority && <Badge variant={getTaskPriorityBadgeVariant(task.priority)} className="capitalize text-xs">{task.priority}</Badge>}
                                     <Badge variant={task.status === 'done' ? 'default' : 'secondary'} className="capitalize text-xs">{task.status?.replace('-', ' ') || 'To Do'}</Badge>
                                 </div>
                             </div>
-                             {task.description && <p className={cn("text-xs text-muted-foreground mt-1", task.status === 'done' && "line-through")}>{task.description}</p>}
+                            {task.associatedContactId && (
+                                <p className="text-xs text-muted-foreground">
+                                  For: {getContactName(task.associatedContactId) || 'N/A'}
+                                </p>
+                            )}
+                            {task.description && <p className={cn("text-xs text-muted-foreground mt-0.5", task.status === 'done' && "line-through")}>{task.description}</p>}
+                            {task.checklist && task.checklist.length > 0 && (
+                                <div className="mt-1.5 space-y-0.5">
+                                    <p className="text-xs font-medium text-muted-foreground/80">Checklist ({task.checklist.filter(i=>i.completed).length}/{task.checklist.length}):</p>
+                                    <ul className="pl-2">
+                                    {task.checklist.map(item => (
+                                        <li key={item.id} className="flex items-center gap-1.5 text-xs">
+                                        {item.completed ? <CheckSquare className="h-3 w-3 text-green-500" /> : <Square className="h-3 w-3 text-muted-foreground/60" />}
+                                        <span className={cn(item.completed && "line-through text-muted-foreground/70")}>{item.text}</span>
+                                        </li>
+                                    ))}
+                                    </ul>
+                                </div>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -684,9 +714,14 @@ const Dashboard: FC = () => {
                         <li key={appt.id} className="p-2 border-b text-sm">
                             <p className="font-medium">{appt.title}</p>
                             <p className="text-xs text-muted-foreground">
-                                {formatDateTime(appt.date).split(',')[1]} 
+                                {formatDateTime(appt.date as string).split(',')[1]} 
                                 {appt.location && ` - ${appt.location}`}
                             </p>
+                            {appt.attendeesList && appt.attendeesList.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Attendees: {appt.attendeesList.map(a => a.displayName || a.email).join(', ')}
+                                </p>
+                            )}
                             {appt.description && <p className="text-xs text-muted-foreground mt-1">{appt.description}</p>}
                         </li>
                     ))}
@@ -695,19 +730,21 @@ const Dashboard: FC = () => {
         </DialogContent>
     </Dialog>
 
-    <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-        <DialogContent className={dialogContentClassName}>
+    <Dialog open={isTaskFormOpen} onOpenChange={(open) => { if(!open) {setEditingTask(undefined); setContactForNewActivity(null);} setIsTaskFormOpen(open);}}>
+        <DialogContent className={taskDialogContentClassName}>
             <DialogHeader>
                 <DialogTitle className="font-heading tracking-wide">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                {contactForNewActivity && !editingTask && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
             </DialogHeader>
             <TaskForm
                 task={editingTask}
+                initialSelectedContactId={contactForNewActivity?.id}
                 onSave={handleSaveTask}
-                onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); }}
+                onCancel={() => { setIsTaskFormOpen(false); setEditingTask(undefined); setContactForNewActivity(null);}}
              />
         </DialogContent>
       </Dialog>
-    <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
+    <Dialog open={isReminderFormOpen} onOpenChange={(open) => { if(!open) {setEditingReminder(undefined); setContactForNewActivity(null);} setIsReminderFormOpen(open);}}>
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
                     <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
@@ -721,7 +758,7 @@ const Dashboard: FC = () => {
                 />
             </DialogContent>
       </Dialog>
-    <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
+    <Dialog open={isAppointmentFormOpen} onOpenChange={(open) => { if(!open) {setEditingAppointment(undefined); setContactForNewActivity(null);} setIsAppointmentFormOpen(open);}}>
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
                   <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
@@ -746,6 +783,7 @@ const Dashboard: FC = () => {
         onEditRequest={handleEditRequestFromDetail} 
         onAddAppointmentRequest={handleAddAppointmentRequestFromDetail}
         onAddReminderRequest={handleAddReminderRequestFromDetail}
+        onAddTaskRequest={handleAddTaskRequestFromDetail} // Added for tasks
       />
 
     <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {
