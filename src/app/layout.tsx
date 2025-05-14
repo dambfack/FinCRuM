@@ -26,14 +26,15 @@ import {
 import Link from 'next/link';
 import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/hooks/use-toast"; // Added import for useToast
+import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react'; // Added useState
+import ImageCropperModal from '@/components/ImageCropperModal'; // Import the cropper modal
 
 const anton = Anton({
   subsets: ['latin'],
@@ -57,12 +58,15 @@ const Logo = () => (
 function AppContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser, updateUserProfilePicture } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast(); // useToast hook now correctly referenced
+  const { toast } = useToast();
 
-  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const [isCropperModalOpen, setIsCropperModalOpen] = useState(false);
+  const [imageToCropSrc, setImageToCropSrc] = useState<string | null>(null);
+
+  const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 2 * 1024 * 1024) { 
         toast({
           title: "Image Too Large",
           description: "Please select an image smaller than 2MB.",
@@ -73,11 +77,22 @@ function AppContent({ children }: { children: React.ReactNode }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        updateUserProfilePicture(dataUri);
+        setImageToCropSrc(dataUri);
+        setIsCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
+
+  const handleCropSave = (croppedImageUrl: string) => {
+    updateUserProfilePicture(croppedImageUrl);
+    setIsCropperModalOpen(false);
+    setImageToCropSrc(null);
+  };
+
 
   if (isLoadingAuth) {
     return (
@@ -100,6 +115,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <>
     <SidebarProvider defaultPinnedOpen={true}>
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
@@ -108,7 +124,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <Logo />
               <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
-            {/* Desktop collapse trigger moved to footer */}
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -222,7 +237,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleProfilePictureChange}
+                    onChange={handleProfilePictureFileChange}
                     accept="image/*"
                     className="hidden"
                   />
@@ -256,6 +271,19 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <Toaster />
       </SidebarInset>
     </SidebarProvider>
+    {imageToCropSrc && (
+        <ImageCropperModal
+          isOpen={isCropperModalOpen}
+          onClose={() => {
+            setIsCropperModalOpen(false);
+            setImageToCropSrc(null);
+          }}
+          imageSrc={imageToCropSrc}
+          onCropSave={handleCropSave}
+          aspectRatio={1 / 1}
+        />
+      )}
+    </>
   );
 }
 
