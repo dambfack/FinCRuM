@@ -55,18 +55,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
-    // Case 1: Employee, no PIN set yet, and no PIN was entered (first login attempt)
-    if (userToLogin.role === 'employee' && !userToLogin.pin && pinInput === '') {
+    // Scenario 1: User has no PIN set - they must set one.
+    // This applies to both partners and employees.
+    if (!userToLogin.pin) {
+      toast({ 
+        title: "PIN Setup Required", 
+        description: `Welcome ${userToLogin.name}! Please set your 4-digit PIN to continue.`, 
+        variant: "default" 
+      });
       setPinSetupRequiredForUser(userToLogin);
       setIsAuthenticated(false);
       setCurrentUser(null);
       localStorage.removeItem(DataItemType.CurrentUserId);
-      // Toast will be shown by the SetPinScreen or calling component
       setIsLoadingAuth(false);
       return false; // Indicate login not complete, PIN setup needed
     }
 
-    // Case 2: User has a PIN set, and PIN was entered correctly
+    // Scenario 2: User has a PIN set, and entered PIN matches.
     if (userToLogin.pin && pinInput === userToLogin.pin) {
       setCurrentUser(userToLogin);
       setIsAuthenticated(true);
@@ -77,20 +82,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return true;
     }
 
-    // Case 3: Login failed
-    if (userToLogin.role === 'partner' && !userToLogin.pin) {
-        toast({ title: "Login Failed", description: "Partner account has no PIN set. Please contact an administrator.", variant: "destructive" });
-    } else if (userToLogin.role === 'employee' && !userToLogin.pin && pinInput !== '') {
-        // This case means an employee without a PIN *tried* to enter one.
-        // We should still guide them to PIN setup.
-        toast({ title: "PIN Setup Required", description: `Welcome ${userToLogin.name}! Please set your PIN to continue.`, variant: "default" });
-        setPinSetupRequiredForUser(userToLogin); // Trigger PIN setup
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-    } else {
-      // Generic PIN mismatch
-      toast({ title: "Login Failed", description: "Invalid PIN.", variant: "destructive" });
-    }
+    // Scenario 3: User has a PIN set, but entered PIN does not match.
+    // This covers all other cases, including empty pinInput when a PIN is set.
+    toast({ title: "Login Failed", description: "Invalid PIN.", variant: "destructive" });
     setIsLoadingAuth(false);
     return false;
   };
