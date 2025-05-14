@@ -24,14 +24,16 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast"; // Added import for useToast
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import React, { useRef } from 'react';
 
 const anton = Anton({
   subsets: ['latin'],
@@ -53,7 +55,29 @@ const Logo = () => (
 );
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser } = useAuth();
+  const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser, updateUserProfilePicture } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast(); // useToast hook now correctly referenced
+
+  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "Image Too Large",
+          description: "Please select an image smaller than 2MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUri = reader.result as string;
+        updateUserProfilePicture(dataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   if (isLoadingAuth) {
     return (
@@ -84,7 +108,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <Logo />
               <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
-             {/* Sidebar trigger is now at the bottom */}
+            {/* Desktop collapse trigger moved to footer */}
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -195,6 +219,22 @@ function AppContent({ children }: { children: React.ReactNode }) {
                       </div>
                     </div>
                   )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleProfilePictureChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-3"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImageUp className="mr-2 h-4 w-4" />
+                    Change Profile Picture
+                  </Button>
                 </div>
                 <BackgroundImageSwitcher />
                 {isAuthenticated && (

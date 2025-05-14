@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react'; // Added useState
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,9 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, FileAttachmentMeta, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, saveData, createNotification } from '@/lib/utils'; // Added createNotification
+import { getData, saveData, createNotification, getFirstInitial } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageUp } from 'lucide-react';
 
 const contactDealStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
 
@@ -41,15 +43,14 @@ const customerFormSchema = z.object({
   company: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
-  status: contactDealStatusSchema.optional(), // Deal status
+  status: contactDealStatusSchema.optional(),
   attachments: z.array(fileAttachmentMetaSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   assignedToUserId: z.string().optional(),
-  profilePictureUrl: z.string().url({ message: "Please enter a valid URL for the profile picture." }).optional().or(z.literal('')),
-  // Approval flow fields - not directly in form, but handled by logic
+  profilePictureUrl: z.string().optional().or(z.literal('')), // Can be data URI or empty
   contactStatus: z.enum(['approved', 'pending_approval', 'pending_deletion']).optional(),
-  changeProposal: z.any().optional(), // Using z.any() for Partial<Contact> for simplicity
+  changeProposal: z.any().optional(),
   lastModifiedByRole: z.enum(['partner', 'employee']).optional(),
 });
 
@@ -63,8 +64,10 @@ interface CustomerFormProps {
 const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const { toast } = useToast();
   const router = useRouter();
-  const { currentUser } = useAuth(); // Get current user
+  const { currentUser } = useAuth();
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -78,9 +81,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         ...initialData,
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
-        status: initialData.status || undefined, // Deal status
+        status: initialData.status || undefined,
         attachments: initialData.attachments || [],
-        assignedToUserId: initialData.assignedToUserId || undefined, // Let placeholder show if undefined
+        assignedToUserId: initialData.assignedToUserId || "none", // Ensure "none" for placeholder
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
@@ -94,9 +97,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       company: '',
       address: '',
       notes: '',
-      status: undefined, // Deal status
+      status: undefined,
       attachments: [],
-      assignedToUserId: undefined, // Default to undefined for placeholder
+      assignedToUserId: "none", // Default to "none" for placeholder
       contactStatus: 'approved',
       changeProposal: undefined,
       lastModifiedByRole: currentUser?.role,
@@ -112,12 +115,17 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
         attachments: initialData.attachments || [],
-        assignedToUserId: initialData.assignedToUserId || undefined,
+        assignedToUserId: initialData.assignedToUserId || "none",
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
         profilePictureUrl: initialData.profilePictureUrl || '',
       });
+      if (initialData.profilePictureUrl) {
+        setImagePreview(initialData.profilePictureUrl);
+      } else {
+        setImagePreview(null);
+      }
     } else {
       form.reset({
         firstName: '',
@@ -129,14 +137,36 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         notes: '',
         status: undefined,
         attachments: [],
-        assignedToUserId: undefined,
+        assignedToUserId: "none",
         contactStatus: 'approved',
         changeProposal: undefined,
         lastModifiedByRole: currentUser?.role,
         profilePictureUrl: '',
       });
+      setImagePreview(null);
     }
   }, [initialData, form, currentUser]);
+
+  const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "Image Too Large",
+          description: "Please select an image smaller than 2MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUri = reader.result as string;
+        form.setValue('profilePictureUrl', dataUri);
+        setImagePreview(dataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit = (data: CustomerFormValues) => {
     if (!currentUser) {
@@ -159,12 +189,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         company: data.company,
         address: data.address,
         notes: data.notes,
-        status: data.status, // Deal status
+        status: data.status,
         assignedToUserId: finalAssignedToUserId,
         profilePictureUrl: data.profilePictureUrl || undefined,
-        // attachments are handled by FileAttachmentManager
     };
-
 
     if (currentUser.role === 'employee') {
         const baseContactDetails: Contact = {
@@ -172,25 +200,21 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             ...formInputAsContactShape,
             createdAt: initialData?.createdAt || now,
             updatedAt: now,
-            attachments: initialData?.attachments || [], // Keep existing attachments unless explicitly managed
+            attachments: initialData?.attachments || [],
             contactStatus: 'pending_approval',
             lastModifiedByRole: 'employee',
-            changeProposal: formInputAsContactShape, // Employee's proposed changes
-        } as Contact; // Added 'as Contact' to satisfy type, assuming other required fields are there
+            changeProposal: formInputAsContactShape,
+        } as Contact;
 
         if (isNewContact) {
             customerDataToSave = baseContactDetails;
         } else {
-            // For existing contact, preserve original fields not being proposed for change
             customerDataToSave = {
-                ...(initialData as Contact), // Start with original approved data
-                ...baseContactDetails, // Apply ID, timestamps, approval status, and proposal
-                // Crucially, the main fields (firstName, etc.) are NOT directly updated here
-                // They are in `changeProposal`. The `initialData` here is the *approved* version.
+                ...(initialData as Contact),
+                ...baseContactDetails,
             };
         }
 
-        // Notify partners
         const partners = allUsers.filter(u => u.role === 'partner');
         partners.forEach(partner => {
             createNotification({
@@ -205,7 +229,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         });
         toast({ title: "Changes Submitted", description: "Your changes have been submitted for partner approval." });
 
-    } else { // Partner is saving
+    } else { 
         customerDataToSave = {
             id: contactId,
             ...formInputAsContactShape,
@@ -214,7 +238,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             attachments: initialData?.attachments || [],
             contactStatus: 'approved',
             lastModifiedByRole: 'partner',
-            changeProposal: undefined, // Clear any pending proposals
+            changeProposal: undefined,
         } as Contact;
          toast({ title: initialData ? "Customer Updated" : "Customer Added", description: `${customerDataToSave.firstName} ${customerDataToSave.lastName} has been saved.` });
     }
@@ -228,10 +252,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       onSave?.(customerDataToSave);
-      if (!initialData && currentUser.role === 'partner') form.reset(); // Only reset for partner on new, employee form stays for pending
-      else if (!initialData && currentUser.role === 'employee') { /* Potentially clear form or indicate pending state */ }
-
-
+      if (!initialData && currentUser.role === 'partner') {
+        form.reset();
+        setImagePreview(null);
+      }
     } catch (error) {
       console.error("Error saving customer:", error);
       toast({
@@ -250,7 +274,35 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and overflow */}
+          <CardContent className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="flex flex-col items-center space-y-3 mb-4">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={imagePreview || undefined} alt={`${form.getValues('firstName') || ''} ${form.getValues('lastName') || ''}`} />
+                <AvatarFallback className="text-3xl">
+                  {getFirstInitial(form.getValues('firstName')) || '?'}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleProfilePictureFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageUp className="mr-2 h-4 w-4" />
+                {imagePreview ? 'Change Picture' : 'Upload Picture'}
+              </Button>
+              {form.formState.errors.profilePictureUrl && (
+                <p className="text-sm text-destructive">{form.formState.errors.profilePictureUrl.message}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
@@ -307,7 +359,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             />
              <FormField
               control={form.control}
-              name="status" // Deal status
+              name="status"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Deal Status (Optional)</FormLabel>
@@ -341,18 +393,18 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                 </FormItem>
               )}
             />
+            {/* Hidden profilePictureUrl form field, its value is managed by file upload */}
             <FormField
-              control={form.control}
-              name="profilePictureUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profile Picture URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://example.com/image.jpg" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+                control={form.control}
+                name="profilePictureUrl"
+                render={({ field }) => (
+                    <FormItem className="hidden">
+                        <FormControl>
+                            <Input type="text" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
             />
             <FormField
               control={form.control}
@@ -386,14 +438,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign to User (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || "none"}> {/* Use value prop and handle undefined for placeholder */}
+                  <Select onValueChange={field.onChange} value={field.value || "none"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select user to assign" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem> {/* Changed value from "" to "none" */}
+                      <SelectItem value="none">None</SelectItem>
                       {allUsers.map(user => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name} ({user.role})
@@ -420,3 +472,4 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
 };
 
 export default CustomerForm;
+

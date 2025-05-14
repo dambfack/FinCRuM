@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
+  updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,7 +28,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Attempt to restore session on initial load
     setIsLoadingAuth(true);
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
@@ -37,7 +37,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
       } else {
-        // Clear invalid stored ID
         localStorage.removeItem(DataItemType.CurrentUserId);
       }
     }
@@ -55,8 +54,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
-    // Scenario 1: User has no PIN set - they must set one.
-    // This applies to both partners and employees.
     if (!userToLogin.pin) {
       toast({ 
         title: "PIN Setup Required", 
@@ -68,22 +65,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setCurrentUser(null);
       localStorage.removeItem(DataItemType.CurrentUserId);
       setIsLoadingAuth(false);
-      return false; // Indicate login not complete, PIN setup needed
+      return false; 
     }
 
-    // Scenario 2: User has a PIN set, and entered PIN matches.
     if (userToLogin.pin && pinInput === userToLogin.pin) {
       setCurrentUser(userToLogin);
       setIsAuthenticated(true);
-      setPinSetupRequiredForUser(null); // Clear any pending PIN setup
+      setPinSetupRequiredForUser(null); 
       saveData<string>(DataItemType.CurrentUserId, userToLogin.id);
       toast({ title: "Login Successful", description: `Welcome back, ${userToLogin.name}!` });
       setIsLoadingAuth(false);
       return true;
     }
 
-    // Scenario 3: User has a PIN set, but entered PIN does not match.
-    // This covers all other cases, including empty pinInput when a PIN is set.
     toast({ title: "Login Failed", description: "Invalid PIN.", variant: "destructive" });
     setIsLoadingAuth(false);
     return false;
@@ -103,12 +97,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     users[userIndex] = { ...users[userIndex], pin: newPin };
     saveData<User[]>(DataItemType.Users, users);
 
-    // Now log the user in
     setCurrentUser(users[userIndex]);
     setIsAuthenticated(true);
     setPinSetupRequiredForUser(null);
     saveData<string>(DataItemType.CurrentUserId, users[userIndex].id);
     toast({ title: "PIN Set Successfully", description: `Welcome, ${users[userIndex].name}! You are now logged in.` });
+    setIsLoadingAuth(false);
+    return true;
+  };
+
+  const updateUserProfilePicture = async (dataUri: string): Promise<boolean> => {
+    if (!currentUser) {
+      toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
+      return false;
+    }
+    setIsLoadingAuth(true);
+    let users = getData<User[]>(DataItemType.Users) || [];
+    const userIndex = users.findIndex(u => u.id === currentUser.id);
+
+    if (userIndex === -1) {
+      toast({ title: "Error", description: "Current user not found in user list.", variant: "destructive" });
+      setIsLoadingAuth(false);
+      return false;
+    }
+
+    const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
+    users[userIndex] = updatedUser;
+    saveData<User[]>(DataItemType.Users, users);
+    setCurrentUser(updatedUser); // Update current user in context
+
+    toast({ title: "Profile Picture Updated", description: "Your profile picture has been changed." });
     setIsLoadingAuth(false);
     return true;
   };
@@ -122,7 +140,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser, login, logout, completePinSetupAndLogin }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser, login, logout, completePinSetupAndLogin, updateUserProfilePicture }}>
       {children}
     </AuthContext.Provider>
   );
@@ -135,3 +153,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
