@@ -49,22 +49,22 @@ const montserrat = Montserrat({
 });
 
 // Updated Logo component with user-provided SVG code
-const Logo = () => (
+const Logo = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 1200 1200"
-    className="h-6 w-6 text-accent" // Controls size and inherits color
+    {...props}
   >
     <path
       style={{
-        stroke: "currentColor", // Changed from #000
+        stroke: "currentColor",
         strokeWidth: 19.2,
         strokeDasharray: "none",
         strokeLinecap: "butt",
         strokeDashoffset: 0,
         strokeLinejoin: "miter",
         strokeMiterlimit: 4,
-        fill: "currentColor", // Changed from #000
+        fill: "currentColor",
         fillRule: "nonzero",
         opacity: 1,
       }}
@@ -147,7 +147,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
         <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-              <Logo />
+              <Logo className="h-6 w-6 text-accent" />
             </Link>
           </div>
         </SidebarHeader>
@@ -222,7 +222,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger />
             <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-              <Logo />
+              <Logo className="h-6 w-6 text-accent" />
               <span className="font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
           </div>
@@ -345,5 +345,4 @@ export default function RootLayout({
     </html>
   );
 }
-
     
