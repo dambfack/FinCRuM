@@ -38,32 +38,40 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   const isTruncateRequested = className?.includes('truncate');
 
   if (React.isValidElement(value)) {
-    // If the value is already a React element (e.g., a Badge), render it directly.
-    // Truncation for complex elements should be handled within those elements if needed.
     valueNode = value;
   } else if (value instanceof Date) {
     const dateString = formatDateTime(value as string);
+    const pClasses = ["text-sm", "text-foreground"];
+    if (isTruncateRequested) {
+      // Apply individual properties for robust truncation
+      pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
+    }
     valueNode = (
-      <p className={cn("text-sm text-foreground", isTruncateRequested && "truncate")} title={isTruncateRequested ? dateString : undefined}>
+      <p className={cn(pClasses)} title={isTruncateRequested ? dateString : undefined}>
         {dateString}
       </p>
     );
   } else if (value !== null && value !== undefined) {
     const valueString = String(value);
+    const pClasses = ["text-sm", "text-foreground"];
+    if (isTruncateRequested) {
+      // Apply individual properties for robust truncation
+      pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
+    }
     valueNode = (
-      <p className={cn("text-sm text-foreground", isTruncateRequested && "truncate")} title={isTruncateRequested ? valueString : undefined}>
+      <p className={cn(pClasses)} title={isTruncateRequested ? valueString : undefined}>
         {valueString}
       </p>
     );
   } else {
-    // This case should ideally not be reached due to the initial check, but good for completeness
     return null;
   }
 
+  // Remove 'truncate' from the outer div's className if it was intended for the value
+  const outerDivClassName = className?.replace('truncate', '').trim();
+
   return (
-    // The outer className (which might include 'truncate') is applied to this root div.
-    // 'truncate' on the root div sets white-space: nowrap for its children.
-    <div className={cn("flex items-start space-x-3 py-2", className)}>
+    <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
       <div className="min-w-0 flex-1"> {/* This div is crucial for allowing its children to be truncated */}
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -237,3 +245,5 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
+
+    
