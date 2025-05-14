@@ -132,7 +132,7 @@ body {
   @apply backdrop-blur-xl; /* Increased blur */
 }
 .dark .react-datepicker {
-  background-color: hsl(var(--popover) / 0.7);
+  background-color: hsl(var(--popover) / 0.7) !important; /* Ensure dark popover bg is applied */
   border-color: hsla(var(--glass-border) / 0.15);
   color: #f0f0f0 !important; /* General text color for dark mode datepicker */
 }
@@ -156,6 +156,7 @@ body {
 .dark .react-datepicker__current-month,
 .dark .react-datepicker-time__header {
   color: #ffffff !important; /* Pure white for better visibility */
+  background-color: transparent !important; /* Ensure header is transparent */
 }
 
 .react-datepicker__day-name {
@@ -282,22 +283,30 @@ body {
 }
 .dark .react-datepicker__time-container {
   border-left-color: hsla(var(--border) / 0.2);
-  @apply bg-transparent; /* Ensure container itself is transparent */
+  background-color: transparent !important; /* Ensure container itself is transparent */
 }
 
 .react-datepicker__time-container .react-datepicker__time {
-  @apply bg-transparent;
+  @apply bg-transparent; /* Ensure this layer is also transparent */
 }
+.dark .react-datepicker__time-container .react-datepicker__time {
+  background-color: transparent !important;
+}
+
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
-  @apply w-full p-0 bg-transparent; /* Ensure time-box is transparent */
+  @apply w-full p-0; /* Ensure time-box is transparent */
 }
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+  background-color: transparent !important;
+}
+
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
-  @apply list-none m-0 p-0 h-[calc(198px)] overflow-y-scroll bg-transparent; /* Ensure UL is transparent */
+  @apply list-none m-0 p-0 h-[calc(198px)] overflow-y-scroll; /* Ensure UL is transparent */
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--accent) / 0.4) transparent;
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
-   @apply bg-transparent; /* Explicitly set transparent background for dark mode */
+   background-color: transparent !important; /* Explicitly set transparent background for dark mode */
    scrollbar-color: hsl(var(--accent) / 0.5) transparent;
 }
 
@@ -314,7 +323,7 @@ body {
   background-color: hsl(var(--accent) / 0.15);
 }
 .dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
-  background-color: hsl(var(--accent) / 0.3);
+  background-color: hsl(var(--accent) / 0.3) !important;
   color: #ffffff !important;
 }
 
