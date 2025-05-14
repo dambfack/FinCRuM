@@ -159,7 +159,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               </TableCell>
               <TableCell className="text-foreground/90">{formatDateTime(contact.updatedAt as string)}</TableCell>
               <TableCell className="text-right">
-                <DropdownMenu onOpenChange={(open) => console.log('[CustomerTable] Dropdown open state changed:', open, 'for contact:', contact.id)}>
+                <DropdownMenu 
+                  onOpenChange={(open) => console.log('[CustomerTable] Dropdown open state changed:', open, 'for contact:', contact.id)}
+                >
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="ghost" 
@@ -175,9 +177,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2 select-none">
                       <Eye className="h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2 select-none"
-                     // disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'} // Re-enable this after fixing click
-                    >
+                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2 select-none">
                       <Edit className="h-4 w-4" /> Edit
                     </DropdownMenuItem>
                      <DropdownMenuItem onClick={() => onAddAppointment(contact)} className="gap-2 select-none">
@@ -188,19 +188,19 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        alert('Delete clicked for ' + contact.id);
+                        alert('Delete clicked for ' + contact.id); // Kept for immediate UI feedback
                         console.log('[CustomerTable] INSIDE DropdownMenuItem onClick for Delete. Contact ID:', contact.id);
-                        // onDelete(contact.id); // Temporarily commented out to test alert
+                        onDelete(contact.id); // Re-enabled this call
                       }}
                       className={cn(
-                        "select-none", // Removed gap-2 as icon is temporarily removed
+                        "gap-2 select-none", 
                         (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner')
                           ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10"
                           : "text-destructive focus:text-destructive focus:bg-destructive/10"
                       )}
                     >
-                      {/* <Trash2 className="h-4 w-4" />  Temporarily removed icon */}
-                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion Text' : 'Delete Text'}
+                      <Trash2 className="h-4 w-4" /> 
+                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete Contact'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -214,3 +214,4 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 };
 
 export default CustomerTable;
+
