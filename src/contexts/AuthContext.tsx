@@ -29,26 +29,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
+  
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
-  const [_defaultAppLogoUrl, _setDefaultAppLogoUrlInternal] = useState<string | null>(null); // Renamed for clarity
+  const [defaultAppLogoUrl, _setDefaultAppLogoUrlInternal] = useState<string | null>(null);
+  
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('[AuthContext] Initial useEffect running - ONCE.');
     setIsLoadingAuth(true);
-    console.log('[AuthContext] Initial useEffect running...');
 
     const storedAppLogo = getData<string>(DataItemType.AppLogo);
-    console.log('[AuthContext] Initial storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
+    console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
 
     const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
-    console.log('[AuthContext] Initial storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
+    console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
     if (storedDefaultAppLogo) {
       _setDefaultAppLogoUrlInternal(storedDefaultAppLogo);
     }
-
 
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
@@ -62,7 +63,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       users = [defaultAdmin];
       saveData<User[]>(DataItemType.Users, users);
-      console.log('[AuthContext] No users found. Created default Admin (partner) with PIN 0000. Saved to localStorage:', DataItemType.Users);
       toast({
         title: "Default Admin Created",
         description: "No users found. Default 'Admin' (partner) created with PIN 0000.",
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || []; // Re-fetch
+      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || [];
       const user = currentUsersOnLoad.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
@@ -83,7 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     setIsLoadingAuth(false);
-  }, []); // Empty dependency array to run once on mount
+    console.log('[AuthContext] Initial useEffect FINISHED.');
+  }, []); 
 
   const login = async (selectedUserId: string, pinInput: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -146,8 +147,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     users[userIndex] = { ...users[userIndex], pin: newPin };
     saveData<User[]>(DataItemType.Users, users);
-    console.log('[AuthContext] completePinSetupAndLogin: Saved updated users with new PIN to localStorage:', DataItemType.Users);
-
 
     setCurrentUser(users[userIndex]);
     setIsAuthenticated(true);
@@ -176,7 +175,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
     users[userIndex] = updatedUser;
     saveData<User[]>(DataItemType.Users, users);
-    console.log('[AuthContext] updateUserProfilePicture: Saved updated users with new profile picture to localStorage:', DataItemType.Users);
     setCurrentUser(updatedUser);
 
     toast({ title: "Profile Picture Updated", description: "Your profile picture has been changed." });
@@ -186,24 +184,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateAppLogo = useCallback((dataUri: string | null) => {
     console.log('[AuthContext] updateAppLogo called. Data URI length:', dataUri?.length);
-    setAppLogoUrl(dataUri);
+    if (typeof window !== 'undefined') {
+      const beforeDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
+      console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', beforeDefault ? `len: ${beforeDefault.length}` : 'null', `Value: ${beforeDefault?.substring(0,70)}...`);
+    }
+    
+    setAppLogoUrl(dataUri); // This updates the override
+    
     if (dataUri) {
       saveData<string>(DataItemType.AppLogo, dataUri);
       console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
       toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
     } else {
-      localStorage.removeItem(DataItemType.AppLogo);
+      if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.AppLogo);
       console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
       toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
+    }
+
+    if (typeof window !== 'undefined') {
+      const afterDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
+      console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', afterDefault ? `len: ${afterDefault.length}` : 'null', `Value: ${afterDefault?.substring(0,70)}...`);
     }
   }, [toast]);
 
   const setDefaultAppLogo = useCallback((dataUri: string) => {
     console.log("[AuthContext] setDefaultAppLogo CALLED. Data URI length:", dataUri?.length);
-    _setDefaultAppLogoUrlInternal(dataUri);
-    saveData<string>(DataItemType.DefaultAppLogo, dataUri);
+    console.trace("[AuthContext] setDefaultAppLogo trace"); 
+    _setDefaultAppLogoUrlInternal(dataUri); // This updates the default logo state
+    saveData<string>(DataItemType.DefaultAppLogo, dataUri); // Saves the new default logo to storage
     console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
-    updateAppLogo(null); // Clear the current override, new default will show
+    updateAppLogo(null); // Clear the current override, so the new default becomes active
     toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   }, [toast, updateAppLogo]);
 
@@ -213,7 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoadingAuth,
     pinSetupRequiredForUser,
     appLogoUrl,
-    defaultAppLogoUrl: _defaultAppLogoUrl,
+    defaultAppLogoUrl, 
     login,
     logout,
     completePinSetupAndLogin,
@@ -221,8 +231,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateAppLogo,
     setDefaultAppLogo,
   };
-
-  console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrl?.length);
+  
+  if (typeof window !== 'undefined') { // Gated console log
+    console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', defaultAppLogoUrl?.length);
+  }
 
 
   return (
@@ -239,4 +251,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
