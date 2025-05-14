@@ -104,6 +104,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
         <TableBody>
           {contacts.map((contact) => {
             const contactStatusInfo = getContactStatusDisplay(contact.contactStatus);
+            const isPartnerAndPendingDeletion = currentUser?.role === 'partner' && contact.contactStatus === 'pending_deletion';
+            const deleteActionText = isPartnerAndPendingDeletion ? 'Cancel Deletion' : 'Delete Contact';
+            const deleteActionStyle = isPartnerAndPendingDeletion
+              ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" // Style for "Cancel Deletion"
+              : "text-destructive focus:text-destructive focus:bg-destructive/10"; // Style for "Delete Contact" / "Request Deletion"
+
             return (
             <TableRow
               key={contact.id}
@@ -191,18 +197,13 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log('[CustomerTable] Delete DropdownMenuItem clicked for contact ID:', contact.id);
+                        console.log('[CustomerTable] Delete DropdownMenuItem clicked for contact ID:', contact.id, "Calling onDelete prop.");
                         onDelete(contact.id);
                       }}
-                      className={cn(
-                        "gap-2 select-none",
-                        (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner')
-                          ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10"
-                          : "text-destructive focus:text-destructive focus:bg-destructive/10"
-                      )}
+                      className={cn("gap-2 select-none", deleteActionStyle)}
                     >
                       <Trash2 className="h-4 w-4" />
-                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete Contact'}
+                      {deleteActionText}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -216,3 +217,4 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 };
 
 export default CustomerTable;
+
