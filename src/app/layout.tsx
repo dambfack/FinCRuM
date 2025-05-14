@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Anton, Montserrat } from 'next/font/google'; // Import Montserrat font
+import { Anton, Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
+import { ThemeProvider } from '@/components/ThemeProvider'; // Import ThemeProvider
 import {
   SidebarProvider,
   Sidebar,
@@ -15,25 +16,23 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Settings } from 'lucide-react'; // Renamed UserPlus to UserPlusIcon
-import SyncManager from "@/components/SyncManager";
+import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Settings, Sun, Moon, Laptop } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
+import ThemeSwitcher from '@/components/ThemeSwitcher'; // Import ThemeSwitcher
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
-// Configure Anton font
 const anton = Anton({
   subsets: ['latin'],
   weight: ['400'],
   variable: '--font-anton',
 });
 
-// Configure Montserrat font
 const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'], // Include various weights
-  variable: '--font-montserrat', // Create a CSS variable
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-montserrat',
 });
 
 export const metadata: Metadata = {
@@ -54,103 +53,111 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          GeistSans.variable, // Keep Geist Sans as a fallback or for specific utility
+          GeistSans.variable,
           anton.variable,
-          montserrat.variable, // Add Montserrat font variable
-          'antialiased font-sans flex min-h-screen flex-col' // font-sans will now default to Montserrat via Tailwind config
+          montserrat.variable,
+          'antialiased font-sans flex min-h-screen flex-col'
         )}
       >
-        <SidebarProvider>
-          <Sidebar collapsible="icon" className="bg-sidebar-background/50 dark:bg-sidebar-background/30 glass-effect-sidebar">
-            <SidebarHeader>
-              <div className="flex items-center justify-between">
-                 <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-                    <Logo />
-                    <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
-                  </Link>
-                  <SidebarTrigger className="md:hidden" />
-              </div>
-            </SidebarHeader>
-            <SidebarContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Dashboard">
-                    <Link href="/">
-                      <LayoutDashboard />
-                      <span>Dashboard</span>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <Sidebar collapsible="icon" className="bg-sidebar-background/50 dark:bg-sidebar-background/30 glass-effect-sidebar">
+              <SidebarHeader>
+                <div className="flex items-center justify-between">
+                   <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
+                      <Logo />
+                      <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Data Grid">
-                    <Link href="/data-grid">
-                      <Table />
-                      <span>Data Grid</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                   <SidebarMenuButton asChild tooltip="Add Customer">
-                     <Link href="/add-customer">
-                       <UserPlusIcon />
-                       <span>Add Customer</span>
-                     </Link>
-                   </SidebarMenuButton>
-                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Import Data">
-                    <Link href="/import">
-                      <Upload />
-                      <span>Import Data</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarContent>
-          </Sidebar>
-          <SidebarInset className={cn(
-            "flex flex-col",
-            "bg-background/10 dark:bg-background/5 backdrop-blur-sm"
-          )}>
-            <header className={cn(
-              "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
-              "bg-transparent glass-effect-header"
+                    <SidebarTrigger className="md:hidden" />
+                </div>
+              </SidebarHeader>
+              <SidebarContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Dashboard">
+                      <Link href="/">
+                        <LayoutDashboard />
+                        <span>Dashboard</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Data Grid">
+                      <Link href="/data-grid">
+                        <Table />
+                        <span>Data Grid</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                   <SidebarMenuItem>
+                     <SidebarMenuButton asChild tooltip="Add Customer">
+                       <Link href="/add-customer">
+                         <UserPlusIcon />
+                         <span>Add Customer</span>
+                       </Link>
+                     </SidebarMenuButton>
+                   </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Import Data">
+                      <Link href="/import">
+                        <Upload />
+                        <span>Import Data</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarContent>
+            </Sidebar>
+            <SidebarInset className={cn(
+              "flex flex-col",
+              "bg-background/10 dark:bg-background/5 backdrop-blur-sm"
             )}>
-              <div className="flex items-center gap-2 md:hidden">
-                <SidebarTrigger />
-                 <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-                   <Logo />
-                   <span className="font-heading tracking-wide">Finsculpt CRM</span>
-                 </Link>
-              </div>
-              <div className="hidden md:block text-xl font-semibold font-heading tracking-wide">Finsculpt CRM</div>
+              <header className={cn(
+                "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
+                "bg-transparent glass-effect-header"
+              )}>
+                <div className="flex items-center gap-2 md:hidden">
+                  <SidebarTrigger />
+                   <Link href="/" className="font-semibold text-lg flex items-center gap-2">
+                     <Logo />
+                     <span className="font-heading tracking-wide">Finsculpt CRM</span>
+                   </Link>
+                </div>
+                <div className="hidden md:block text-xl font-semibold font-heading tracking-wide">Finsculpt CRM</div>
 
-              <div className="flex items-center gap-3">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">
-                      <Settings className="h-5 w-5" />
-                      <span className="sr-only">Settings</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
-                    <BackgroundImageSwitcher />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </header>
-            <main className={cn(
-              "flex-1 overflow-y-auto p-4 md:p-6",
-              "bg-transparent"
-            )}>
-                {children}
-            </main>
-            <Toaster />
-          </SidebarInset>
-        </SidebarProvider>
+                <div className="flex items-center gap-3">
+                  <ThemeSwitcher />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Settings</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
+                      <BackgroundImageSwitcher />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </header>
+              <main className={cn(
+                "flex-1 overflow-y-auto p-4 md:p-6",
+                "bg-transparent" 
+              )}>
+                  {children}
+              </main>
+              <Toaster />
+            </SidebarInset>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
