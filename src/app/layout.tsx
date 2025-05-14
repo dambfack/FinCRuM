@@ -88,7 +88,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleCropSave = (croppedImageUrl: string) => {
-    updateUserProfilePicture(croppedImageUrl);
+    if (currentUser) {
+        updateUserProfilePicture(croppedImageUrl);
+    }
     setIsCropperModalOpen(false);
     setImageToCropSrc(null);
   };
@@ -119,12 +121,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultPinnedOpen={true}>
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
               <Logo />
-              {/* <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span> Removed text */}
             </Link>
-             {/* SidebarTrigger was here, moved to footer */}
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -265,7 +265,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </header>
         <main className={cn(
           "flex-1 overflow-y-auto p-4 md:p-6",
-          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5" // Updated for subtle main content glass effect
+          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5"
         )}>
           {children}
         </main>
