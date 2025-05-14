@@ -14,12 +14,14 @@ interface AuthContextType {
   pinSetupRequiredForUser: User | null;
   appLogoUrl: string | null;
   defaultAppLogoUrl: string | null;
+  headerLogoUrl: string | null; // New: for header text logo
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
   updateAppLogo: (dataUri: string | null) => void;
   setDefaultAppLogo: (dataUri: string) => void;
+  updateHeaderLogo: (dataUri: string | null) => void; // New: for header text logo
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
   const [_defaultAppLogoUrlInternal, _setDefaultAppLogoUrlInternal] = useState<string | null>(null);
+  const [headerLogoUrl, setHeaderLogoUrl] = useState<string | null>(null); // New state for header logo
   
   const { toast } = useToast();
 
@@ -40,15 +43,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(true);
 
     const storedAppLogo = getData<string>(DataItemType.AppLogo);
-    // console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
+    console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
 
     const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
-    // console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
+    console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
     if (storedDefaultAppLogo) {
       _setDefaultAppLogoUrlInternal(storedDefaultAppLogo);
+    }
+
+    const storedHeaderLogo = getData<string>(DataItemType.HeaderLogo); // Load header logo
+    console.log('[AuthContext] Initial load - storedHeaderLogo:', storedHeaderLogo ? `Length: ${storedHeaderLogo.length}` : 'null');
+    if (storedHeaderLogo) {
+      setHeaderLogoUrl(storedHeaderLogo);
     }
 
     let users = getData<User[]>(DataItemType.Users) || [];
@@ -83,8 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     setIsLoadingAuth(false);
-    // console.log('[AuthContext] Initial useEffect FINISHED.');
-  }, [toast]); // Added toast to dependency array as it's used in the effect
+  }, []); 
 
   const login = async (selectedUserId: string, pinInput: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -185,38 +193,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateAppLogo = useCallback((dataUri: string | null) => {
     console.log('[AuthContext] updateAppLogo called. Data URI length:', dataUri?.length);
     
-    // if (typeof window !== 'undefined') {
-    //   const beforeDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
-    //   console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', beforeDefault ? `len: ${beforeDefault.length}` : 'null', `Value: ${beforeDefault?.substring(0,70)}...`);
-    // }
+    console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', localStorage.getItem(DataItemType.DefaultAppLogo) ? `len: ${localStorage.getItem(DataItemType.DefaultAppLogo)!.length}` : 'null');
     
     setAppLogoUrl(dataUri); 
     
     if (dataUri) {
       saveData<string>(DataItemType.AppLogo, dataUri);
-      // console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
+      console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
       toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
     } else {
       if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.AppLogo);
-      // console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
+      console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
       toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
     }
-
-    // if (typeof window !== 'undefined') {
-    //   const afterDefault = localStorage.getItem(DataItemType.DefaultAppLogo);
-    //   console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', afterDefault ? `len: ${afterDefault.length}` : 'null', `Value: ${afterDefault?.substring(0,70)}...`);
-    // }
+     console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', localStorage.getItem(DataItemType.DefaultAppLogo) ? `len: ${localStorage.getItem(DataItemType.DefaultAppLogo)!.length}` : 'null');
   }, [toast]);
 
   const setDefaultAppLogo = useCallback((dataUri: string) => {
-    // console.log("[AuthContext] setDefaultAppLogo CALLED. Data URI length:", dataUri?.length);
-    // console.trace("[AuthContext] setDefaultAppLogo trace"); 
+    console.trace("[AuthContext] setDefaultAppLogo trace"); 
     _setDefaultAppLogoUrlInternal(dataUri); 
     saveData<string>(DataItemType.DefaultAppLogo, dataUri); 
-    // console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
+    console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
     updateAppLogo(null); 
     toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   }, [toast, updateAppLogo]);
+
+  const updateHeaderLogo = useCallback((dataUri: string | null) => {
+    console.log('[AuthContext] updateHeaderLogo called. Data URI length:', dataUri?.length);
+    setHeaderLogoUrl(dataUri);
+    if (dataUri) {
+      saveData<string>(DataItemType.HeaderLogo, dataUri);
+      toast({ title: "Header Logo Updated", description: "The header text logo has been changed." });
+    } else {
+      if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.HeaderLogo);
+      toast({ title: "Header Logo Cleared", description: "The custom header text logo has been removed." });
+    }
+  }, [toast]);
 
   const contextValue = React.useMemo(() => ({
     currentUser,
@@ -225,12 +237,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pinSetupRequiredForUser,
     appLogoUrl,
     defaultAppLogoUrl: _defaultAppLogoUrlInternal, 
+    headerLogoUrl, // New
     login,
     logout,
     completePinSetupAndLogin,
     updateUserProfilePicture,
     updateAppLogo,
     setDefaultAppLogo,
+    updateHeaderLogo, // New
   }), [
     currentUser, 
     isAuthenticated, 
@@ -238,17 +252,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pinSetupRequiredForUser, 
     appLogoUrl, 
     _defaultAppLogoUrlInternal,
-    logout, // Ensure all functions used in context are dependencies
+    headerLogoUrl, // New
+    logout, 
     login,
     completePinSetupAndLogin,
     updateUserProfilePicture,
     updateAppLogo,
-    setDefaultAppLogo
+    setDefaultAppLogo,
+    updateHeaderLogo, // New
   ]);
   
-  // if (typeof window !== 'undefined') { 
-  //   console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length);
-  // }
+  if (typeof window !== 'undefined') { 
+    console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length, 'headerLogoUrl len:', headerLogoUrl?.length);
+  }
 
 
   return (

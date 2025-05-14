@@ -197,6 +197,7 @@ export enum DataItemType {
   Notifications = 'notifications', // For notifications
   AppLogo = 'appLogo', // For storing custom app logo data URI (current override)
   DefaultAppLogo = 'defaultAppLogo', // For storing the user-set default app logo
+  HeaderLogo = 'headerLogo', // For storing custom header text logo
 }
 
 /**
@@ -215,6 +216,7 @@ export interface LocalData {
   lastSyncTime?: string; // ISO string
   appLogo?: string; // Data URI for custom app logo (current override)
   defaultAppLogo?: string; // Data URI for the user-set default app logo
+  headerLogo?: string; // Data URI for custom header text logo
 }
 
 /**
@@ -250,4 +252,3 @@ export interface Notification {
   read: boolean;
   payload?: any; // For approval_request, might contain proposed changes or original item details
 }
-
