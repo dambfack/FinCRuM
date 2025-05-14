@@ -68,7 +68,7 @@ const BackgroundImageSwitcher: React.FC = () => {
 
   return (
     <div className="space-y-4 p-1">
-      <h4 className="font-medium leading-none text-sm">Change Background Image</h4>
+      <h4 className="font-medium leading-none text-sm font-heading">Change Background Image</h4>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <Label htmlFor="imageUrl" className="text-xs">Image URL</Label>

@@ -6,43 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync';
 import { cn, formatDateTime, getData, saveData } from '@/lib/utils';
-import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react';
+import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw as RefreshCwIcon, AlertTriangle, HelpCircle } from 'lucide-react'; // Renamed RefreshCw
 import { Skeleton } from '@/components/ui/skeleton';
 
 const SyncManager = () => {
   const {
-    isSyncing,
+    isSyncing, // This is a boolean from the original hook, now covered by syncStatus
     conflicts,
     lastSyncTime,
     performSync,
     resolveConflict,
     initiateAuthentication,
-    syncStatus, // Added syncStatus
+    syncStatus, 
+    isGoogleDriveConnected, // Now directly from the hook
+    isOneDriveConnected,   // Now directly from the hook
   } = useDataSync();
-  const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
 
-  const [isOneDriveConnected, setIsOneDriveConnected] = useState<boolean | null>(null);
-  const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState<boolean | null>(null);
+  const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
   
   const isAnyProviderConfigured = useCallback(() => {
     return isOneDriveConnected || isGoogleDriveConnected;
   }, [isOneDriveConnected, isGoogleDriveConnected]);
-
-  useEffect(() => {
-    const checkConfiguration = () => {
-      if (typeof window !== 'undefined') {
-        const oneDriveConfigured = !!localStorage.getItem('onedriveAccessToken');
-        const googleDriveConfigured = !!localStorage.getItem('googledriveAccessToken');
-        setIsOneDriveConnected(oneDriveConfigured);
-        setIsGoogleDriveConnected(googleDriveConfigured);
-      }
-    };
-    checkConfiguration();
-
-    // Optional: Listen to storage events if tokens can be set by other tabs/windows
-    // window.addEventListener('storage', checkConfiguration);
-    // return () => window.removeEventListener('storage', checkConfiguration);
-  }, [isSyncing]); // Re-check config if sync status changes, as auth might fail and clear tokens
 
   const renderProviderStatusIcon = () => {
     if (isOneDriveConnected === null || isGoogleDriveConnected === null) {
@@ -71,7 +55,7 @@ const SyncManager = () => {
       return `${conflicts.length} conflict(s) need resolution.`;
     }
     if (lastSyncTime) {
-      const timeAgo = formatDateTime(lastSyncTime); // Or use formatDistanceToNow
+      const timeAgo = formatDateTime(lastSyncTime);
       return `Last sync: ${timeAgo}`;
     }
     if (isAnyProviderConfigured()) {
@@ -94,7 +78,7 @@ const SyncManager = () => {
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:space-x-3 p-3 bg-secondary/50 rounded-md">
-                 <div className="min-w-0 flex-1"> {/* Allow text to take space and wrap/truncate */}
+                 <div className="min-w-0 flex-1"> 
                      <p className="text-sm font-medium">Sync Status</p>
                       {(isOneDriveConnected === null || isGoogleDriveConnected === null) ? (
                           <Skeleton className="h-4 w-48 mt-1" />
@@ -111,12 +95,12 @@ const SyncManager = () => {
                       )}
                  </div>
                  <Button
-                    onClick={() => performSync()} // Wrapped in arrow function
+                    onClick={() => performSync()} 
                     disabled={syncStatus === 'syncing' || (isOneDriveConnected === null || isGoogleDriveConnected === null) || !isAnyProviderConfigured()}
                     size="sm"
                     className="flex-shrink-0 self-start sm:self-center whitespace-nowrap" 
                  >
-                    <RefreshCw className={cn("mr-2 h-4 w-4", syncStatus === 'syncing' && "animate-spin")} />
+                    <RefreshCwIcon className={cn("mr-2 h-4 w-4", syncStatus === 'syncing' && "animate-spin")} />
                     {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
                   </Button>
            </div>
@@ -124,7 +108,7 @@ const SyncManager = () => {
             {(isOneDriveConnected === false || isGoogleDriveConnected === false) && !(isOneDriveConnected === null || isGoogleDriveConnected === null) && (
                  <Card className="border-dashed border-accent">
                     <CardHeader>
-                        <CardTitle className="text-base">Connect Cloud Storage</CardTitle>
+                        <CardTitle className="text-base font-heading">Connect Cloud Storage</CardTitle>
                         <CardDescription>Connect your OneDrive or Google Drive account to enable data backup and sync.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-4">

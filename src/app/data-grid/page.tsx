@@ -12,6 +12,8 @@ export default function DataGridPage() {
       lastName: 'Doe',
       email: 'john.doe@example.com',
       phone: '123-456-7890',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
       id: '2',
@@ -19,6 +21,8 @@ export default function DataGridPage() {
       lastName: 'Smith',
       email: 'jane.smith@example.com',
       phone: '987-654-3210',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
     {
       id: '3',
@@ -26,6 +30,8 @@ export default function DataGridPage() {
       lastName: 'Johnson',
       email: 'alice.johnson@example.com',
       phone: '555-123-4567',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     },
   ]);
 
@@ -33,7 +39,7 @@ export default function DataGridPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Contact Data</h1>
+      <h1 className="text-3xl font-bold font-heading">Contact Data</h1>
       <DataGrid data={contacts} columns={columns} />
     </div>
   );

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
+import { Anton } from 'next/font/google'; // Import Anton font
 import './globals.css';
 import { cn } from '@/lib/utils';
 import {
@@ -20,6 +21,13 @@ import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+
+// Configure Anton font
+const anton = Anton({
+  subsets: ['latin'],
+  weight: ['400'], // Anton typically only has a 400 weight
+  variable: '--font-anton', // Create a CSS variable
+});
 
 export const metadata: Metadata = {
   title: 'Finsculpt CRM',
@@ -43,6 +51,7 @@ export default function RootLayout({
       <body
         className={cn(
           GeistSans.variable,
+          anton.variable, // Add Anton font variable
           'antialiased font-sans flex min-h-screen flex-col'
         )}
       >
@@ -52,7 +61,7 @@ export default function RootLayout({
               <div className="flex items-center justify-between">
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                     <Logo />
-                    <span className="group-data-[state=collapsed]:hidden">Finsculpt CRM</span>
+                    <span className="group-data-[state=collapsed]:hidden font-heading">Finsculpt CRM</span>
                   </Link>
                   <SidebarTrigger className="md:hidden" />
               </div>
@@ -96,23 +105,22 @@ export default function RootLayout({
           </Sidebar>
           <SidebarInset className={cn(
             "flex flex-col",
-            "bg-background/10 dark:bg-background/5 backdrop-blur-sm" 
+            "bg-background/10 dark:bg-background/5 backdrop-blur-sm"
           )}>
             <header className={cn(
               "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
-              "bg-transparent glass-effect-header" 
+              "bg-transparent glass-effect-header"
             )}>
               <div className="flex items-center gap-2 md:hidden">
                 <SidebarTrigger />
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
                    <Logo />
-                   Finsculpt CRM
+                   <span className="font-heading">Finsculpt CRM</span>
                  </Link>
               </div>
-              <div className="hidden md:block text-xl font-semibold">Finsculpt CRM</div>
-              
+              <div className="hidden md:block text-xl font-semibold font-heading">Finsculpt CRM</div>
+
               <div className="flex items-center gap-3">
-                {/* SyncManager is now part of the Dashboard, or can be a more compact status indicator here */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">

@@ -43,7 +43,7 @@ const mockContacts: Contact[] = [
 
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
-    const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime } = useDataSync();
+    const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -55,25 +55,21 @@ const Dashboard: FC = () => {
     const [editingTask, setEditingTask] = useState<TaskType | undefined>(undefined);
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
-    const [isGoogleCalendarLinked, setIsGoogleCalendarLinked] = useState(false);
+    
+    // isGoogleCalendarLinked now derived from useDataSync's isGoogleDriveConnected
+    const isGoogleCalendarLinked = isGoogleDriveConnected;
 
-    useEffect(() => {
-      if (typeof window !== 'undefined') {
-        setIsGoogleCalendarLinked(!!localStorage.getItem(DataItemType.GoogleDriveAccessToken));
-      }
-    }, []);
 
     const loadDashboardData = useCallback(() => {
         setLoading(true);
         try {
-            const customerData = getData<Contact[]>(DataItemType.Contacts) || []; // Prioritize manually added contacts
-            const importedData = getData<ExcelData>(DataItemType.CustomerData); // Fallback to imported
+            const customerData = getData<Contact[]>(DataItemType.Contacts) || []; 
+            const importedData = getData<ExcelData>(DataItemType.CustomerData); 
             
             let allContacts: Contact[] = [...customerData];
 
             if (importedData && importedData.rows) {
                 const importedContactsAsContacts: Contact[] = importedData.rows.map((row, index) => {
-                    // Basic mapping, assuming headers like 'firstName', 'lastName', 'email'
                     const h = importedData.headers;
                     return {
                         id: `imported-${index}-${Date.now()}`,
@@ -86,7 +82,6 @@ const Dashboard: FC = () => {
                         updatedAt: new Date().toISOString(),
                     };
                 });
-                // Simple de-duplication by email, prefer manually added contacts
                 const combined = [...customerData, ...importedContactsAsContacts];
                 allContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
             }
@@ -112,11 +107,10 @@ const Dashboard: FC = () => {
 
             setContacts(allContacts.sort((a,b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()).slice(0, 5));
 
-            // Generate chart data (e.g., customers added per month for last 6 months)
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const customerCountsByMonth: Record<string, number> = {};
             const sixMonthsAgo = new Date();
-            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // Last 6 months including current
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); 
             sixMonthsAgo.setDate(1);
 
             allContacts.forEach(contact => {
@@ -135,7 +129,6 @@ const Dashboard: FC = () => {
                 lastSixMonthsChartData.push({ name: monthName, customers: customerCountsByMonth[monthName] || 0 });
             }
             setChartData(lastSixMonthsChartData);
-
 
         } catch (error) {
             console.error("Error loading dashboard data:", error);
@@ -156,24 +149,20 @@ const Dashboard: FC = () => {
       if (isGoogleCalendarLinked) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
+          localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
+          localStorage.removeItem('googleDriveTokenExpiry');
+          // The isGoogleDriveConnected state in useDataSync should update, triggering re-render
         }
-        setIsGoogleCalendarLinked(false);
         toast({ title: "Google Calendar Unlinked", description: "You may need to re-authenticate to use calendar features."});
       } else {
         try {
             await initiateAuthentication('googledrive'); 
-            if (typeof window !== 'undefined' && localStorage.getItem(DataItemType.GoogleDriveAccessToken)) {
-              setIsGoogleCalendarLinked(true);
-              toast({ title: "Google Calendar Linked (Mock)", description: "Attempting to sync calendar items."});
-              await syncCalendar(); 
-            } else {
-                 toast({ title: "Google Calendar Link Failed (Mock)", description: "Could not establish mock authentication.", variant:"destructive"});
-            }
+            // Successful redirect will handle token storage and state update in useDataSync
         } catch(error) {
-            toast({ title: "Google Calendar Auth Error", description: `Mock authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
+            toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-    }, [isGoogleCalendarLinked, initiateAuthentication, syncCalendar, toast]);
+    }, [isGoogleCalendarLinked, initiateAuthentication, toast]);
 
     const refreshData = useCallback(() => {
         loadDashboardData();
@@ -190,7 +179,7 @@ const Dashboard: FC = () => {
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -259,7 +248,6 @@ const Dashboard: FC = () => {
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
-          {/* Button moved below to CardContent */}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -299,10 +287,11 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-          <div className="mt-4">
-            <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
+        </CardHeader>
+        <CardContent>
+          <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
               <DialogTrigger asChild>
-                   <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3">
+                   <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
                       <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
                    </Button>
               </DialogTrigger>
@@ -317,9 +306,6 @@ const Dashboard: FC = () => {
                    />
               </DialogContent>
             </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
             <TaskList onEditTask={(task) => { setEditingTask(task); setIsTaskFormOpen(true); }} />
         </CardContent>
       </Card>
@@ -330,10 +316,11 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <div className="mt-4">
-              <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
+        </CardHeader>
+        <CardContent>
+            <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
                   <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3">
+                      <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
                           <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
                       </Button>
                   </DialogTrigger>
@@ -347,10 +334,7 @@ const Dashboard: FC = () => {
                           onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
                       />
                   </DialogContent>
-              </Dialog>
-            </div>
-        </CardHeader>
-        <CardContent>
+            </Dialog>
             <ReminderList onEdit={(reminder) => { setEditingReminder(reminder); setIsReminderFormOpen(true); }} />
         </CardContent>
       </Card>
@@ -361,10 +345,11 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <div className="mt-4">
+        </CardHeader>
+        <CardContent>
             <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3">
+                    <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
                         <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
                     </Button>
                 </DialogTrigger>
@@ -379,9 +364,6 @@ const Dashboard: FC = () => {
                     />
                 </DialogContent>
             </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
             <AppointmentList onEditAppointment={(appointment) => {setEditingAppointment(appointment); setIsAppointmentFormOpen(true);}} />
         </CardContent>
       </Card>

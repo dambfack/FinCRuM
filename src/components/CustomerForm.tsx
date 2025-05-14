@@ -41,12 +41,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const router = useRouter();
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
-    defaultValues: initialData ? 
+    defaultValues: initialData ?
     {
         ...initialData,
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
-    } 
+    }
     : {
       firstName: '',
       lastName: '',
@@ -87,12 +87,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         contacts.push(customerData); // Add new
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
-      
+
       toast({
         title: initialData ? "Customer Updated" : "Customer Added",
         description: `${customerData.firstName} ${customerData.lastName} has been saved.`,
       });
-      
+
       onSave?.(customerData);
       // router.push('/data-grid'); // Or wherever you list customers
       if (!initialData) form.reset(); // Reset form only if it was a new customer entry
