@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_pinned_open_state" // Changed cookie name for clarity
+const SIDEBAR_COOKIE_NAME = "sidebar_pinned_open_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -32,13 +32,13 @@ type SidebarContextValue = {
   setPinnedOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   isHoverActive: boolean;
   setIsHoverActive: (hover: boolean) => void;
-  effectiveState: "expanded" | "collapsed"; // Combines pinned and hover for UI
-  isEffectivelyOpen: boolean; // True if either pinned or hover makes it open
+  effectiveState: "expanded" | "collapsed";
+  isEffectivelyOpen: boolean;
 
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
-  toggleSidebar: () => void // This will toggle the pinned state
+  toggleSidebar: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null)
@@ -54,9 +54,9 @@ function useSidebar() {
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    defaultPinnedOpen?: boolean // Changed from defaultOpen
-    pinnedOpen?: boolean // Changed from open
-    onPinnedOpenChange?: (open: boolean) => void // Changed from onOpenChange
+    defaultPinnedOpen?: boolean
+    pinnedOpen?: boolean
+    onPinnedOpenChange?: (open: boolean) => void
   }
 >(
   (
@@ -74,19 +74,25 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    const loadInitialPinnedState = () => {
-      if (typeof document === "undefined") return defaultPinnedOpen;
-      const cookieValue = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
-        ?.split("=")[1];
-      return cookieValue ? cookieValue === "true" : defaultPinnedOpen;
-    };
-
-    const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(loadInitialPinnedState);
+    // Initialize with defaultPinnedOpen for server and initial client render
+    const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(defaultPinnedOpen);
     const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
-
     const [isHoverActive, setIsHoverActive] = React.useState(false);
+
+    // Effect to read cookie and update state only on client after mount
+    React.useEffect(() => {
+      if (typeof document !== "undefined") {
+        const cookieValue = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+          ?.split("=")[1];
+        const initialPinnedStateFromCookie = cookieValue ? cookieValue === "true" : defaultPinnedOpen;
+        if (pinnedOpenProp === undefined) { // Only update if not controlled
+            _setIsPinnedOpen(initialPinnedStateFromCookie);
+        }
+      }
+    }, [defaultPinnedOpen, pinnedOpenProp]);
+
 
     const setPinnedOpen = React.useCallback(
       (value: boolean | ((current: boolean) => boolean)) => {
@@ -96,7 +102,7 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setIsPinnedOpen(newPinnedState);
         }
-        setIsHoverActive(false); // Reset hover state when pinning
+        setIsHoverActive(false);
         if (typeof document !== "undefined") {
             document.cookie = `${SIDEBAR_COOKIE_NAME}=${newPinnedState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
         }
@@ -181,7 +187,7 @@ const Sidebar = React.forwardRef<
     {
       side = "left",
       variant = "sidebar",
-      collapsible = "offcanvas", // This is the prop passed to Sidebar
+      collapsible = "offcanvas",
       className,
       children,
       ...props
@@ -190,7 +196,7 @@ const Sidebar = React.forwardRef<
   ) => {
     const {
         isMobile,
-        effectiveState, // Use this for data-state
+        effectiveState,
         openMobile,
         setOpenMobile,
         isPinnedOpen,
@@ -236,38 +242,35 @@ const Sidebar = React.forwardRef<
       )
     }
 
-    // This is the outermost div for desktop sidebar structure
     return (
       <div
         ref={ref}
         className={cn("group peer hidden md:block text-sidebar-foreground", className)}
-        data-state={effectiveState} // Driven by combined pinned and hover states
-        data-collapsible={effectiveState === "collapsed" ? collapsible : ""} // Only apply collapsible type if truly collapsed
+        data-state={effectiveState}
+        data-collapsible={effectiveState === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        onMouseEnter={() => {
+          if (!isMobile && !isPinnedOpen && collapsible === 'icon') {
+            setIsHoverActive(true);
+          }
+        }}
+        onMouseLeave={() => {
+          if (!isMobile && collapsible === 'icon') {
+            setIsHoverActive(false);
+          }
+        }}
       >
-        {/* This is what handles the sidebar gap on desktop and width transitions */}
         <div
           className={cn(
             "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-            "group-data-[collapsible=offcanvas]:w-0", // Handled by effectiveState now
-            "group-data-[side=right]:rotate-180", // Stays the same
+            "group-data-[collapsible=offcanvas]:w-0",
+            "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
               ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
           )}
-           onMouseEnter={() => {
-            if (!isMobile && !isPinnedOpen && collapsible === 'icon') {
-              setIsHoverActive(true);
-            }
-          }}
-          onMouseLeave={() => {
-            if (!isMobile && collapsible === 'icon') {
-              setIsHoverActive(false);
-            }
-          }}
         />
-        {/* This is the fixed positioning div for the visual sidebar */}
         <div
           className={cn(
             "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
@@ -280,7 +283,6 @@ const Sidebar = React.forwardRef<
           )}
           {...props}
         >
-          {/* THIS IS THE ACTUAL VISUAL SIDEBAR ELEMENT */}
           <div
             data-sidebar="sidebar"
             className={cn(
@@ -294,16 +296,6 @@ const Sidebar = React.forwardRef<
               "group-data-[variant=floating]:hover:shadow-2xl",
               "group-data-[variant=floating]:hover:border-white/30 dark:group-data-[variant=floating]:hover:border-white/20"
             )}
-             onMouseEnter={() => { // Also add here for the actual visual element if needed, though positioning div is primary
-                if (!isMobile && !isPinnedOpen && collapsible === 'icon') {
-                setIsHoverActive(true);
-                }
-            }}
-            onMouseLeave={() => {
-                if (!isMobile && collapsible === 'icon') {
-                setIsHoverActive(false);
-                }
-            }}
           >
             {children}
           </div>
@@ -329,7 +321,7 @@ const SidebarTrigger = React.forwardRef<
       className={cn("h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md", className)}
       onClick={(event) => {
         onClick?.(event)
-        toggleSidebar() // This now toggles the pinned state
+        toggleSidebar()
       }}
       {...props}
     >
@@ -344,7 +336,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar() // toggleSidebar toggles pinned state
+  const { toggleSidebar } = useSidebar()
 
   return (
     <button
@@ -453,14 +445,14 @@ const SidebarContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
 >(({ className, ...props }, ref) => {
-  const { effectiveState } = useSidebar(); // Get effectiveState
+  const { effectiveState } = useSidebar();
   return (
     <div
       ref={ref}
       data-sidebar="content"
       className={cn(
         "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden p-1",
-        effectiveState === 'collapsed' && "group-data-[collapsible=icon]:overflow-hidden", // Apply if effectively collapsed
+        effectiveState === 'collapsed' && "group-data-[collapsible=icon]:overflow-hidden",
         className
       )}
       {...props}
@@ -612,7 +604,7 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, effectiveState } = useSidebar(); // Updated to use effectiveState
+    const { isMobile, effectiveState } = useSidebar();
 
     const buttonContent = (
       <Comp
@@ -641,7 +633,7 @@ const SidebarMenuButton = React.forwardRef<
           align="center"
           sideOffset={6}
           className="bg-background/80 dark:bg-zinc-800/80 backdrop-blur-sm text-foreground border-white/10"
-          hidden={effectiveState !== "collapsed" || isMobile} // Use effectiveState
+          hidden={effectiveState !== "collapsed" || isMobile}
           {...tooltipProps}
         />
       </Tooltip>
@@ -705,7 +697,6 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
@@ -820,3 +811,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
