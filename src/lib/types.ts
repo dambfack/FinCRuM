@@ -1,5 +1,4 @@
 
-
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -44,8 +43,18 @@ export interface FileAttachmentMeta {
   contactId: string; // ID of the contact this file is attached to
   createdAt: string; // ISO date string of when it was attached
   encrypted: boolean; // Flag indicating if the file is (intended to be) encrypted
-  ivHex?: string; // Hex-encoded Initialization Vector (for AES) - Placeholder if encryption implemented
-  saltHex?: string; // Hex-encoded salt (for PBKDF2) - Placeholder if encryption implemented
+  // ivHex and saltHex removed as encryption is deferred
+}
+
+/**
+ * Represents a user in the system.
+ */
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'partner' | 'employee';
+  // passwordHash?: string; // For future full authentication
 }
 
   /**
@@ -64,6 +73,7 @@ export interface Contact {
   createdAt: Date | string;
   updatedAt: Date | string;
   attachments?: FileAttachmentMeta[]; // Array of file attachment metadata
+  assignedToUserId?: string; // ID of the user this contact is assigned to
 }
 
 /**
@@ -91,6 +101,7 @@ export interface Task {
   createdAt: Date | string;
   updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
+  assignedToUserId?: string; // ID of the user this task is assigned to
 }
 
 /**
@@ -108,6 +119,7 @@ export interface Reminder {
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
   googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled'; // Optional
   dismissed?: boolean; // Optional
+  assignedToUserId?: string; // ID of the user this reminder is assigned to
 }
 
 /**
@@ -138,6 +150,7 @@ export interface Appointment {
   updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
   googleCalendarStatus?: 'confirmed' | 'tentative' | 'cancelled'; // Optional
+  assignedToUserId?: string; // ID of the user this appointment is assigned to
 }
 
 /**
@@ -175,6 +188,7 @@ export enum DataItemType {
   OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
+  Users = 'users', // New data type for users
 }
 
 /**
@@ -187,6 +201,7 @@ export interface LocalData {
   tasks?: Task[];
   reminders?: Reminder[];
   appointments?: Appointment[];
+  users?: User[]; // Added users
   customerData?: ExcelData; // For imported excel data
   lastSyncTime?: string; // ISO string
 }
@@ -210,4 +225,3 @@ export interface GoogleTokens {
   token_type?: string | null;
   expiry_date?: number | null;
 }
-

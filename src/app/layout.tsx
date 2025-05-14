@@ -15,10 +15,10 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
-  SidebarFooter, // Import SidebarFooter
+  SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Users, Settings } from 'lucide-react';
+import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Users, Users2, Settings } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
@@ -70,16 +70,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider defaultPinnedOpen={true}> {/* Ensures cookie can be set */}
+          <SidebarProvider defaultPinnedOpen={true}>
             <Sidebar variant="floating" collapsible="icon">
               <SidebarHeader>
                 <div className="flex items-center justify-between">
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                       <Logo />
-                      {/* This span's visibility is controlled by group-data-[state=collapsed] in sidebar.tsx styles */}
                       <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                    {/* <SidebarTrigger /> REMOVED from here */}
                 </div>
               </SidebarHeader>
               <SidebarContent>
@@ -97,6 +95,14 @@ export default function RootLayout({
                       <Link href="/customers">
                         <Users />
                         <span className="group-data-[state=collapsed]:hidden">All Customers</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Team Management">
+                      <Link href="/users">
+                        <Users2 />
+                        <span className="group-data-[state=collapsed]:hidden">Team Management</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -127,7 +133,7 @@ export default function RootLayout({
                 </SidebarMenu>
               </SidebarContent>
               <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
-                <SidebarTrigger /> {/* ADDED here */}
+                <SidebarTrigger />
               </SidebarFooter>
             </Sidebar>
             <SidebarInset className={cn(
@@ -140,7 +146,7 @@ export default function RootLayout({
                 "bg-background/50 dark:bg-background/40",
                 "hover:shadow-2xl transition-shadow duration-300"
               )}>
-                <div className="flex items-center gap-2 md:hidden"> {/* This trigger is for mobile sheet */}
+                <div className="flex items-center gap-2 md:hidden">
                   <SidebarTrigger />
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2">
                      <Logo />
