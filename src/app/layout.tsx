@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat } from 'next/font/google';
+import { Inter, Montserrat, Anton } from 'next/font/google';
 import './globals.css';
 import { cn, getFirstInitial } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle, Sun, Moon, Download } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -35,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Changed to NextImage to avoid conflict
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 
 
@@ -74,11 +74,13 @@ const Logo: React.FC<{
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
     setImgError(false);
+    // console.log(`[Logo useEffect] Theme: ${resolvedTheme}, Determined Src: ${determinedSrc}, Props:`, props);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
 
   const handleError = useCallback(() => {
     setImgError(true);
     let nextSrc = '';
+    // console.log(`[Logo handleError] Error with: ${currentSrc}. Theme: ${resolvedTheme}. Attempt: ${attemptCounter}`);
 
     if (currentSrc && currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       if (resolvedTheme === 'dark') {
@@ -97,14 +99,17 @@ const Logo: React.FC<{
     } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       nextSrc = absoluteUltimatePlaceholder;
     } else {
+      // console.log("[Logo handleError] Already at ultimate fallback or currentSrc is null. No further action.");
       return; 
     }
     
     if (nextSrc && currentSrc !== nextSrc) {
+      // console.log(`[Logo handleError] Attempting to set nextSrc: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false);
+      setImgError(false); // Reset error for the new attempt
       setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+        // console.log(`[Logo handleError] No valid nextSrc found, setting absolute placeholder.`);
         setCurrentSrc(absoluteUltimatePlaceholder);
         setImgError(false);
         setAttemptCounter(prev => prev + 1);
@@ -113,12 +118,15 @@ const Logo: React.FC<{
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
+    // console.log("[Logo Render] Fallback: Rendering placeholder div due to error or no src.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
+
+  // console.log(`[Logo Render] Rendering NextImage. Src: ${currentSrc?.substring(0,50)}... Unoptimized: ${unoptimized}, Key: ${currentSrc}-${attemptCounter}`);
 
   return (
     <NextImage
@@ -172,14 +180,16 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
+    // console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
+      // console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, Size: ${file.size}, Type: ${file.type}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
         return;
       }
-      if (toastTitle.toLowerCase().includes("logo") && file.type !== 'image/png') {
+      if (toastTitle.toLowerCase().includes("logo") && !file.type.startsWith('image/png')) { // Allow all image types for profile, PNG for logos
          toast({ title: "Invalid File Type", description: "Please upload a PNG file for logos.", variant: "destructive" });
          if (inputRef.current) inputRef.current.value = '';
          return;
@@ -187,6 +197,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUri = reader.result as string;
+        // console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri.length}`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -196,6 +207,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
+    } else {
+      // console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null.`);
     }
   };
 
@@ -225,7 +238,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
-    console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
+    // console.log(`[AppContent] Rendering. Context values - appLogoUrl: len: ${appLogoLightUrl?.length} defaultAppLogoUrl: len: ${defaultAppLogoLightUrl?.length} headerLogoUrl: len: ${headerLogoLightUrl?.length}`);
+    // console.log(`[AppContent] Rendering. Context values - appLogoLightUrl: len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl: len: ${defaultAppLogoLightUrl?.length}`);
+    // console.log(`[AppContent] Rendering. Context values - appLogoDarkUrl: len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl: len: ${defaultAppLogoDarkUrl?.length}`);
+    // console.log(`[AppContent] Rendering. Context values - headerLogoLightUrl: len: ${headerLogoLightUrl?.length} headerLogoDarkUrl: len: ${headerLogoDarkUrl?.length}`);
   }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
 
 
@@ -317,6 +333,16 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {currentUser?.role === 'partner' && (
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Export Data">
+                    <Link href="/export-data">
+                        <Download />
+                        <span className="group-data-[state=collapsed]:hidden">Export Data</span>
+                    </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
@@ -337,7 +363,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 appLogoLightUrl={appLogoLightUrl} appLogoDarkUrl={appLogoDarkUrl}
                 defaultAppLogoLightUrl={defaultAppLogoLightUrl} defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
               />
-              <div className="flex items-center font-heading"> {/* Removed tracking-wide */}
+              <div className="flex items-center font-heading">
                 {currentHeaderLogo ? (
                   <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
                 ) : (
@@ -347,7 +373,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
           </div>
-          <div className="hidden md:flex items-center text-xl font-semibold font-heading"> {/* Removed tracking-wide */}
+          <div className="hidden md:flex items-center text-xl font-semibold font-heading">
             {currentHeaderLogo ? (
               <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo" />
             ) : (
@@ -368,7 +394,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </PopoverTrigger>
               <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
                 <div className="p-1">
-                  <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4> {/* Removed tracking-wide */}
+                  <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4>
                   {currentUser && (
                     <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
                       <Avatar className="h-10 w-10">
@@ -387,9 +413,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
                 {currentUser?.role === 'partner' && (
                   <div className="p-1 mt-2 border-t border-border/20 pt-3">
-                    <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4> {/* Removed tracking-wide */}
+                    <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4>
                     
-                    {/* App Logos */}
                     <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
                     <Button variant="outline" size="sm" className="w-full mb-1" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
                     <Button variant="outline" size="sm" className="w-full mb-1" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light App Logo </Button>
@@ -398,7 +423,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
                     <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
                     <Button variant="outline" size="sm" className="w-full mb-3" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark App Logo </Button>
 
-                    {/* Header Logos */}
                     <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
                     <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
                     
@@ -431,7 +455,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
       </SidebarInset>
     </SidebarProvider>
     
-    {/* Cropper Modals */}
     {userImageToCropSrc && <ImageCropperModal isOpen={isUserProfileCropperOpen} onClose={() => {setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);}} imageSrc={userImageToCropSrc} onCropSave={handleUserCropSave} aspectRatio={1/1} />}
     {appLogoLightImageToCropSrc && <ImageCropperModal isOpen={isAppLogoLightCropperOpen} onClose={() => {setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null);}} imageSrc={appLogoLightImageToCropSrc} onCropSave={handleAppLogoLightCropSave} aspectRatio={1/1} />}
     {appLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isAppLogoDarkCropperOpen} onClose={() => {setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null);}} imageSrc={appLogoDarkImageToCropSrc} onCropSave={handleAppLogoDarkCropSave} aspectRatio={1/1} />}
