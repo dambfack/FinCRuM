@@ -1,15 +1,16 @@
 
-'use client'; // Required for AuthProvider and useAuth
+'use client'; 
 
-import type { Metadata } from 'next'; // Still useful for static parts if needed
+import type { Metadata } from 'next'; 
 import { GeistSans } from 'geist/font/sans';
 import { Anton, Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'; // Import AuthProvider and useAuth
-import PinLoginScreen from '@/components/PinLoginScreen'; // Import PinLoginScreen
-import SetPinScreen from '@/components/SetPinScreen'; // Import SetPinScreen
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'; 
+import PinLoginScreen from '@/components/PinLoginScreen'; 
+import SetPinScreen from '@/components/SetPinScreen'; 
+import NotificationBell from '@/components/NotificationBell'; // Import NotificationBell
 import {
   SidebarProvider,
   Sidebar,
@@ -29,7 +30,7 @@ import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { Skeleton } from '@/components/ui/skeleton'; 
 
 const anton = Anton({
   subsets: ['latin'],
@@ -43,10 +44,6 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-// export const metadata: Metadata = { // Metadata can be defined here or moved if dynamic based on auth
-//   title: 'Finsculpt CRM',
-//   description: 'Advanced CRM with Glassmorphism UI',
-// };
 
 const Logo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-accent">
@@ -106,7 +103,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             {currentUser?.role === 'partner' && ( // Only show Team Management if user is a partner
+             {currentUser?.role === 'partner' && ( 
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="Team Management">
                     <Link href="/users">
@@ -143,7 +140,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
-          <SidebarTrigger />
+           <SidebarTrigger />
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className={cn(
@@ -166,6 +163,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="hidden md:block text-xl font-semibold font-heading tracking-wide">Finsculpt CRM</div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell /> {/* Added NotificationBell */}
             <ThemeSwitcher />
             <Popover>
               <PopoverTrigger asChild>
@@ -206,7 +204,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-         {/* Metadata can be set here directly or via Next.js metadata export if static */}
         <title>Finsculpt CRM</title>
         <meta name="description" content="Advanced CRM with Glassmorphism UI" />
       </head>

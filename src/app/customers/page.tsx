@@ -3,21 +3,21 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Contact, Appointment, Reminder, User } from '@/lib/types'; // Added User
+import type { Contact, Appointment, Reminder, User } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types';
-import { getData, deleteItemById, saveData, createNotification } from '@/lib/utils'; // Added createNotification, saveData
+import { getData, deleteItemById, saveData, createNotification } from '@/lib/utils'; 
 import CustomerTable from '@/components/CustomerTable';
 import CustomerForm from '@/components/CustomerForm';
 import CustomerDetailModal from '@/components/CustomerDetailModal';
-import AppointmentForm from '@/components/AppointmentForm'; // Added
-import ReminderForm from '@/components/ReminderForm'; // Added
+import AppointmentForm from '@/components/AppointmentForm'; 
+import ReminderForm from '@/components/ReminderForm'; 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext'; 
 
 export default function CustomersPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -26,13 +26,12 @@ export default function CustomersPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
-  // State for new Appointment/Reminder modals
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
   const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
   const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
   
   const { toast } = useToast();
-  const { currentUser } = useAuth(); // Get current user
+  const { currentUser } = useAuth(); 
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -43,14 +42,15 @@ export default function CustomersPage() {
   const loadContacts = useCallback(() => {
     setLoading(true);
     const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
-    // Filter contacts for employees: only show 'approved' or their own 'pending_approval'/'pending_deletion'
-    // Partners see all.
-    const visibleContacts = currentUser?.role === 'employee' 
-      ? storedContacts.filter(c => 
-          c.contactStatus === 'approved' || 
-          (c.lastModifiedByRole === 'employee' && c.id.startsWith(`contact-${currentUser.id}`)) // Simplistic check for "their own"
-        )
-      : storedContacts;
+    
+    let visibleContacts = storedContacts;
+    if (currentUser?.role === 'employee') {
+      visibleContacts = storedContacts.filter(c => 
+        c.contactStatus === 'approved' || 
+        ( (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && c.lastModifiedByRole === 'employee' ) // Basic check, ideally check against current user ID
+      );
+    }
+    // For partners, all contacts are visible, including pending ones. CustomerTable can highlight them.
 
     setContacts(visibleContacts.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
     setLoading(false);
@@ -67,10 +67,10 @@ export default function CustomersPage() {
 
   const handleDelete = (contactId: string) => {
     const contactToDelete = contacts.find(c => c.id === contactId);
-    if (!contactToDelete) return;
+    if (!contactToDelete || !currentUser) return;
 
     if (confirm(`Are you sure you want to delete ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
-      if (currentUser?.role === 'employee') {
+      if (currentUser.role === 'employee') {
         const updatedContact: Contact = { 
           ...contactToDelete, 
           contactStatus: 'pending_deletion',
@@ -84,14 +84,13 @@ export default function CustomersPage() {
             saveData<Contact[]>(DataItemType.Contacts, currentContacts);
         }
         
-        // Notify partners
         const partners = allUsers.filter(u => u.role === 'partner');
         partners.forEach(partner => {
             createNotification({
                 recipientUserId: partner.id,
                 type: 'approval_request',
                 title: `Contact Deletion Request: ${contactToDelete.firstName} ${contactToDelete.lastName}`,
-                message: `Employee ${currentUser.name} has requested to delete a contact.`,
+                message: `Employee ${currentUser.name} has requested to delete contact: ${contactToDelete.firstName} ${contactToDelete.lastName}.`,
                 relatedItemId: contactId,
                 relatedItemType: DataItemType.Contacts,
                 payload: { contactToDelete }
@@ -101,7 +100,7 @@ export default function CustomersPage() {
             title: 'Deletion Requested',
             description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
         });
-      } else { // Partner deletes directly
+      } else { 
         deleteItemById<Contact>(DataItemType.Contacts, contactId);
         toast({
             title: 'Customer Deleted',
@@ -160,7 +159,7 @@ export default function CustomersPage() {
     if (selectedContact && selectedContact.id === updatedContact.id) {
       setSelectedContact(updatedContact);
     }
-    loadContacts(); // Ensure full refresh for pending statuses etc.
+    loadContacts(); 
   };
   
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
@@ -245,7 +244,6 @@ export default function CustomersPage() {
         onContactUpdate={handleContactUpdatedFromModal} 
       />
 
-      {/* Appointment Form Dialog */}
       <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
           <DialogContent className={activityDialogContentClassName}>
               <DialogHeader>
@@ -260,7 +258,6 @@ export default function CustomersPage() {
           </DialogContent>
       </Dialog>
 
-      {/* Reminder Form Dialog */}
       <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
             <DialogContent className={activityDialogContentClassName}>
                 <DialogHeader>

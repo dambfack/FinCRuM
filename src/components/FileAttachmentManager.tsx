@@ -11,18 +11,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UploadCloud, FileText, ShieldCheck, Download, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, cn } from '@/lib/utils';
-import { storeFile, getFile, deleteFile } from '@/lib/indexeddb'; // Import IndexedDB helpers
+import { storeFile, getFile, deleteFile } from '@/lib/indexeddb'; 
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 interface FileAttachmentManagerProps {
   contact: Contact;
-  onAttachmentsUpdate: (updatedContact: Contact) => void; // Callback to update the contact in parent/localStorage
+  onAttachmentsUpdate: (updatedContact: Contact) => void; 
 }
 
 const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, onAttachmentsUpdate }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [password, setPassword] = useState(''); // For dummy encryption password
+  const [password, setPassword] = useState(''); 
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const { currentUser } = useAuth(); // Get current user
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -37,12 +39,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       toast({ title: 'No File Selected', description: 'Please select a file to attach.', variant: 'destructive' });
       return;
     }
-    // Password requirement for encryption is deferred
-    // if (!password.trim() && false) {
-    //   toast({ title: 'Password Required', description: 'Please enter a password for encryption.', variant: 'destructive' });
-    //   return;
-    // }
-
+    
     setIsUploading(true);
 
     const newAttachmentMeta: FileAttachmentMeta = {
@@ -52,16 +49,16 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, // Set to false as encryption is not implemented yet
+      encrypted: false, 
     };
 
     try {
-      await storeFile(newAttachmentMeta.id, selectedFile); // Store actual file content in IndexedDB
+      await storeFile(newAttachmentMeta.id, selectedFile); 
 
       const updatedAttachments = [...(contact.attachments || []), newAttachmentMeta];
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
 
-      onAttachmentsUpdate(updatedContact); // Update contact metadata in localStorage
+      onAttachmentsUpdate(updatedContact); 
 
       toast({
         title: 'File Attached',
@@ -70,7 +67,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
       setSelectedFile(null);
       setPassword('');
-      // Clear the file input
+      
       const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
@@ -87,14 +84,18 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
   };
 
   const handleDeleteAttachment = async (attachmentId: string, attachmentName: string) => {
+    if (currentUser?.role === 'employee') {
+      toast({ title: "Permission Denied", description: "Employees cannot delete attachments.", variant: "destructive" });
+      return;
+    }
     if (!confirm(`Are you sure you want to delete '${attachmentName}'? This will remove the file and its metadata.`)) {
       return;
     }
     try {
-      await deleteFile(attachmentId); // Delete from IndexedDB
+      await deleteFile(attachmentId); 
       const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentId);
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
-      onAttachmentsUpdate(updatedContact); // Update metadata in localStorage
+      onAttachmentsUpdate(updatedContact); 
       toast({ title: 'Attachment Deleted', description: `'${attachmentName}' and its metadata removed.` });
     } catch (error) {
       console.error("Error deleting attachment:", error);
@@ -157,9 +158,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       if (viewableTypes.some(type => fileType.startsWith(type.split('/')[0] + '/') || fileType === type)) {
         const url = URL.createObjectURL(fileBlob);
         window.open(url, '_blank');
-        // No need to revokeObjectURL immediately for window.open, browser handles it.
       } else {
-        // For non-directly viewable types, trigger download
         handleDownloadAttachment(attachment);
       }
     } catch (error) {
@@ -241,7 +240,14 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                         <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File">
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id, att.name)} title="Delete Attachment" className="text-destructive hover:text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDeleteAttachment(att.id, att.name)} 
+                          title="Delete Attachment" 
+                          className="text-destructive hover:text-destructive"
+                          disabled={currentUser?.role === 'employee'} // Disable delete for employees
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -258,4 +264,3 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
-
