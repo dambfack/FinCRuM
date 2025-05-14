@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon } from 'lucide-react'; // Added ImageIcon
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -49,9 +49,8 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-const Logo = () => {
-  const { appLogoUrl } = useAuth(); // Get appLogoUrl from context
-
+// Updated Logo component to accept appLogoUrl as a prop
+const Logo = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
   if (appLogoUrl) {
     return (
       <Image
@@ -69,19 +68,21 @@ const Logo = () => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1200 1200"
+      viewBox="0 0 1200 1200" // Keep the original viewBox
       className="h-6 w-6 text-accent"
+      // The {...props} was removed as this component doesn't expect spread props when used directly.
+      // If it were the SVGComponent passed directly, it would make sense.
     >
       <path
         style={{
-          stroke: "currentColor",
+          stroke: "currentColor", // Use currentColor to inherit from text-accent
           strokeWidth: 19.2,
           strokeDasharray: "none",
           strokeLinecap: "butt",
           strokeDashoffset: 0,
           strokeLinejoin: "miter",
           strokeMiterlimit: 4,
-          fill: "currentColor",
+          fill: "currentColor", // Use currentColor
           fillRule: "nonzero",
           opacity: 1,
         }}
@@ -94,17 +95,18 @@ const Logo = () => {
   );
 }
 
+
 function AppContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser, updateUserProfilePicture, appLogoUrl, updateAppLogo } = useAuth();
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
-  const appLogoInputRef = useRef<HTMLInputElement>(null); // New ref for app logo input
+  const appLogoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const [isUserProfileCropperOpen, setIsUserProfileCropperOpen] = useState(false);
   const [userImageToCropSrc, setUserImageToCropSrc] = useState<string | null>(null);
 
-  const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false); // State for app logo cropper
-  const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null); // State for app logo cropper src
+  const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
+  const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -198,7 +200,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
         <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-              <Logo />
+              <Logo appLogoUrl={appLogoUrl} />
             </Link>
           </div>
         </SidebarHeader>
@@ -273,7 +275,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger />
             <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-              <Logo />
+              <Logo appLogoUrl={appLogoUrl} />
               <span className="font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
           </div>
@@ -391,7 +393,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={appLogoImageToCropSrc}
           onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1} // Can be adjusted if a different aspect ratio is desired for the app logo
+          aspectRatio={1 / 1} 
         />
       )}
     </>
@@ -431,3 +433,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
