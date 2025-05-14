@@ -69,14 +69,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider>
-            <Sidebar variant="floating" collapsible="icon"> {/* Changed to floating, removed className */}
+            <Sidebar variant="floating" collapsible="icon">
               <SidebarHeader>
                 <div className="flex items-center justify-between">
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                       <Logo />
                       <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                    <SidebarTrigger className="md:hidden" />
+                    <SidebarTrigger /> {/* Removed md:hidden to make it visible on desktop */}
                 </div>
               </SidebarHeader>
               <SidebarContent>
@@ -130,11 +130,11 @@ export default function RootLayout({
             )}>
               <header className={cn(
                 "sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg",
-                "glass-effect", // General glassmorphism
-                "bg-background/50 dark:bg-background/40", // Increased transparency
-                "hover:shadow-2xl transition-shadow duration-300" // Enhanced hover shadow
+                "glass-effect", 
+                "bg-background/50 dark:bg-background/40",
+                "hover:shadow-2xl transition-shadow duration-300" 
               )}>
-                <div className="flex items-center gap-2 md:hidden">
+                <div className="flex items-center gap-2 md:hidden"> {/* This trigger is for mobile sheet */}
                   <SidebarTrigger />
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2">
                      <Logo />
