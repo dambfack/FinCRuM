@@ -50,17 +50,19 @@ const montserrat = Montserrat({
 });
 
 const Logo = ({ appLogoUrl, defaultAppLogoUrl }: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const logoToDisplay = appLogoUrl || defaultAppLogoUrl || "https://placehold.co/64x64.png?text=LOGO";
+  const logoToDisplay = appLogoUrl || defaultAppLogoUrl || "/f_logo.png"; // Fallback to /f_logo.png if others are null
   const isDataUri = logoToDisplay.startsWith("data:");
   const isPlaceholder = logoToDisplay.startsWith("https://placehold.co");
 
-  // console.log('[Logo Component] Rendering with:', {
-  //   appLogoUrl: appLogoUrl ? `Data URI (len: ${appLogoUrl.length})` : 'null',
-  //   defaultAppLogoUrl: defaultAppLogoUrl ? `Data URI (len: ${defaultAppLogoUrl.length})` : 'null',
-  //   logoToDisplay: logoToDisplay ? (isDataUri ? `Data URI (len: ${logoToDisplay.length})` : logoToDisplay) : 'null',
-  //   isDataUri,
-  //   isPlaceholder
-  // });
+  // Uncomment for debugging logo component specifically:
+  // console.log("[Logo Component] Rendering with:");
+  // console.log("  appLogoUrl (prop):", appLogoUrl ? `Data URI (len: ${appLogoUrl.length})` : 'null');
+  // console.log("  defaultAppLogoUrl (prop):", defaultAppLogoUrl ? `Data URI (len: ${defaultAppLogoUrl.length})` : 'null');
+  // console.log("  logoToDisplay (chosen src):", logoToDisplay ? (isDataUri ? `Data URI (len: ${logoToDisplay.length})` : logoToDisplay) : 'null');
+  // console.log("  isDataUri:", isDataUri);
+  // console.log("  isPlaceholder:", isPlaceholder);
+  // console.log("  unoptimized prop for Image:", isDataUri || isPlaceholder);
+
 
   return (
     <Image
@@ -68,9 +70,9 @@ const Logo = ({ appLogoUrl, defaultAppLogoUrl }: { appLogoUrl: string | null; de
       alt="Finsculpt CRM Logo"
       width={24} 
       height={24} 
-      className="h-6 w-6 object-contain"
-      data-ai-hint={appLogoUrl ? "custom company logo" : defaultAppLogoUrl ? "default company logo" : "placeholder logo"}
-      unoptimized={isDataUri}
+      className="h-6 w-6 object-contain" 
+      data-ai-hint={appLogoUrl ? "custom company logo" : defaultAppLogoUrl ? "default company logo" : "fallback f logo"}
+      unoptimized={isDataUri || isPlaceholder} 
     />
   );
 };
@@ -86,7 +88,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     appLogoUrl,
     defaultAppLogoUrl,
     updateAppLogo,
-    setDefaultAppLogo
+    setDefaultAppLogo,
+    updateUserProfilePicture,
   } = useAuth();
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   const appLogoInputRef = useRef<HTMLInputElement>(null);
@@ -97,11 +100,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
-
-  // React.useEffect(() => {
-  //   console.log('[AppContent] AuthContext values updated:', { appLogoUrl, defaultAppLogoUrl });
-  // }, [appLogoUrl, defaultAppLogoUrl]);
-
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -162,6 +160,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoCropSave = (croppedDataUri: string) => {
+    console.log("[AppContent] handleAppLogoCropSave called. CroppedDataUri length:", croppedDataUri?.length);
+    console.log("[AppContent] Calling updateAppLogo from AuthContext...");
     updateAppLogo(croppedDataUri);
     setIsAppLogoCropperOpen(false);
     setAppLogoImageToCropSrc(null);
@@ -446,3 +446,6 @@ export default function RootLayout({
     </html>
   );
 }
+
+
+    
