@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DataItemType, type Appointment, type Contact, type AppointmentAttendee, type User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar';
-import { getData, saveData, parseDate } from '../lib/utils';
+import { getData, saveData, parseDate, createNotification } from '../lib/utils'; // Added createNotification
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -17,6 +17,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { X, UserPlus } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 
 interface AppointmentFormProps {
@@ -46,6 +47,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
   const { syncCalendar } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
+  const { currentUser } = useAuth(); // Get current user
 
   // Load all contacts and users once on mount
   useEffect(() => {
@@ -204,6 +206,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
         return;
     }
 
+    const previousAssignedUserId = initialData?.assignedToUserId;
+
     const newOrUpdatedAppointment: Appointment = {
       id: initialData?.id || Date.now().toString(),
       title,
@@ -235,6 +239,19 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       title: initialData?.id ? "Appointment Updated" : "Appointment Added",
       description: `Appointment "${newOrUpdatedAppointment.title}" has been saved.`,
     });
+
+    // Create notification for assignment if assignee changed or is new
+    if (assignedUserId && assignedUserId !== previousAssignedUserId) {
+      const assignedUser = allUsers.find(u => u.id === assignedUserId);
+      createNotification({
+        recipientUserId: assignedUserId,
+        type: 'assignment',
+        title: 'New Appointment Assignment',
+        message: `You have been assigned to an appointment: "${newOrUpdatedAppointment.title}".`,
+        relatedItemId: newOrUpdatedAppointment.id,
+        relatedItemType: DataItemType.Appointments,
+      });
+    }
 
     try {
       const googleTokens = typeof window !== 'undefined' ? {

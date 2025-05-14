@@ -1,6 +1,7 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { DataItemType } from "./types";
+import { DataItemType, type Notification } from "./types"; // Added Notification type
 import { format } from 'date-fns';
 
 export function cn(...inputs: ClassValue[]) {
@@ -108,4 +109,22 @@ export function parseDate(dateString: string | null | undefined): Date | null {
   }
   const date = new Date(dateString);
   return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Creates and saves a notification.
+ * @param notificationData Data for the notification, excluding id, createdAt, and read.
+ */
+export function createNotification(notificationData: Omit<Notification, 'id' | 'createdAt' | 'read'>): void {
+  const newNotification: Notification = {
+    ...notificationData,
+    id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    createdAt: new Date().toISOString(),
+    read: false,
+  };
+
+  const notifications = getData<Notification[]>(DataItemType.Notifications) || [];
+  notifications.push(newNotification);
+  saveData<Notification[]>(DataItemType.Notifications, notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  console.log("Notification created:", newNotification);
 }

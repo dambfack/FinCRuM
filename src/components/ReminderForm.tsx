@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Reminder, Contact, DataItemType, User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { createCalendarEvent as addReminderToGoogleCalendar, updateCalendarEvent as updateReminderInGoogleCalendar } from '../services/google-calendar';
-import { getData, saveData, parseDate } from '../lib/utils';
+import { getData, saveData, parseDate, createNotification } from '../lib/utils'; // Added createNotification
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { X } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 interface ReminderFormProps {
   initialReminder?: Reminder;
@@ -42,6 +43,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
   const { syncCalendar } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
+  const { currentUser } = useAuth(); // Get current user
 
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
@@ -125,6 +127,8 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       return;
     }
 
+    const previousAssignedUserId = initialReminder?.assignedToUserId;
+
     const newOrUpdatedReminder: Reminder = {
       id: initialReminder?.id || Date.now().toString(),
       title,
@@ -151,6 +155,19 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       title: initialReminder?.id ? "Reminder Updated" : "Reminder Added",
       description: `Reminder "${newOrUpdatedReminder.title}" has been saved.`,
     });
+
+     // Create notification for assignment if assignee changed or is new
+    if (assignedUserId && assignedUserId !== previousAssignedUserId) {
+      const assignedUser = allUsers.find(u => u.id === assignedUserId);
+      createNotification({
+        recipientUserId: assignedUserId,
+        type: 'assignment',
+        title: 'New Reminder Assignment',
+        message: `You have been assigned a new reminder: "${newOrUpdatedReminder.title}".`,
+        relatedItemId: newOrUpdatedReminder.id,
+        relatedItemType: DataItemType.Reminders,
+      });
+    }
 
     try {
       const googleTokens = typeof window !== 'undefined' ? {

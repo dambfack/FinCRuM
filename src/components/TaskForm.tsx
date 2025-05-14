@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { type Task, DataItemType, type Contact, type ChecklistItem, type User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { getData, saveData, parseDate } from '../lib/utils';
+import { getData, saveData, parseDate, createNotification } from '../lib/utils'; // Added createNotification
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Button } from './ui/button';
@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { X, PlusCircle, Trash2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 interface TaskFormProps {
   task?: Task;
@@ -48,6 +49,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { syncCalendar } = useDataSync();
   const { toast } = useToast();
+  const { currentUser } = useAuth(); // Get current user
 
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
@@ -146,6 +148,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
     e.preventDefault();
     if (!validateForm()) return;
 
+    const previousAssignedUserId = task?.assignedToUserId;
+
     const newTaskData: Task = {
       id: task?.id || Date.now().toString(),
       title,
@@ -176,6 +180,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       title: task?.id ? "Task Updated" : "Task Added",
       description: `Task "${newTaskData.title}" has been saved.`,
     });
+
+    // Create notification for assignment if assignee changed or is new
+    if (assignedUserId && assignedUserId !== previousAssignedUserId) {
+      const assignedUser = allUsers.find(u => u.id === assignedUserId);
+      createNotification({
+        recipientUserId: assignedUserId,
+        type: 'assignment',
+        title: 'New Task Assignment',
+        message: `You have been assigned a new task: "${newTaskData.title}".`,
+        relatedItemId: newTaskData.id,
+        relatedItemType: DataItemType.Tasks,
+      });
+    }
+
 
     try {
       await syncCalendar();

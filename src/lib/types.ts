@@ -68,11 +68,14 @@ export interface Contact {
   company?: string; // Optional
   address?: string; // Optional
   notes?: string; // Optional
-  status?: 'open' | 'closed' | 'missed' | 'other';
+  status?: 'open' | 'closed' | 'missed' | 'other'; // Deal status
   createdAt: Date | string;
   updatedAt: Date | string;
   attachments?: FileAttachmentMeta[]; // Array of file attachment metadata
   assignedToUserId?: string; // ID of the user this contact is assigned to
+  contactStatus?: 'approved' | 'pending_approval' | 'pending_deletion'; // Approval status of the contact record itself
+  changeProposal?: Partial<Contact>; // Stores proposed changes by an employee, awaiting approval
+  lastModifiedByRole?: 'partner' | 'employee'; // Role of the user who last modified/proposed changes
 }
 
 /**
@@ -189,6 +192,7 @@ export enum DataItemType {
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
   Users = 'users',
   CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
+  Notifications = 'notifications', // For notifications
 }
 
 /**
@@ -202,6 +206,7 @@ export interface LocalData {
   reminders?: Reminder[];
   appointments?: Appointment[];
   users?: User[]; // Added users
+  notifications?: Notification[]; // Added notifications
   customerData?: ExcelData; // For imported excel data
   lastSyncTime?: string; // ISO string
 }
@@ -224,4 +229,18 @@ export interface GoogleTokens {
   scope?: string | null;
   token_type?: string | null;
   expiry_date?: number | null;
+}
+
+// Notification type
+export interface Notification {
+  id: string;
+  recipientUserId: string; // The user who should see this notification
+  type: 'assignment' | 'approval_request' | 'info';
+  title: string;
+  message: string;
+  relatedItemId?: string; // ID of the Contact, Task, etc.
+  relatedItemType?: DataItemType; // e.g., DataItemType.Contacts
+  createdAt: string; // ISO date string
+  read: boolean;
+  payload?: any; // For approval_request, might contain proposed changes or original item details
 }

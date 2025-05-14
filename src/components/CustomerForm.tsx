@@ -13,12 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Contact, FileAttachmentMeta, User } from '@/lib/types'; // Added User
+import type { Contact, FileAttachmentMeta, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, saveData } from '@/lib/utils';
+import { getData, saveData, createNotification } from '@/lib/utils'; // Added createNotification
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
-const contactStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
+const contactDealStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
 
 const fileAttachmentMetaSchema = z.object({
   id: z.string(),
@@ -40,11 +41,15 @@ const customerFormSchema = z.object({
   company: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
-  status: contactStatusSchema.optional(),
+  status: contactDealStatusSchema.optional(), // Deal status
   attachments: z.array(fileAttachmentMetaSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-  assignedToUserId: z.string().optional(), // Added assignedToUserId
+  assignedToUserId: z.string().optional(),
+  // Approval flow fields - not directly in form, but handled by logic
+  contactStatus: z.enum(['approved', 'pending_approval', 'pending_deletion']).optional(),
+  changeProposal: z.any().optional(), // Using z.any() for Partial<Contact> for simplicity
+  lastModifiedByRole: z.enum(['partner', 'employee']).optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -57,6 +62,7 @@ interface CustomerFormProps {
 const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const { toast } = useToast();
   const router = useRouter();
+  const { currentUser } = useAuth(); // Get current user
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -71,9 +77,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         ...initialData,
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
-        status: initialData.status || undefined,
+        status: initialData.status || undefined, // Deal status
         attachments: initialData.attachments || [],
         assignedToUserId: initialData.assignedToUserId || undefined,
+        contactStatus: initialData.contactStatus || 'approved',
+        changeProposal: initialData.changeProposal || undefined,
+        lastModifiedByRole: initialData.lastModifiedByRole || undefined,
     }
     : {
       firstName: '',
@@ -83,9 +92,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       company: '',
       address: '',
       notes: '',
-      status: undefined,
+      status: undefined, // Deal status
       attachments: [],
       assignedToUserId: undefined,
+      contactStatus: 'approved',
+      changeProposal: undefined,
+      lastModifiedByRole: currentUser?.role,
     },
   });
 
@@ -98,40 +110,119 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         status: initialData.status || undefined,
         attachments: initialData.attachments || [],
         assignedToUserId: initialData.assignedToUserId || undefined,
+        contactStatus: initialData.contactStatus || 'approved',
+        changeProposal: initialData.changeProposal || undefined,
+        lastModifiedByRole: initialData.lastModifiedByRole || undefined,
+      });
+    } else {
+      form.reset({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        company: '',
+        address: '',
+        notes: '',
+        status: undefined,
+        attachments: [],
+        assignedToUserId: undefined,
+        contactStatus: 'approved',
+        changeProposal: undefined,
+        lastModifiedByRole: currentUser?.role,
       });
     }
-  }, [initialData, form]);
+  }, [initialData, form, currentUser]);
 
   const onSubmit = (data: CustomerFormValues) => {
+    if (!currentUser) {
+        toast({ title: "Error", description: "No authenticated user found. Cannot save.", variant: "destructive" });
+        return;
+    }
     const now = new Date().toISOString();
-    const customerData: Contact = {
-      ...data,
-      id: initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
-      createdAt: initialData?.createdAt || now,
-      updatedAt: now,
-      status: data.status || undefined,
-      attachments: data.attachments || (initialData?.attachments || []),
-      assignedToUserId: data.assignedToUserId || undefined,
-    } as Contact; 
+    let customerDataToSave: Contact;
+    const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
+    const isNewContact = !initialData?.id;
+    const contactId = initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+
+    const formInputAsContactShape: Partial<Contact> = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        address: data.address,
+        notes: data.notes,
+        status: data.status, // Deal status
+        assignedToUserId: data.assignedToUserId,
+        // attachments are handled by FileAttachmentManager
+    };
+
+
+    if (currentUser.role === 'employee') {
+        const baseContactDetails: Contact = {
+            id: contactId,
+            ...formInputAsContactShape,
+            createdAt: initialData?.createdAt || now,
+            updatedAt: now,
+            attachments: initialData?.attachments || [], // Keep existing attachments unless explicitly managed
+            contactStatus: 'pending_approval',
+            lastModifiedByRole: 'employee',
+            changeProposal: formInputAsContactShape, // Employee's proposed changes
+        };
+
+        if (isNewContact) {
+            customerDataToSave = baseContactDetails;
+        } else {
+            // For existing contact, preserve original fields not being proposed for change
+            customerDataToSave = {
+                ...(initialData as Contact), // Start with original approved data
+                ...baseContactDetails, // Apply ID, timestamps, approval status, and proposal
+                // Crucially, the main fields (firstName, etc.) are NOT directly updated here
+                // They are in `changeProposal`. The `initialData` here is the *approved* version.
+            };
+        }
+        
+        // Notify partners
+        const partners = allUsers.filter(u => u.role === 'partner');
+        partners.forEach(partner => {
+            createNotification({
+                recipientUserId: partner.id,
+                type: 'approval_request',
+                title: `Contact Change: ${formInputAsContactShape.firstName} ${formInputAsContactShape.lastName}`,
+                message: `Employee ${currentUser.name} has ${isNewContact ? 'added a new contact' : 'proposed changes to a contact'} requiring your approval.`,
+                relatedItemId: contactId,
+                relatedItemType: DataItemType.Contacts,
+                payload: { proposedData: formInputAsContactShape, originalData: isNewContact ? null : initialData }
+            });
+        });
+        toast({ title: "Changes Submitted", description: "Your changes have been submitted for partner approval." });
+
+    } else { // Partner is saving
+        customerDataToSave = {
+            id: contactId,
+            ...formInputAsContactShape,
+            createdAt: initialData?.createdAt || now,
+            updatedAt: now,
+            attachments: initialData?.attachments || [],
+            contactStatus: 'approved',
+            lastModifiedByRole: 'partner',
+            changeProposal: undefined, // Clear any pending proposals
+        } as Contact;
+         toast({ title: initialData ? "Customer Updated" : "Customer Added", description: `${customerDataToSave.firstName} ${customerDataToSave.lastName} has been saved.` });
+    }
 
     try {
-      const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
-      const existingContactIndex = contacts.findIndex(c => c.id === customerData.id);
-
+      const existingContactIndex = contacts.findIndex(c => c.id === customerDataToSave.id);
       if (existingContactIndex > -1) {
-        contacts[existingContactIndex] = customerData;
+        contacts[existingContactIndex] = customerDataToSave;
       } else {
-        contacts.push(customerData);
+        contacts.push(customerDataToSave);
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
+      onSave?.(customerDataToSave);
+      if (!initialData && currentUser.role === 'partner') form.reset(); // Only reset for partner on new, employee form stays for pending
+      else if (!initialData && currentUser.role === 'employee') { /* Potentially clear form or indicate pending state */ }
 
-      toast({
-        title: initialData ? "Customer Updated" : "Customer Added",
-        description: `${customerData.firstName} ${customerData.lastName} has been saved.`,
-      });
-
-      onSave?.(customerData);
-      if (!initialData) form.reset();
 
     } catch (error) {
       console.error("Error saving customer:", error);
@@ -208,7 +299,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             />
              <FormField
               control={form.control}
-              name="status"
+              name="status" // Deal status
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Deal Status (Optional)</FormLabel>
@@ -296,7 +387,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={form.formState.isSubmitting} className="h-11 px-4 py-3">
-              {form.formState.isSubmitting ? 'Saving...' : (initialData ? 'Update Customer' : 'Add Customer')}
+              {form.formState.isSubmitting ? 'Saving...' : 
+                (currentUser?.role === 'employee' ? (initialData ? 'Submit Changes for Approval' : 'Add Contact for Approval') : 
+                (initialData ? 'Update Customer' : 'Add Customer'))}
             </Button>
           </CardFooter>
         </form>
