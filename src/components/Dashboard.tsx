@@ -52,8 +52,6 @@ const mockContacts: Contact[] = [
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-// These are the actual HSL string values from your globals.css
-// We don't add opacity here; ApexCharts handles it via fill.opacity
 const PIE_CHART_CSS_VARS = [
   'hsl(var(--chart-pie-1))', // Teal for 'Open'
   'hsl(var(--chart-pie-2))', // Blue for 'Closed'
@@ -70,10 +68,10 @@ const Dashboard: FC = () => {
     const [loading, setLoading] = useState(true);
     const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
     const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
-    
+
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
     const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
-    
+
     // ApexCharts data state
     const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
@@ -84,16 +82,16 @@ const Dashboard: FC = () => {
     const [editingTask, setEditingTask] = useState<TaskType | undefined>(undefined);
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
-    
-    const isGoogleCalendarLinked = isGoogleDriveConnected; // This might need to be more specific if drive and calendar can be linked separately
+
+    const isGoogleCalendarLinked = isGoogleDriveConnected;
 
 
     const loadDashboardData = useCallback(() => {
         setLoading(true);
         try {
-            const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || []; 
-            const importedDataStore = getData<ExcelData>(DataItemType.CustomerData); 
-            
+            const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || [];
+            const importedDataStore = getData<ExcelData>(DataItemType.CustomerData);
+
             let loadedContacts: Contact[] = [...customerDataStore];
 
             if (importedDataStore && importedDataStore.rows) {
@@ -114,7 +112,7 @@ const Dashboard: FC = () => {
                 const combined = [...customerDataStore, ...importedContactsAsContacts];
                 loadedContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
             }
-            
+
             if (loadedContacts.length === 0) {
                 loadedContacts = mockContacts;
             }
@@ -145,7 +143,7 @@ const Dashboard: FC = () => {
             const numMonths = parseInt(barChartTimeRange.replace('m', ''), 10);
             const endDate = new Date();
             const startDate = startOfMonth(subMonths(endDate, numMonths - 1));
-            
+
             const monthsInterval = eachMonthOfInterval({ start: startDate, end: endDate });
             const customerCountsByMonth: Record<string, number> = {};
 
@@ -163,7 +161,7 @@ const Dashboard: FC = () => {
                     }
                 }
             });
-            
+
             const growthChartData = monthsInterval.map(monthStart => {
                 const monthKey = format(monthStart, 'MMM yyyy');
                 const shortMonthKey = format(monthStart, 'MMM');
@@ -171,19 +169,19 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<string, number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Contact['status'] | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
                 if (statusCounts.hasOwnProperty(status)) {
                     statusCounts[status]++;
                 } else {
-                    statusCounts.other++; 
+                    statusCounts.other++;
                 }
             });
             const pieDataForApex = Object.entries(statusCounts)
                 .filter(([, value]) => value > 0)
                 .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
-            
+
             setDealStatusSeries(pieDataForApex.map(item => item.value));
             setDealStatusLabels(pieDataForApex.map(item => item.name));
 
@@ -214,7 +212,7 @@ const Dashboard: FC = () => {
         toast({ title: "Google Calendar Unlinked", description: "You may need to re-authenticate to use calendar features."});
       } else {
         try {
-            await initiateAuthentication('googledrive'); 
+            await initiateAuthentication('googledrive');
         } catch(error) {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
@@ -235,7 +233,7 @@ const Dashboard: FC = () => {
 
     const apexPieChartOptions: ApexCharts.ApexOptions = {
       chart: {
-        type: 'donut', // Donut chart can give a more 3D feel with shadows
+        type: 'donut',
         background: 'transparent',
         toolbar: {
             show: false,
@@ -247,7 +245,9 @@ const Dashboard: FC = () => {
         opacity: 0.8,
       },
       stroke: {
-        show: false, // Set to true and customize for different 3D styles
+        show: true,
+        width: 2,
+        colors: ['transparent']
       },
       legend: {
         position: 'bottom',
@@ -270,7 +270,7 @@ const Dashboard: FC = () => {
         pie: {
           expandOnClick: true,
           donut: {
-            size: '65%', // Adjust for "thickness" of the donut
+            size: '65%',
             labels: {
               show: true,
               total: {
@@ -282,23 +282,35 @@ const Dashboard: FC = () => {
               value: {
                 color: 'hsl(var(--foreground))',
                 offsetY: 8,
-                 formatter: (val: string) => `${val}` // Shows count directly
+                 formatter: (val: string) => `${val}`
               }
             }
           },
-          dropShadow: { // Simulate 3D depth
+          dropShadow: {
             enabled: true,
             top: 3,
             left: 0,
             blur: 3,
             opacity: 0.3
+          },
+          states: {
+            hover: {
+              filter: {
+                type: 'lighten',
+                value: 0.10,
+              }
+            },
+            active: {
+              filter: {
+                type: 'none',
+              }
+            }
           }
         }
       },
       dataLabels: {
         enabled: true,
         formatter: (val: number, opts: any) => {
-          // Calculate percentage
           const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
           return `${percentage}%`;
         },
@@ -311,7 +323,7 @@ const Dashboard: FC = () => {
         }
       },
       tooltip: {
-        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+        theme: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light',
         fillSeriesColor: false,
         y: {
             formatter: (val: number) => `${val} client(s)`
@@ -395,11 +407,12 @@ const Dashboard: FC = () => {
                     <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false}/>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
+                        backgroundColor: 'hsla(var(--popover)/0.7)',
                         borderColor: 'hsl(var(--border))',
                         color: 'hsl(var(--popover-foreground))',
                         borderRadius: 'var(--radius)',
-                        boxShadow: 'var(--shadow-lg)'
+                        boxShadow: 'var(--shadow-lg)',
+                        backdropFilter: 'blur(8px)',
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
@@ -419,11 +432,11 @@ const Dashboard: FC = () => {
           <CardContent>
             {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusSeries.length > 0 ? (
                 <div className="h-[300px] w-full">
-                  <ReactApexChart 
-                    options={apexPieChartOptions} 
-                    series={dealStatusSeries} 
-                    type="donut" // or 'pie'
-                    height="100%" 
+                  <ReactApexChart
+                    options={apexPieChartOptions}
+                    series={dealStatusSeries}
+                    type="donut"
+                    height="100%"
                     width="100%"
                   />
                 </div>
@@ -434,7 +447,7 @@ const Dashboard: FC = () => {
 
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
@@ -448,7 +461,7 @@ const Dashboard: FC = () => {
           ) : recentContacts.length > 0 ? (
             <ul className="space-y-2">
                 {recentContacts.map((contact) => (
-                <li key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
+                <li key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200">
                     <div>
                     <span className="font-medium">{contact.firstName} {contact.lastName}</span>
                     <p className="text-sm text-muted-foreground">{contact.email}</p>

@@ -12,6 +12,7 @@ const Card = React.forwardRef<
       "rounded-xl border shadow-xl", // Increased rounding, base border, and shadow
       "bg-card/60 dark:bg-card/40 backdrop-blur-lg", // Translucent background with blur
       "border-white/20 dark:border-white/10", // Glass-like border
+      "transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20", // Added hover effects
       className
     )}
     {...props}
@@ -32,10 +33,10 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
-  HTMLDivElement, 
-  React.HTMLAttributes<HTMLDivElement> 
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div 
+  <div
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none font-heading tracking-wide", // Added tracking-wide, removed tracking-tight
@@ -47,10 +48,10 @@ const CardTitle = React.forwardRef<
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement, 
-  React.HTMLAttributes<HTMLDivElement> 
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div 
+  <div
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
