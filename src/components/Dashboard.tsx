@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
+import CustomerDetailModal from './CustomerDetailModal'; // Import the new modal
 import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
@@ -82,6 +83,10 @@ const Dashboard: FC = () => {
     const [editingTask, setEditingTask] = useState<TaskType | undefined>(undefined);
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
+
+    // State for CustomerDetailModal
+    const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
+    const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
 
     const isGoogleCalendarLinked = isGoogleDriveConnected;
 
@@ -175,11 +180,11 @@ const Dashboard: FC = () => {
                 if (statusCounts.hasOwnProperty(status)) {
                     statusCounts[status]++;
                 } else {
-                    statusCounts.other++; // Should not happen if status is well-defined or defaults to 'other'
+                    statusCounts.other++; 
                 }
             });
             const pieDataForApex = Object.entries(statusCounts)
-                .filter(([, value]) => value > 0) // Only include statuses with counts > 0
+                .filter(([, value]) => value > 0) 
                 .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
             setDealStatusSeries(pieDataForApex.map(item => item.value));
@@ -229,6 +234,11 @@ const Dashboard: FC = () => {
     const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); refreshData(); };
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
 
+    const handleViewContactDetails = (contact: Contact) => {
+        setSelectedContactForModal(contact);
+        setIsCustomerDetailModalOpen(true);
+    };
+    
     const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
 
     const apexPieChartOptions: ApexCharts.ApexOptions = {
@@ -293,16 +303,16 @@ const Dashboard: FC = () => {
             blur: 3,
             opacity: 0.3
           },
-          states: { // Configure hover effects for pie slices
+          states: { 
             hover: {
               filter: {
                 type: 'lighten',
-                value: 0.25, // Increased from 0.10 to make hover more pronounced
+                value: 0.25, 
               }
             },
-            active: { // Styles for clicked/active slice (due to expandOnClick)
+            active: { 
               filter: {
-                type: 'none', // No additional filter, rely on expand
+                type: 'none', 
               }
             }
           }
@@ -461,7 +471,11 @@ const Dashboard: FC = () => {
           ) : recentContacts.length > 0 ? (
             <ul className="space-y-2">
                 {recentContacts.map((contact) => (
-                <li key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200">
+                <li 
+                    key={contact.id} 
+                    className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200 cursor-pointer"
+                    onClick={() => handleViewContactDetails(contact)}
+                >
                     <div>
                     <span className="font-medium">{contact.firstName} {contact.lastName}</span>
                     <p className="text-sm text-muted-foreground">{contact.email}</p>
@@ -566,11 +580,16 @@ const Dashboard: FC = () => {
         </CardContent>
       </Card>
     </div>
+    <CustomerDetailModal
+        contact={selectedContactForModal}
+        isOpen={isCustomerDetailModalOpen}
+        onClose={() => {
+            setIsCustomerDetailModalOpen(false);
+            setSelectedContactForModal(null);
+        }}
+      />
     </div>
   );
 };
 
 export default Dashboard;
-
-
-    

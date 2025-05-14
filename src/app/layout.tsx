@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Settings, Sun, Moon, Laptop } from 'lucide-react';
+import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Settings, Sun, Moon, Laptop, Users } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher'; // Import ThemeSwitcher
@@ -86,6 +86,14 @@ export default function RootLayout({
                       <Link href="/">
                         <LayoutDashboard />
                         <span>Dashboard</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="All Customers">
+                      <Link href="/customers">
+                        <Users />
+                        <span>All Customers</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
