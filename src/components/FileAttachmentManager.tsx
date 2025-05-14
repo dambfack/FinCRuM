@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UploadCloud, FileText, ShieldCheck, Download, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils';
+import { storeFile, getFile, deleteFile } from '@/lib/indexeddb'; // Import IndexedDB helpers
 
 interface FileAttachmentManagerProps {
   contact: Contact;
@@ -36,67 +37,108 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       toast({ title: 'No File Selected', description: 'Please select a file to attach.', variant: 'destructive' });
       return;
     }
-    // In a real scenario, prompt for a real password for encryption here
-    if (!password.trim() && false) { // Password requirement disabled for now
-      toast({ title: 'Password Required', description: 'Please enter a password for encryption.', variant: 'destructive' });
-      return;
-    }
+    // Password requirement for encryption is deferred
+    // if (!password.trim() && false) { 
+    //   toast({ title: 'Password Required', description: 'Please enter a password for encryption.', variant: 'destructive' });
+    //   return;
+    // }
 
     setIsUploading(true);
 
-    // Simulate attachment process (no actual encryption or file storage here)
-    const newAttachment: FileAttachmentMeta = {
+    const newAttachmentMeta: FileAttachmentMeta = {
       id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: selectedFile.name,
       type: selectedFile.type,
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: true, // Assume it would be encrypted
-      ivHex: 'dummyIVhex', // Placeholder
-      saltHex: 'dummySALTHex', // Placeholder
+      encrypted: false, // Set to false as encryption is not implemented yet
+      // ivHex: 'dummyIVhex', // Placeholder, remove if not encrypting
+      // saltHex: 'dummySALTHex', // Placeholder, remove if not encrypting
     };
 
-    const updatedAttachments = [...(contact.attachments || []), newAttachment];
-    const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
+    try {
+      await storeFile(newAttachmentMeta.id, selectedFile); // Store actual file content in IndexedDB
 
-    // Call the callback to update the contact in the parent and localStorage
-    onAttachmentsUpdate(updatedContact);
+      const updatedAttachments = [...(contact.attachments || []), newAttachmentMeta];
+      const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
 
-    toast({
-      title: 'File Attached (Metadata)',
-      description: `${selectedFile.name} metadata has been added. Actual file content and encryption are not implemented in this prototype.`,
-    });
+      onAttachmentsUpdate(updatedContact); // Update contact metadata in localStorage
 
-    setSelectedFile(null);
-    setPassword('');
-    setIsUploading(false);
-    // Clear the file input
-    const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
+      toast({
+        title: 'File Attached',
+        description: `${selectedFile.name} has been attached and stored locally.`,
+      });
+
+      setSelectedFile(null);
+      setPassword('');
+      // Clear the file input
+      const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+    } catch (error) {
+      console.error("Error attaching file:", error);
+      toast({
+        title: 'Attachment Error',
+        description: `Could not store file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleDeleteAttachment = (attachmentId: string) => {
-    if (!confirm('Are you sure you want to delete this file attachment metadata? This action cannot be undone.')) {
+  const handleDeleteAttachment = async (attachmentId: string, attachmentName: string) => {
+    if (!confirm(`Are you sure you want to delete '${attachmentName}'? This will remove the file and its metadata.`)) {
       return;
     }
-    const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentId);
-    const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
-    onAttachmentsUpdate(updatedContact);
-    toast({ title: 'Attachment Deleted', description: 'File attachment metadata removed.' });
+    try {
+      await deleteFile(attachmentId); // Delete from IndexedDB
+      const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentId);
+      const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
+      onAttachmentsUpdate(updatedContact); // Update metadata in localStorage
+      toast({ title: 'Attachment Deleted', description: `'${attachmentName}' and its metadata removed.` });
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      toast({
+        title: 'Deletion Error',
+        description: `Could not delete file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleDownloadAttachment = (attachment: FileAttachmentMeta) => {
-    // Simulate download / decryption prompt
-    toast({
-      title: 'Download Initiated (Mock)',
-      description: `In a real app, '${attachment.name}' would be decrypted (if needed) and downloaded. File content is not stored in this prototype.`,
-    });
-    // const userPassword = prompt(`Enter password to decrypt and download ${attachment.name}:`);
-    // if (userPassword) {
-    //   // Decryption logic would go here
-    //   console.log(`Simulating decryption of ${attachment.name} with password: ${userPassword}`);
-    // }
+  const handleDownloadAttachment = async (attachment: FileAttachmentMeta) => {
+    try {
+      const fileBlob = await getFile(attachment.id);
+      if (fileBlob) {
+        const url = URL.createObjectURL(fileBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({
+          title: 'Download Started',
+          description: `Downloading '${attachment.name}'.`,
+        });
+      } else {
+        toast({
+          title: 'Download Error',
+          description: `File content for '${attachment.name}' not found locally. It might have been deleted or not stored correctly.`,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      toast({
+        title: 'Download Error',
+        description: `Could not retrieve file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -116,13 +158,14 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
-          <CardDescription>Select a file and provide a password (for intended encryption).</CardDescription>
+          <CardDescription>Select a file to attach to this contact. Encryption is not yet implemented.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
           </div>
+          {/* Password input can be re-enabled when encryption is implemented
           <div>
             <Label htmlFor="file-password">Encryption Password (Mock)</Label>
             <Input
@@ -136,8 +179,9 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             />
              <p className="text-xs text-muted-foreground mt-1">Note: Actual file encryption is not implemented in this prototype.</p>
           </div>
+          */}
           <Button onClick={handleAttachFile} disabled={isUploading || !selectedFile} className="w-full md:w-auto h-11 px-4 py-3">
-            {isUploading ? 'Attaching...' : 'Attach File Metadata'}
+            {isUploading ? 'Attaching...' : 'Attach File'}
           </Button>
         </CardContent>
       </Card>
@@ -159,7 +203,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                     <TableHead>Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Attached On</TableHead>
-                    <TableHead className="text-center">Encrypted</TableHead>
+                    {/* <TableHead className="text-center">Encrypted</TableHead> */}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -170,14 +214,16 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                       <TableCell className="truncate max-w-xs" title={att.type}>{att.type || 'N/A'}</TableCell>
                       <TableCell>{formatFileSize(att.size)}</TableCell>
                       <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
+                      {/* 
                       <TableCell className="text-center">
                         {att.encrypted ? <ShieldCheck className="h-5 w-5 text-green-500 mx-auto" /> : '-'}
                       </TableCell>
+                      */}
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download (Mock)">
+                        <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File">
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id)} title="Delete Attachment" className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAttachment(att.id, att.name)} title="Delete Attachment" className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

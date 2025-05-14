@@ -37,15 +37,15 @@ export type ConflictResolutionOption =
  * Represents metadata for a file attached to a contact.
  */
 export interface FileAttachmentMeta {
-  id: string; // Unique identifier for the attachment
+  id: string; // Unique identifier for the attachment (and key for IndexedDB)
   name: string; // Original name of the file
   type: string; // MIME type of the file
   size: number; // Size of the file in bytes
   contactId: string; // ID of the contact this file is attached to
   createdAt: string; // ISO date string of when it was attached
   encrypted: boolean; // Flag indicating if the file is (intended to be) encrypted
-  ivHex?: string; // Hex-encoded Initialization Vector (for AES) - Placeholder
-  saltHex?: string; // Hex-encoded salt (for PBKDF2) - Placeholder
+  ivHex?: string; // Hex-encoded Initialization Vector (for AES) - Placeholder if encryption implemented
+  saltHex?: string; // Hex-encoded salt (for PBKDF2) - Placeholder if encryption implemented
 }
 
   /**
