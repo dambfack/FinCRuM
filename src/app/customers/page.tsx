@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Contact } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, saveData, deleteItemById } from '@/lib/utils';
+import { getData, deleteItemById } from '@/lib/utils';
 import CustomerTable from '@/components/CustomerTable';
 import CustomerForm from '@/components/CustomerForm';
 import CustomerDetailModal from '@/components/CustomerDetailModal';
@@ -40,7 +40,6 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (contactId: string) => {
-    // Consider adding a confirmation dialog here
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (confirm(`Are you sure you want to delete ${contactToDelete?.firstName} ${contactToDelete?.lastName}?`)) {
         deleteItemById<Contact>(DataItemType.Contacts, contactId);
@@ -48,7 +47,7 @@ export default function CustomersPage() {
             title: 'Customer Deleted',
             description: `${contactToDelete?.firstName} ${contactToDelete?.lastName} has been removed.`,
         });
-        loadContacts(); // Refresh the list
+        loadContacts(); 
     }
   };
 
@@ -60,8 +59,14 @@ export default function CustomersPage() {
   const handleSaveCustomer = () => {
     setIsEditModalOpen(false);
     setSelectedContact(null);
-    loadContacts(); // Refresh the list after saving
-    // Toast is handled by CustomerForm
+    loadContacts(); 
+  };
+
+  const handleEditRequestFromDetail = (contact: Contact) => {
+    setIsDetailModalOpen(false); // Close detail modal
+    // setSelectedContact(contact); // Already set or will be by handleEdit
+    // setIsEditModalOpen(true); // Open edit modal
+    handleEdit(contact); // Use existing handleEdit logic
   };
   
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
@@ -101,7 +106,7 @@ export default function CustomersPage() {
 
       <Dialog open={isEditModalOpen} onOpenChange={(open) => {
           if (!open) {
-            setSelectedContact(null); // Clear selected contact when closing
+            setSelectedContact(null); 
           }
           setIsEditModalOpen(open);
       }}>
@@ -110,7 +115,7 @@ export default function CustomersPage() {
             <DialogTitle className="font-heading tracking-wide">Edit Customer</DialogTitle>
             <DialogDescription>Update the customer's details below.</DialogDescription>
           </DialogHeader>
-          {selectedContact && ( // Ensure selectedContact is not null before rendering form
+          {selectedContact && ( 
             <CustomerForm
               initialData={selectedContact}
               onSave={handleSaveCustomer}
@@ -124,8 +129,9 @@ export default function CustomersPage() {
         isOpen={isDetailModalOpen}
         onClose={() => {
             setIsDetailModalOpen(false);
-            setSelectedContact(null); // Important to clear after closing details too
+            setSelectedContact(null); 
         }}
+        onEditRequest={handleEditRequestFromDetail} // Pass the new handler
       />
     </div>
   );

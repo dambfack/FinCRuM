@@ -5,7 +5,7 @@
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon } from 'lucide-react';
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
@@ -15,11 +15,12 @@ import { useDataSync } from '@/hooks/use-data-sync';
 import TaskList from './TaskList';
 import AppointmentList from './AppointmentList';
 import ReminderList from './ReminderList';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
-import CustomerDetailModal from './CustomerDetailModal'; // Import the new modal
+import CustomerDetailModal from './CustomerDetailModal';
+import CustomerForm from './CustomerForm'; // Import CustomerForm for editing
 import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
@@ -73,7 +74,6 @@ const Dashboard: FC = () => {
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
     const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
 
-    // ApexCharts data state
     const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
 
@@ -84,9 +84,12 @@ const Dashboard: FC = () => {
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
 
-    // State for CustomerDetailModal
     const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
     const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
+    
+    // State for editing customer from dashboard
+    const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
+    const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
 
     const isGoogleCalendarLinked = isGoogleDriveConnected;
 
@@ -95,34 +98,15 @@ const Dashboard: FC = () => {
         setLoading(true);
         try {
             const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || [];
-            const importedDataStore = getData<ExcelData>(DataItemType.CustomerData);
-
+            // Removed merging logic with DataItemType.CustomerData to simplify and focus on Contacts
             let loadedContacts: Contact[] = [...customerDataStore];
 
-            if (importedDataStore && importedDataStore.rows) {
-                const importedContactsAsContacts: Contact[] = importedDataStore.rows.map((row, index) => {
-                    const h = importedDataStore.headers;
-                    return {
-                        id: `imported-${index}-${Date.now()}`,
-                        firstName: row[h.indexOf('firstName')] || '',
-                        lastName: row[h.indexOf('lastName')] || '',
-                        email: row[h.indexOf('email')] || '',
-                        phone: row[h.indexOf('phone')] || undefined,
-                        company: row[h.indexOf('company')] || undefined,
-                        status: (row[h.indexOf('status')] as Contact['status']) || 'other',
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                    };
-                });
-                const combined = [...customerDataStore, ...importedContactsAsContacts];
-                loadedContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
-            }
-
-            if (loadedContacts.length === 0) {
-                loadedContacts = mockContacts;
+            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') { // Populate with mock only if empty and in dev
+                loadedContacts = mockContacts; 
+                // Optionally save mock contacts to local storage for persistence in dev
+                // saveData<Contact[]>(DataItemType.Contacts, mockContacts);
             }
             setAllContactsState(loadedContacts);
-
 
             const tasks = getData<TaskType[]>(DataItemType.Tasks) || [];
             const appointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
@@ -174,11 +158,13 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                if (statusCounts.hasOwnProperty(status)) {
-                    statusCounts[status]++;
+                if (status === 'approached') { // Map 'approached' to 'other' or handle as per new logic
+                    statusCounts.other++;
+                } else if (statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
                 } else {
                     statusCounts.other++; 
                 }
@@ -194,7 +180,7 @@ const Dashboard: FC = () => {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setRecentContacts(mockContacts.slice(0,5));
+            setRecentContacts(mockContacts.slice(0,5)); // Fallback to mock if error
             setCustomerGrowthChartData([]);
             setDealStatusSeries([]);
             setDealStatusLabels([]);
@@ -233,13 +219,26 @@ const Dashboard: FC = () => {
     const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); refreshData(); };
     const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); refreshData(); };
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
+    
+    const handleSaveCustomerEdit = () => {
+      setIsEditCustomerDialogOpen(false);
+      setCustomerToEdit(null);
+      refreshData(); // Refresh dashboard data after editing a customer
+    };
 
     const handleViewContactDetails = (contact: Contact) => {
         setSelectedContactForModal(contact);
         setIsCustomerDetailModalOpen(true);
     };
+
+    const handleEditRequestFromDetail = (contact: Contact) => {
+      setIsCustomerDetailModalOpen(false); // Close detail modal
+      setCustomerToEdit(contact);          // Set contact to edit
+      setIsEditCustomerDialogOpen(true);   // Open edit dialog on dashboard
+    };
     
     const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
+    const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
     const apexPieChartOptions: ApexCharts.ApexOptions = {
       chart: {
@@ -358,11 +357,11 @@ const Dashboard: FC = () => {
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <h1 className="text-3xl font-bold font-heading tracking-wide">Dashboard</h1>
           <div className="flex items-center gap-2">
-            <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="whitespace-nowrap h-11 px-4 py-3">
+            <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
                 {isGoogleCalendarLinked ? 'Unlink Google Calendar' : 'Link Google Calendar'}
             </Button>
-            <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="whitespace-nowrap h-11 px-4 py-3">
+            <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 {syncStatus === 'syncing' ? 'Syncing...' : (lastSyncTime ? `Last Sync: ${formatDateTime(lastSyncTime).split(',')[0]}` : 'Sync Now')}
             </Button>
@@ -416,13 +415,13 @@ const Dashboard: FC = () => {
                     <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} />
                     <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false}/>
                     <Tooltip
-                      contentStyle={{
+                       contentStyle={{
                         backgroundColor: 'hsla(var(--popover)/0.7)',
                         borderColor: 'hsl(var(--border))',
                         color: 'hsl(var(--popover-foreground))',
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
-                        backdropFilter: 'blur(8px)',
+                        backdropFilter: 'blur(8px)', // Added blur for tooltip
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
@@ -488,7 +487,7 @@ const Dashboard: FC = () => {
             <p className="text-sm text-muted-foreground">No contacts found. <Link href="/import" className="text-accent underline hover:text-accent/80">Import data</Link> or <Link href="/add-customer" className="text-accent underline hover:text-accent/80">add a customer</Link>.</p>
           )}
            <div className="mt-6 pt-4 border-t border-border/20 flex justify-start">
-            <Button asChild variant="outline" className="whitespace-normal h-11 px-4 py-3">
+            <Button asChild variant="outline" className="h-11 px-4 py-3 whitespace-normal">
               <Link href="/add-customer">
                 <UserPlusIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                 <span>Add New Customer</span>
@@ -505,7 +504,7 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
+           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
               <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
            </Button>
         </CardHeader>
@@ -532,7 +531,7 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
+            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
                 <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
             </Button>
         </CardHeader>
@@ -559,7 +558,7 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
+          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
             <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
           </Button>
         </CardHeader>
@@ -580,6 +579,8 @@ const Dashboard: FC = () => {
         </CardContent>
       </Card>
     </div>
+
+    {/* Customer Detail Modal */}
     <CustomerDetailModal
         contact={selectedContactForModal}
         isOpen={isCustomerDetailModalOpen}
@@ -587,7 +588,28 @@ const Dashboard: FC = () => {
             setIsCustomerDetailModalOpen(false);
             setSelectedContactForModal(null);
         }}
+        onEditRequest={handleEditRequestFromDetail} // New prop for edit from detail view
       />
+
+    {/* Customer Edit Dialog for Dashboard */}
+    <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {
+        if (!open) setCustomerToEdit(null);
+        setIsEditCustomerDialogOpen(open);
+    }}>
+        <DialogContent className={customerEditDialogContentClassName}>
+            <DialogHeader>
+                <DialogTitle className="font-heading tracking-wide">Edit Customer</DialogTitle>
+                <DialogDescription>Update the customer's details below.</DialogDescription>
+            </DialogHeader>
+            {customerToEdit && (
+                <CustomerForm
+                    initialData={customerToEdit}
+                    onSave={handleSaveCustomerEdit}
+                />
+            )}
+        </DialogContent>
+    </Dialog>
+
     </div>
   );
 };
