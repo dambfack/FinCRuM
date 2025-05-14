@@ -232,7 +232,7 @@ const FileUpload = () => {
 
         {showPreview && previewData.length > 0 && (
           <div>
-            <h3 className="text-lg font-medium font-heading">Data Preview (First 5 Rows)</h3>
+            <h3 className="text-lg font-medium font-heading tracking-wide">Data Preview (First 5 Rows)</h3>
             <div className="rounded-md border mt-2 overflow-x-auto">
               <Table>
                 <TableHeader>

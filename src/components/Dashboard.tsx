@@ -179,7 +179,7 @@ const Dashboard: FC = () => {
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
+          <h1 className="text-3xl font-bold font-heading tracking-wide">Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />

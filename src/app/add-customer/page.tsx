@@ -5,7 +5,7 @@ import CustomerForm from '@/components/CustomerForm'; // Updated component name
 export default function AddCustomerPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-heading">Add New Customer</h1>
+      <h1 className="text-3xl font-bold font-heading tracking-wide">Add New Customer</h1>
       <p className="text-muted-foreground">
         Enter the customer details below.
       </p>

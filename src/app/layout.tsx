@@ -69,7 +69,7 @@ export default function RootLayout({
               <div className="flex items-center justify-between">
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                     <Logo />
-                    <span className="group-data-[state=collapsed]:hidden font-heading">Finsculpt CRM</span>
+                    <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                   </Link>
                   <SidebarTrigger className="md:hidden" />
               </div>
@@ -123,10 +123,10 @@ export default function RootLayout({
                 <SidebarTrigger />
                  <Link href="/" className="font-semibold text-lg flex items-center gap-2">
                    <Logo />
-                   <span className="font-heading">Finsculpt CRM</span>
+                   <span className="font-heading tracking-wide">Finsculpt CRM</span>
                  </Link>
               </div>
-              <div className="hidden md:block text-xl font-semibold font-heading">Finsculpt CRM</div>
+              <div className="hidden md:block text-xl font-semibold font-heading tracking-wide">Finsculpt CRM</div>
 
               <div className="flex items-center gap-3">
                 <Popover>
