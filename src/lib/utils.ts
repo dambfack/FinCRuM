@@ -83,7 +83,7 @@ export function deleteDataCollection(key: DataItemType): void {
 
 
 /**
- * Formats a date into a string 'MM/dd/yyyy, HH:mm'.
+ * Formats a date into a string 'dd/MM/yyyy, HH:mm'.
  * @param date The date to format (Date object, ISO string, or timestamp).
  * @returns Formatted date string or 'Invalid Date' if formatting fails.
  */
@@ -94,7 +94,7 @@ export function formatDateTime(dateInput: Date | string | number | null | undefi
     if (isNaN(dateObj.getTime())) {
       return 'Invalid Date';
     }
-    return format(dateObj, 'MM/dd/yyyy, HH:mm');
+    return format(dateObj, 'dd/MM/yyyy, HH:mm');
   } catch (error) {
     console.error("Error formatting date:", error);
     return 'Invalid Date';

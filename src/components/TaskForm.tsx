@@ -241,7 +241,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
           <DatePicker
             selected={dueDate}
             onChange={(date: Date | null) => setDueDate(date)}
-            dateFormat="MM/dd/yyyy"
+            dateFormat="dd/MM/yyyy"
             className={datePickerInputClassName}
             wrapperClassName="w-full"
             placeholderText="Select a due date"

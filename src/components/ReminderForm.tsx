@@ -242,7 +242,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
             selected={reminderDateTime}
             onChange={(date: Date | null) => setReminderDateTime(date)}
             showTimeSelect
-            dateFormat="MM/dd/yyyy h:mm aa"
+            dateFormat="dd/MM/yyyy HH:mm"
             className={datePickerInputClassName}
             wrapperClassName="w-full"
             popperClassName="react-datepicker-popper" 

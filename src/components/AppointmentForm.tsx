@@ -328,7 +328,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
             onChange={(date: Date | null) => setAppointmentDate(date)}
             className={datePickerInputClassName}
             wrapperClassName="w-full"
-            dateFormat="MM/dd/yyyy"
+            dateFormat="dd/MM/yyyy"
             popperClassName="react-datepicker-popper"
           />
           {errors.date && <p className="text-sm text-destructive mt-1">{errors.date}</p>}
