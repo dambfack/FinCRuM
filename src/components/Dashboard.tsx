@@ -34,9 +34,9 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 interface DashboardStats {
   totalCustomers: number;
-  newCustomersTodayCount: number; 
+  newCustomersTodayCount: number;
   tasksPending: number;
-  appointmentsTodayCount: number; 
+  appointmentsTodayCount: number;
 }
 
 const initialStats: DashboardStats = {
@@ -56,12 +56,12 @@ const mockContacts: Contact[] = [
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-const PIE_CHART_CSS_VARS = [
-  'hsl(var(--chart-pie-1))', 
-  'hsl(var(--chart-pie-2))', 
-  'hsl(var(--chart-pie-3))', 
-  'hsl(var(--chart-pie-4))', 
-  'hsl(var(--chart-5))',     
+// Define colors for ApexCharts using HSLA with CSS variables for HSL part and 0.8 for alpha
+const themedPieChartColorsWithOpacity = [
+  'hsla(var(--chart-pie-1), 0.8)', // Open - Teal
+  'hsla(var(--chart-pie-2), 0.8)', // Closed - Blue
+  'hsla(var(--chart-pie-3), 0.8)', // Missed - Yellow/Orange
+  'hsla(var(--chart-pie-4), 0.8)', // Other - Gray
 ];
 
 
@@ -70,8 +70,8 @@ const Dashboard: FC = () => {
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [allContactsState, setAllContactsState] = useState<Contact[]>([]); 
-    const [allUsersState, setAllUsersState] = useState<User[]>([]); 
+    const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
+    const [allUsersState, setAllUsersState] = useState<User[]>([]);
     const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
 
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
@@ -89,7 +89,7 @@ const Dashboard: FC = () => {
 
     const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
     const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
-    
+
     const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
     const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
 
@@ -113,8 +113,8 @@ const Dashboard: FC = () => {
             const loadedUsers = getData<User[]>(DataItemType.Users) || [];
             setAllUsersState(loadedUsers);
 
-            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') { 
-                loadedContacts = mockContacts; 
+            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') {
+                loadedContacts = mockContacts;
             }
             setAllContactsState(loadedContacts);
 
@@ -168,17 +168,17 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (statusCounts.hasOwnProperty(status)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
-                } else {
-                    statusCounts.other++; 
+                 if (status !== 'approached' && statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
+                } else if (status !== 'approached') {
+                    statusCounts.other++;
                 }
             });
             const pieDataForApex = Object.entries(statusCounts)
-                .filter(([, value]) => value > 0) 
+                .filter(([, value]) => value > 0)
                 .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
             setDealStatusSeries(pieDataForApex.map(item => item.value));
@@ -188,7 +188,7 @@ const Dashboard: FC = () => {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setRecentContacts(mockContacts.slice(0,5)); 
+            setRecentContacts(mockContacts.slice(0,5));
             setCustomerGrowthChartData([]);
             setDealStatusSeries([]);
             setDealStatusLabels([]);
@@ -216,7 +216,7 @@ const Dashboard: FC = () => {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-      loadDashboardData(); 
+      loadDashboardData();
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
@@ -227,11 +227,11 @@ const Dashboard: FC = () => {
     const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); setContactForNewActivity(null); refreshData(); };
     const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); setContactForNewActivity(null); refreshData(); };
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); setContactForNewActivity(null); refreshData(); };
-    
+
     const handleSaveCustomerEdit = () => {
       setIsEditCustomerDialogOpen(false);
       setCustomerToEdit(null);
-      refreshData(); 
+      refreshData();
     };
 
     const handleViewContactDetails = (contact: Contact) => {
@@ -240,9 +240,9 @@ const Dashboard: FC = () => {
     };
 
     const handleEditRequestFromDetail = (contact: Contact) => {
-      setIsCustomerDetailModalOpen(false); 
-      setCustomerToEdit(contact);          
-      setIsEditCustomerDialogOpen(true);   
+      setIsCustomerDetailModalOpen(false);
+      setCustomerToEdit(contact);
+      setIsEditCustomerDialogOpen(true);
     };
 
     const handleAddAppointmentRequestFromDetail = (contact: Contact) => {
@@ -251,7 +251,7 @@ const Dashboard: FC = () => {
         setEditingAppointment(undefined);
         setIsAppointmentFormOpen(true);
     };
-    
+
     const handleAddReminderRequestFromDetail = (contact: Contact) => {
         setIsCustomerDetailModalOpen(false);
         setContactForNewActivity(contact);
@@ -276,11 +276,11 @@ const Dashboard: FC = () => {
       if (selectedContactForModal && selectedContactForModal.id === updatedContact.id) {
         setSelectedContactForModal(updatedContact);
       }
-      loadDashboardData(); 
+      loadDashboardData();
     };
-    
-    const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70"; 
-    const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70"; 
+
+    const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
+    const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70";
     const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
@@ -297,7 +297,7 @@ const Dashboard: FC = () => {
       const allTasks = getData<TaskType[]>(DataItemType.Tasks) || [];
       const todayString = new Date().toISOString().split('T')[0];
       const priorityOrder: Record<TaskType['priority'] & string, number> = { high: 1, medium: 2, low: 3 };
-      
+
       const filtered = allTasks
         .filter(t => t.dueDate && (parseDate(t.dueDate as string)?.toISOString().split('T')[0] === todayString))
         .sort((a, b) => (priorityOrder[a.priority || 'low'] || 4) - (priorityOrder[b.priority || 'low'] || 4));
@@ -316,7 +316,7 @@ const Dashboard: FC = () => {
     const getTaskPriorityBadgeVariant = (priority?: 'low' | 'medium' | 'high') => {
       switch (priority) {
         case 'high': return 'destructive';
-        case 'medium': return 'secondary'; 
+        case 'medium': return 'secondary';
         case 'low': return 'outline';
         default: return 'outline';
       }
@@ -351,9 +351,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: PIE_CHART_CSS_VARS.map(color => `hsla(${color.replace('hsl(','').replace(')','').split(' ').join(', ')}, 0.8)`), // Apply opacity here
+      colors: themedPieChartColorsWithOpacity, // Use the HSLA strings with embedded CSS vars
       fill: {
-        opacity: 1, // Keep this 1, opacity is handled in colors
+        opacity: 1, // Set to 1 because opacity is in the color strings
       },
       stroke: {
         show: true,
@@ -404,16 +404,16 @@ const Dashboard: FC = () => {
             blur: 3,
             opacity: 0.3
           },
-          states: { 
+          states: {
             hover: {
               filter: {
                 type: 'lighten',
-                value: 0.25, 
+                value: 0.25,
               }
             },
-            active: { 
+            active: {
               filter: {
-                type: 'none', 
+                type: 'none',
               }
             }
           }
@@ -428,15 +428,15 @@ const Dashboard: FC = () => {
         },
         style: {
           fontSize: '12px',
-          colors: ["hsl(var(--foreground))"] 
+          colors: ["hsl(var(--foreground))"]
         },
         dropShadow: {
-          enabled: false, 
+          enabled: false,
         }
       },
       tooltip: {
         theme: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-        fillSeriesColor: false, 
+        fillSeriesColor: false,
         y: {
             formatter: (val: number) => `${val} client(s)`
         }
@@ -458,7 +458,7 @@ const Dashboard: FC = () => {
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1> {/* Removed tracking-wide */}
+          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -473,19 +473,19 @@ const Dashboard: FC = () => {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {statCards.map(stat => (
-            <Card 
-              key={stat.title} 
-              onClick={stat.action ? stat.action : undefined} 
-              className={cn("hover:shadow-2xl hover:scale-102 hover:-translate-y-1 transition-all duration-300 ease-in-out", stat.link || stat.action ? "cursor-pointer" : "")}
+            <Card
+              key={stat.title}
+              onClick={stat.action ? stat.action : undefined}
+              className={cn("hover:scale-102 hover:-translate-y-1", stat.link || stat.action ? "cursor-pointer" : "")}
               role={stat.action ? "button" : undefined}
               tabIndex={stat.action ? 0 : undefined}
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && stat.action) stat.action(); }}
             >
               {stat.link ? (
                 <Link href={stat.link} passHref legacyBehavior>
-                  <a className="block h-full"> 
+                  <a className="block h-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
+                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
                       <stat.icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -497,7 +497,7 @@ const Dashboard: FC = () => {
               ) : (
                 <>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
+                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -514,7 +514,7 @@ const Dashboard: FC = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <CardTitle className="font-heading">Customer Growth</CardTitle> {/* Removed tracking-wide */}
+                <CardTitle className="font-heading">Customer Growth</CardTitle>
                 <Select value={barChartTimeRange} onValueChange={(value: BarChartTimeRange) => setBarChartTimeRange(value)}>
                     <SelectTrigger className="w-full sm:w-[180px] h-9">
                         <SelectValue placeholder="Select time range" />
@@ -543,7 +543,7 @@ const Dashboard: FC = () => {
                         color: 'hsl(var(--popover-foreground))',
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
-                        backdropFilter: 'blur(8px)', 
+                        backdropFilter: 'blur(8px)',
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
@@ -557,7 +557,7 @@ const Dashboard: FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-heading">Client Deal Status</CardTitle> {/* Removed tracking-wide */}
+            <CardTitle className="font-heading">Client Deal Status</CardTitle>
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -579,7 +579,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
@@ -592,8 +592,8 @@ const Dashboard: FC = () => {
           ) : recentContacts.length > 0 ? (
             <ul className="space-y-2">
                 {recentContacts.map((contact) => (
-                <li 
-                    key={contact.id} 
+                <li
+                    key={contact.id}
                     className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200"
                 >
                     <div className="cursor-pointer" onClick={() => handleViewContactDetails(contact)}>
@@ -621,7 +621,7 @@ const Dashboard: FC = () => {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
@@ -636,7 +636,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+            <CardTitle className="flex items-center space-x-2 font-heading">
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
@@ -651,7 +651,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
@@ -668,7 +668,7 @@ const Dashboard: FC = () => {
     <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Customers Added Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Customers Added Today</DialogTitle>
             </DialogHeader>
             {newCustomersTodayList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -686,7 +686,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysTasksModalOpen} onOpenChange={setTodaysTasksModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Tasks for Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Tasks for Today</DialogTitle>
             </DialogHeader>
             {todaysTasksList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -733,7 +733,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysAppointmentsModalOpen} onOpenChange={setTodaysAppointmentsModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Appointments for Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Appointments for Today</DialogTitle>
             </DialogHeader>
             {todaysAppointmentsList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -741,7 +741,7 @@ const Dashboard: FC = () => {
                         <li key={appt.id} className="p-2 border-b text-sm">
                             <p className="font-medium">{appt.title}</p>
                             <p className="text-xs text-muted-foreground">
-                                {formatDateTime(appt.date as string).split(',')[1]} 
+                                {formatDateTime(appt.date as string).split(',')[1]}
                                 {appt.location && ` - ${appt.location}`}
                             </p>
                             {appt.assignedToUserId && (
@@ -765,7 +765,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTaskFormOpen} onOpenChange={(open) => { if(!open) {setEditingTask(undefined); setContactForNewActivity(null);} setIsTaskFormOpen(open);}}>
         <DialogContent className={taskDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                 {contactForNewActivity && !editingTask && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
             </DialogHeader>
             <TaskForm
@@ -779,7 +779,7 @@ const Dashboard: FC = () => {
     <Dialog open={isReminderFormOpen} onOpenChange={(open) => { if(!open) {setEditingReminder(undefined); setContactForNewActivity(null);} setIsReminderFormOpen(open);}}>
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
-                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle> {/* Removed tracking-wide */}
+                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
                     {contactForNewActivity && !editingReminder && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
@@ -793,7 +793,7 @@ const Dashboard: FC = () => {
     <Dialog open={isAppointmentFormOpen} onOpenChange={(open) => { if(!open) {setEditingAppointment(undefined); setContactForNewActivity(null);} setIsAppointmentFormOpen(open);}}>
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
-                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle> {/* Removed tracking-wide */}
+                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
                   {contactForNewActivity && !editingAppointment && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
@@ -812,11 +812,11 @@ const Dashboard: FC = () => {
             setIsCustomerDetailModalOpen(false);
             setSelectedContactForModal(null);
         }}
-        onEditRequest={handleEditRequestFromDetail} 
+        onEditRequest={handleEditRequestFromDetail}
         onAddAppointmentRequest={handleAddAppointmentRequestFromDetail}
         onAddReminderRequest={handleAddReminderRequestFromDetail}
         onAddTaskRequest={handleAddTaskRequestFromDetail}
-        onContactUpdate={handleContactUpdatedFromDashboardModal} 
+        onContactUpdate={handleContactUpdatedFromDashboardModal}
       />
 
     <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {
@@ -825,7 +825,7 @@ const Dashboard: FC = () => {
     }}>
         <DialogContent className={customerEditDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Edit Customer</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Edit Customer</DialogTitle>
                 <DialogDescription>Update the customer's details below.</DialogDescription>
             </DialogHeader>
             {customerToEdit && (
