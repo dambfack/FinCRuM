@@ -83,7 +83,7 @@
     --chart-pie-2: 210 90% 55%;  /* Lighter Blue for 'Closed' */
     --chart-pie-3: 40 90% 60%;   /* Lighter Yellow/Orange for 'Missed' */
     --chart-pie-4: 220 10% 50%;  /* Darker Gray for 'Other' */
-    --sidebar-background: 220 10% 15%; /* Slightly lighter dark gray for sidebar */
+    --sidebar-background: 220 10% 10%; /* Match main dark background base */
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 180 100% 35%; /* Teal for primary sidebar elements */
     --sidebar-primary-foreground: 220 10% 10%;

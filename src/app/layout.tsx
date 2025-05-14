@@ -69,7 +69,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider>
-            <Sidebar collapsible="icon" className="bg-sidebar-background/50 dark:bg-sidebar-background/30 glass-effect-sidebar">
+            <Sidebar collapsible="icon" className="glass-effect-sidebar"> {/* Removed explicit bg classes */}
               <SidebarHeader>
                 <div className="flex items-center justify-between">
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
@@ -126,11 +126,11 @@ export default function RootLayout({
             </Sidebar>
             <SidebarInset className={cn(
               "flex flex-col",
-              "bg-background/10 dark:bg-background/5 backdrop-blur-sm" // SidebarInset already has a theme-aware background
+              "bg-background/10 dark:bg-background/5 backdrop-blur-sm" 
             )}>
               <header className={cn(
                 "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
-                "bg-background/70 dark:bg-background/60 glass-effect-header" // Changed from bg-transparent
+                "bg-background/70 dark:bg-background/60 glass-effect-header" 
               )}>
                 <div className="flex items-center gap-2 md:hidden">
                   <SidebarTrigger />
@@ -158,9 +158,7 @@ export default function RootLayout({
               </header>
               <main className={cn(
                 "flex-1 overflow-y-auto p-4 md:p-6",
-                // The main content area should remain relatively transparent to show the body background
-                // "bg-transparent" // Or a very subtle glass effect like:
-                "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5" // Adding subtle main content glass
+                "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5"
               )}>
                   {children}
               </main>

@@ -182,7 +182,7 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
-            "bg-sidebar-background/50 dark:bg-sidebar-background/30 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5", // Glassmorphism
+            "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5", // Glassmorphism
             className
           )}
           ref={ref}
@@ -245,17 +245,17 @@ const Sidebar = React.forwardRef<
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]", // Removed border-r/l as it's part of glass effect
-            className
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]", 
+            className // className prop from layout.tsx applies here
           )}
           {...props}
         >
           <div
             data-sidebar="sidebar"
             className={cn(
-              "flex h-full w-full flex-col rounded-xl", // Added rounded-xl
-              "bg-sidebar-background/50 dark:bg-sidebar-background/30 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-white/5", // Glassmorphism
-              "group-data-[variant=floating]:rounded-xl group-data-[variant=floating]:border group-data-[variant=floating]:border-white/10 group-data-[variant=floating]:shadow-2xl" // Adjusted floating for consistency
+              "flex h-full w-full flex-col rounded-xl", 
+              "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-white/5", 
+              "group-data-[variant=floating]:rounded-xl group-data-[variant=floating]:border group-data-[variant=floating]:border-white/10 group-data-[variant=floating]:shadow-2xl"
             )}
           >
             {children}
@@ -324,17 +324,13 @@ SidebarRail.displayName = "SidebarRail"
 
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"main"> // Changed from div to main for semantic correctness
+  React.ComponentProps<"main"> 
 >(({ className, ...props }, ref) => {
   return (
-    <main // Changed from div to main
+    <main 
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-transparent", // bg-background removed, using glass-effect-main-content class if needed or direct styling
-        // The following peer styles are complex and might need careful review with glassmorphism
-        // "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
-        // Applying glass effect to main content area wrapper
-        // "bg-background/20 dark:bg-background/10 backdrop-blur-md rounded-xl m-2 shadow-lg border border-white/5",
+        "relative flex min-h-svh flex-1 flex-col bg-transparent", 
         className
       )}
       {...props}
@@ -528,11 +524,11 @@ const sidebarMenuButtonVariants = cva(
     variants: {
       variant: {
         default: "hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground",
-        outline: // Outline variant needs careful styling for glassmorphism if desired
+        outline: 
           "bg-transparent shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm", // Adjusted height and icon gap
+        default: "h-10 text-sm", 
         sm: "h-9 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0",
       },
@@ -560,7 +556,7 @@ const SidebarMenuButton = React.forwardRef<
       size = "default",
       tooltip,
       className,
-      children, // Added children to ensure they are passed
+      children, 
       ...props
     },
     ref
@@ -619,11 +615,7 @@ const SidebarMenuAction = React.forwardRef<
       data-sidebar="menu-action"
       className={cn(
         "absolute right-1.5 top-1/2 -translate-y-1/2 flex aspect-square w-6 items-center justify-center rounded-md p-0 text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
-        // "peer-data-[size=sm]/menu-button:top-1",
-        // "peer-data-[size=default]/menu-button:top-1.5",
-        // "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
           "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
@@ -645,9 +637,6 @@ const SidebarMenuBadge = React.forwardRef<
     className={cn(
       "absolute right-2 top-1/2 -translate-y-1/2 flex h-5 min-w-5 items-center justify-center rounded-full bg-sidebar-primary/20 px-1.5 text-[0.625rem] font-medium tabular-nums text-sidebar-primary-foreground select-none pointer-events-none",
       "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-primary-foreground",
-      // "peer-data-[size=sm]/menu-button:top-1",
-      // "peer-data-[size=default]/menu-button:top-1.5",
-      // "peer-data-[size=lg]/menu-button:top-2.5",
       "group-data-[collapsible=icon]:hidden",
       className
     )}
@@ -671,17 +660,17 @@ const SidebarMenuSkeleton = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="menu-skeleton"
-      className={cn("rounded-md h-10 flex gap-2.5 px-2.5 items-center", className)} // Matched SidebarMenuButton styling
+      className={cn("rounded-md h-10 flex gap-2.5 px-2.5 items-center", className)} 
       {...props}
     >
       {showIcon && (
         <Skeleton
-          className="size-5 rounded-md bg-white/5" // Adjusted icon skeleton
+          className="size-5 rounded-md bg-white/5" 
           data-sidebar="menu-skeleton-icon"
         />
       )}
       <Skeleton
-        className="h-4 flex-1 max-w-[--skeleton-width] bg-white/5" // Adjusted text skeleton
+        className="h-4 flex-1 max-w-[--skeleton-width] bg-white/5" 
         data-sidebar="menu-skeleton-text"
         style={
           {
@@ -702,7 +691,7 @@ const SidebarMenuSub = React.forwardRef<
     ref={ref}
     data-sidebar="menu-sub"
     className={cn(
-      "ml-[calc(theme(spacing[2.5])_+_theme(spacing[5]))] mr-1 flex min-w-0 translate-x-px flex-col gap-0.5 border-l border-white/10 pl-2.5 py-1", // Adjusted indent and border
+      "ml-[calc(theme(spacing[2.5])_+_theme(spacing[5]))] mr-1 flex min-w-0 translate-x-px flex-col gap-0.5 border-l border-white/10 pl-2.5 py-1", 
       "group-data-[collapsible=icon]:hidden",
       className
     )}
@@ -735,7 +724,7 @@ const SidebarMenuSubButton = React.forwardRef<
       data-active={isActive}
       className={cn(
         "flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground/80 outline-none ring-sidebar-ring hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent/50 active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
-        "data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-medium", // Emphasize active state
+        "data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-medium", 
         size === "sm" && "text-xs h-7",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",
