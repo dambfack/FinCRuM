@@ -129,8 +129,10 @@ export default function RootLayout({
               "bg-background/10 dark:bg-background/5 backdrop-blur-sm" 
             )}>
               <header className={cn(
-                "sticky top-0 z-20 flex h-16 items-center justify-between px-4 md:px-6",
-                "bg-background/70 dark:bg-background/60 glass-effect-header" 
+                "sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg",
+                "glass-effect", // General glassmorphism
+                "bg-background/50 dark:bg-background/40", // Increased transparency
+                "hover:shadow-2xl transition-shadow duration-300" // Enhanced hover shadow
               )}>
                 <div className="flex items-center gap-2 md:hidden">
                   <SidebarTrigger />
