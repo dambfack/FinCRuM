@@ -63,7 +63,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
 
-  console.log('[CustomerTable] currentUser:', currentUser); // For debugging
+  // console.log('[CustomerTable] currentUser:', currentUser); // For debugging
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -166,26 +166,29 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
-                    <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2">
+                    <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2 select-none">
                       <Eye className="h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2"
+                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2 select-none"
                       disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
                     >
                       <Edit className="h-4 w-4" /> Edit
                     </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => onAddAppointment(contact)} className="gap-2">
+                     <DropdownMenuItem onClick={() => onAddAppointment(contact)} className="gap-2 select-none">
                       <CalendarPlus className="h-4 w-4" /> Add Appointment
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onAddReminder(contact)} className="gap-2">
+                    <DropdownMenuItem onClick={() => onAddReminder(contact)} className="gap-2 select-none">
                       <BellPlus className="h-4 w-4" /> Add Reminder
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => alert('Delete clicked for ' + contact.id)}
+                      onClick={() => {
+                        // console.log('[CustomerTable] Delete onClick for ID:', contact.id); // DEBUG LINE
+                        onDelete(contact.id);
+                      }}
                       className={cn(
-                        "gap-2 select-none", // Added select-none here
-                        (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') 
-                          ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" 
+                        "gap-2 select-none",
+                        (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner')
+                          ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10"
                           : "text-destructive focus:text-destructive focus:bg-destructive/10"
                       )}
                     >
