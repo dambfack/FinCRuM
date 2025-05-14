@@ -187,7 +187,8 @@ export enum DataItemType {
   OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
-  Users = 'users', 
+  Users = 'users',
+  CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
 }
 
 /**
