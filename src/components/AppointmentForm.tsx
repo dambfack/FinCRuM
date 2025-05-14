@@ -231,6 +231,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
     }
     saveData<Appointment[]>(DataItemType.Appointments, appointments);
 
+    toast({
+      title: initialData?.id ? "Appointment Updated" : "Appointment Added",
+      description: `Appointment "${newOrUpdatedAppointment.title}" has been saved.`,
+    });
+
     try {
       const googleTokens = typeof window !== 'undefined' ? {
         access_token: localStorage.getItem(DataItemType.GoogleDriveAccessToken),

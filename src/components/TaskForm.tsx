@@ -172,6 +172,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
     }
     saveData<Task[]>(DataItemType.Tasks, tasks);
     
+    toast({
+      title: task?.id ? "Task Updated" : "Task Added",
+      description: `Task "${newTaskData.title}" has been saved.`,
+    });
+
     try {
       await syncCalendar();
     } catch (error) {
@@ -304,7 +309,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       <div>
         <Label htmlFor="assignedToUserId">Assign to User (Optional)</Label>
         <Select value={assignedUserId} onValueChange={(value) => setAssignedUserId(value === 'none' ? undefined : value)}>
-          <SelectTrigger className="w-full mt-1">
+          <SelectTrigger id="assignedToUserId" className="w-full mt-1">
             <SelectValue placeholder="Select user to assign" />
           </SelectTrigger>
           <SelectContent>

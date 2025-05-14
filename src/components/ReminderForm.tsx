@@ -72,6 +72,11 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       setDescription('');
       setReminderDateTime(null);
       setAssignedUserId(undefined);
+      // Reset selected contact if not editing and no initial contact is passed
+      if (!initialSelectedContactId) {
+        setSelectedContact(null);
+        setContactSearchInput('');
+      }
     }
   }, [initialReminder, initialSelectedContactId]);
 
@@ -141,6 +146,11 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       currentReminders.push(newOrUpdatedReminder);
     }
     saveData<Reminder[]>(DataItemType.Reminders, currentReminders);
+
+    toast({
+      title: initialReminder?.id ? "Reminder Updated" : "Reminder Added",
+      description: `Reminder "${newOrUpdatedReminder.title}" has been saved.`,
+    });
 
     try {
       const googleTokens = typeof window !== 'undefined' ? {
