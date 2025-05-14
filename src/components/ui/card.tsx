@@ -10,7 +10,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-xl border shadow-xl", // Increased rounding, base border, and shadow
-      "bg-card/60 dark:bg-card/40 backdrop-blur-lg", // Translucent background with blur
+      "bg-card/40 dark:bg-card/40 backdrop-blur-lg", // Translucent background with blur - light mode opacity changed from /60 to /40
       "border-white/20 dark:border-white/10", // Glass-like border
       "transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20", // Existing hover effects
       "hover:scale-102 hover:-translate-y-1", // Added pop-out effect
