@@ -4,8 +4,8 @@
 
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon, RefreshCw as RefreshCwIcon, PieChart as PieChartIcon } from 'lucide-react';
-import { Bar, BarChart as RechartsBarChart, PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon } from 'lucide-react';
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
@@ -15,14 +15,17 @@ import { useDataSync } from '@/hooks/use-data-sync';
 import TaskList from './TaskList';
 import AppointmentList from './AppointmentList';
 import ReminderList from './ReminderList';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TaskForm from './TaskForm';
 import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
 import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { subMonths, startOfMonth, endOfMonth, format, eachMonthOfInterval } from 'date-fns';
+import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import dynamic from 'next/dynamic';
+
+const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 
 interface DashboardStats {
@@ -49,12 +52,14 @@ const mockContacts: Contact[] = [
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
+// These are the actual HSL string values from your globals.css
+// We don't add opacity here; ApexCharts handles it via fill.opacity
 const PIE_CHART_CSS_VARS = [
   'hsl(var(--chart-pie-1))', // Teal for 'Open'
   'hsl(var(--chart-pie-2))', // Blue for 'Closed'
   'hsl(var(--chart-pie-3))', // Yellow/Orange for 'Missed'
   'hsl(var(--chart-pie-4))', // Gray for 'Other'
-  'hsl(var(--chart-5))', // Fallback
+  'hsl(var(--chart-5))',     // Fallback
 ];
 
 
@@ -63,13 +68,15 @@ const Dashboard: FC = () => {
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [allContacts, setAllContactsState] = useState<Contact[]>([]); // Renamed to avoid conflict with local var
+    const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
     const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
     
     const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
     const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
-    const [dealStatusChartData, setDealStatusChartData] = useState<{ name: string; value: number }[]>([]);
-
+    
+    // ApexCharts data state
+    const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
+    const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -78,7 +85,7 @@ const Dashboard: FC = () => {
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
     
-    const isGoogleCalendarLinked = isGoogleDriveConnected;
+    const isGoogleCalendarLinked = isGoogleDriveConnected; // This might need to be more specific if drive and calendar can be linked separately
 
 
     const loadDashboardData = useCallback(() => {
@@ -108,7 +115,6 @@ const Dashboard: FC = () => {
                 loadedContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
             }
             
-            // If no data from store, use mock data for initial view
             if (loadedContacts.length === 0) {
                 loadedContacts = mockContacts;
             }
@@ -136,7 +142,6 @@ const Dashboard: FC = () => {
 
             setRecentContacts(loadedContacts.sort((a,b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()).slice(0, 5));
 
-            // Calculate Customer Growth Chart Data
             const numMonths = parseInt(barChartTimeRange.replace('m', ''), 10);
             const endDate = new Date();
             const startDate = startOfMonth(subMonths(endDate, numMonths - 1));
@@ -145,7 +150,7 @@ const Dashboard: FC = () => {
             const customerCountsByMonth: Record<string, number> = {};
 
             monthsInterval.forEach(monthStart => {
-                const monthKey = format(monthStart, 'MMM yyyy'); // Use 'MMM yyyy' for unique keys if > 12 months
+                const monthKey = format(monthStart, 'MMM yyyy');
                 customerCountsByMonth[monthKey] = 0;
             });
 
@@ -166,11 +171,7 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-
-            // Calculate Deal Status Pie Chart Data
-            const statusCounts: Record<string, number> = {
-                open: 0, closed: 0, missed: 0, other: 0,
-            };
+            const statusCounts: Record<string, number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
                 if (statusCounts.hasOwnProperty(status)) {
@@ -179,27 +180,29 @@ const Dashboard: FC = () => {
                     statusCounts.other++; 
                 }
             });
-            const pieData = Object.entries(statusCounts)
-                .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
-                .filter(item => item.value > 0); // Only show statuses with counts
-            setDealStatusChartData(pieData);
-
+            const pieDataForApex = Object.entries(statusCounts)
+                .filter(([, value]) => value > 0)
+                .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
+            
+            setDealStatusSeries(pieDataForApex.map(item => item.value));
+            setDealStatusLabels(pieDataForApex.map(item => item.name));
 
         } catch (error) {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setRecentContacts(mockContacts.slice(0,5)); // Fallback to some mock
+            setRecentContacts(mockContacts.slice(0,5));
             setCustomerGrowthChartData([]);
-            setDealStatusChartData([]);
+            setDealStatusSeries([]);
+            setDealStatusLabels([]);
         } finally {
             setLoading(false);
         }
-    }, [toast, barChartTimeRange]); // Added barChartTimeRange as dependency
+    }, [toast, barChartTimeRange]);
 
     useEffect(() => {
         loadDashboardData();
-    }, [loadDashboardData]); // loadDashboardData itself depends on barChartTimeRange
+    }, [loadDashboardData]);
 
     const handleGoogleCalendarAuth = useCallback(async () => {
       if (isGoogleCalendarLinked) {
@@ -216,7 +219,7 @@ const Dashboard: FC = () => {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-      loadDashboardData(); // Refresh data to update UI reflecting link status change
+      loadDashboardData();
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
@@ -229,6 +232,103 @@ const Dashboard: FC = () => {
     const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
 
     const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
+
+    const apexPieChartOptions: ApexCharts.ApexOptions = {
+      chart: {
+        type: 'donut', // Donut chart can give a more 3D feel with shadows
+        background: 'transparent',
+        toolbar: {
+            show: false,
+        }
+      },
+      labels: dealStatusLabels,
+      colors: PIE_CHART_CSS_VARS,
+      fill: {
+        opacity: 0.8,
+      },
+      stroke: {
+        show: false, // Set to true and customize for different 3D styles
+      },
+      legend: {
+        position: 'bottom',
+        horizontalAlign: 'center',
+        floating: false,
+        fontSize: '12px',
+        labels: {
+            colors: 'hsl(var(--foreground))'
+        },
+        markers: {
+            width: 10,
+            height: 10,
+        },
+        itemMargin: {
+            horizontal: 5,
+            vertical: 2
+        }
+      },
+      plotOptions: {
+        pie: {
+          expandOnClick: true,
+          donut: {
+            size: '65%', // Adjust for "thickness" of the donut
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Total Clients',
+                color: 'hsl(var(--foreground))',
+                formatter: (w) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0).toString()
+              },
+              value: {
+                color: 'hsl(var(--foreground))',
+                offsetY: 8,
+                 formatter: (val: string) => `${val}` // Shows count directly
+              }
+            }
+          },
+          dropShadow: { // Simulate 3D depth
+            enabled: true,
+            top: 3,
+            left: 0,
+            blur: 3,
+            opacity: 0.3
+          }
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val: number, opts: any) => {
+          // Calculate percentage
+          const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
+          return `${percentage}%`;
+        },
+        style: {
+          fontSize: '12px',
+          colors: ["hsl(var(--foreground))"]
+        },
+        dropShadow: {
+          enabled: false,
+        }
+      },
+      tooltip: {
+        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+        fillSeriesColor: false,
+        y: {
+            formatter: (val: number) => `${val} client(s)`
+        }
+      },
+      responsive: [{
+        breakpoint: 480,
+        options: {
+          chart: {
+            width: '100%'
+          },
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }]
+    };
 
 
     return (
@@ -317,48 +417,16 @@ const Dashboard: FC = () => {
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                    <RechartsPieChart>
-                        <Pie
-                            data={dealStatusChartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={100}
-                            fill="#8884d8" // Default fill, will be overridden by Cell
-                            dataKey="value"
-                            label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
-                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                                const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                                return (
-                                <text x={x} y={y} fill="hsl(var(--popover-foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
-                                    {`${(percent * 100).toFixed(0)}%`}
-                                </text>
-                                );
-                            }}
-                        >
-                        {dealStatusChartData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={PIE_CHART_CSS_VARS[index % PIE_CHART_CSS_VARS.length]} 
-                              fillOpacity={0.8} 
-                            />
-                        ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'hsl(var(--popover))',
-                                borderColor: 'hsl(var(--border))',
-                                color: 'hsl(var(--popover-foreground))',
-                                borderRadius: 'var(--radius)',
-                                boxShadow: 'var(--shadow-lg)'
-                            }}
-                        />
-                        <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }} />
-                    </RechartsPieChart>
-                </ResponsiveContainer>
+            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusSeries.length > 0 ? (
+                <div className="h-[300px] w-full">
+                  <ReactApexChart 
+                    options={apexPieChartOptions} 
+                    series={dealStatusSeries} 
+                    type="donut" // or 'pie'
+                    height="100%" 
+                    width="100%"
+                  />
+                </div>
              ) : <p className="text-sm text-muted-foreground text-center py-10">No deal status data available.</p>}
           </CardContent>
         </Card>
@@ -410,7 +478,7 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
               <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
            </Button>
         </CardHeader>
@@ -437,7 +505,7 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
                 <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
             </Button>
         </CardHeader>
@@ -464,7 +532,7 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2">
             <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
           </Button>
         </CardHeader>
