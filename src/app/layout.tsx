@@ -69,7 +69,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SidebarProvider>
-            <Sidebar collapsible="icon" className="glass-effect-sidebar"> {/* Removed explicit bg classes */}
+            <Sidebar variant="floating" collapsible="icon"> {/* Changed to floating, removed className */}
               <SidebarHeader>
                 <div className="flex items-center justify-between">
                    <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">

@@ -112,10 +112,7 @@
   border-color: hsla(var(--glass-border) / 0.1); /* Translucent white border */
 }
 
-.glass-effect-sidebar {
-  @apply backdrop-blur-xl shadow-2xl border-r;
-  border-color: hsla(var(--glass-border) / 0.1);
-}
+/* .glass-effect-sidebar removed as component will handle floating variant styling */
 
 .glass-effect-header {
   @apply backdrop-blur-lg shadow-lg border-b;
@@ -367,3 +364,4 @@
 
 
     
+

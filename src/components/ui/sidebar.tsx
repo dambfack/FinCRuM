@@ -169,7 +169,7 @@ const Sidebar = React.forwardRef<
       side = "left",
       variant = "sidebar",
       collapsible = "offcanvas",
-      className,
+      className, // className prop from usage (e.g., layout.tsx)
       children,
       ...props
     },
@@ -182,8 +182,8 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
-            "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5", // Glassmorphism
-            className
+            "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-white/5", // Glassmorphism for non-collapsible
+            className // Apply passed className here if needed for non-collapsible direct styling
           )}
           ref={ref}
           {...props}
@@ -219,7 +219,7 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn("group peer hidden md:block text-sidebar-foreground", className)} // Pass className to this outer wrapper
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
@@ -232,7 +232,7 @@ const Sidebar = React.forwardRef<
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" // Adjusted to remove +2px as border is on inner
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
           )}
         />
@@ -244,18 +244,25 @@ const Sidebar = React.forwardRef<
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]", 
-            className // className prop from layout.tsx applies here
+              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"  // Adjusted to remove +2px
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
           )}
-          {...props}
+          {...props} // Spread other props here on the positioning div
         >
-          <div
+          <div // THIS IS THE ACTUAL VISUAL SIDEBAR ELEMENT (div[data-sidebar="sidebar"])
             data-sidebar="sidebar"
             className={cn(
-              "flex h-full w-full flex-col rounded-xl", 
-              "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-white/5", 
-              "group-data-[variant=floating]:rounded-xl group-data-[variant=floating]:border group-data-[variant=floating]:border-white/10 group-data-[variant=floating]:shadow-2xl"
+              "flex h-full w-full flex-col", // Base structure
+              // Default background & style (applies if not overridden by variant specific styles)
+              "bg-sidebar-background/50 dark:bg-sidebar-background/60", 
+              // Floating variant specific styles
+              "group-data-[variant=floating]:rounded-xl",
+              "group-data-[variant=floating]:border group-data-[variant=floating]:border-white/10 dark:group-data-[variant=floating]:border-white/5",
+              "group-data-[variant=floating]:shadow-2xl", 
+              "group-data-[variant=floating]:backdrop-blur-xl",
+              "group-data-[variant=floating]:transition-all group-data-[variant=floating]:duration-300 group-data-[variant=floating]:ease-in-out",
+              "group-data-[variant=floating]:hover:shadow-2xl", // Can be intensified if needed e.g. hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.2)]
+              "group-data-[variant=floating]:hover:border-white/30 dark:group-data-[variant=floating]:hover:border-white/20"
             )}
           >
             {children}
