@@ -51,7 +51,7 @@ const montserrat = Montserrat({
 
 // Logo Component with Fallback Logic
 const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const ultimateFallbackPngLogo = "/f_logo.png"; 
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   const [currentSrc, setCurrentSrc] = useState<string>(ultimateFallbackPngLogo);
@@ -67,47 +67,47 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
     } else {
       newSrc = ultimateFallbackPngLogo;
     }
-    console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists (len ' + props.appLogoUrl.length +')' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists (len ' + props.defaultAppLogoUrl.length +')' : 'null'}. Attempting to set src to: ${newSrc ? newSrc.substring(0,70) : 'null'}...`, 'Attempt:', attemptCounter + 1);
+    // console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists (len ' + props.appLogoUrl.length +')' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists (len ' + props.defaultAppLogoUrl.length +')' : 'null'}. Attempting to set src to: ${newSrc ? newSrc.substring(0,70) : 'null'}...`, 'Attempt:', attemptCounter + 1);
     setCurrentSrc(newSrc || ultimateFallbackPngLogo);
     setImgError(false); // Reset error state when props change
     setAttemptCounter(prev => prev + 1); // Increment counter to ensure key change if src is same
   }, [props.appLogoUrl, props.defaultAppLogoUrl]);
 
   const handleError = useCallback(() => {
-    console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
+    // console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
     setImgError(true);
 
     if (currentSrc === props.appLogoUrl && props.defaultAppLogoUrl) {
-      console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
+      // console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
       setCurrentSrc(props.defaultAppLogoUrl);
     } else if (currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) {
-      console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo (/f_logo.png)");
+      // console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo (/f_logo.png)");
       setCurrentSrc(ultimateFallbackPngLogo);
     } else if (currentSrc === ultimateFallbackPngLogo) {
-      console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder (placehold.co)");
+      // console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder (placehold.co)");
       setCurrentSrc(absoluteUltimatePlaceholder);
     } else {
-      console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored.");
+      // console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored.");
       // Potentially render a minimal error icon or nothing if absolute placeholder itself errors
-      return; 
+      return;
     }
     setAttemptCounter(prev => prev + 1); // Increment counter to try next fallback with a new key
     setImgError(false); // Reset imgError for the new attempt
   }, [currentSrc, props.appLogoUrl, props.defaultAppLogoUrl, attemptCounter]);
-  
+
   if (currentSrc === absoluteUltimatePlaceholder && imgError) {
-    console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed. Rendering minimal error indicator.`);
+    // console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed. Rendering minimal error indicator.`);
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
-  
+
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  console.log(`[Logo Component] Rendering NextImage. Source: ${currentSrc.substring(0,70)}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
-  
+  // console.log(`[Logo Component] Rendering NextImage. Source: ${currentSrc.substring(0,70)}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
+
   return (
-    <NextImage 
+    <NextImage
       key={`${currentSrc}-${attemptCounter}`} // Force re-render on src change or error attempt
       src={currentSrc}
       alt={
@@ -123,7 +123,7 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
         currentSrc === absoluteUltimatePlaceholder ? "placeholder" :
         "custom app logo"
       }
-      unoptimized={unoptimized} 
+      unoptimized={unoptimized}
       onError={handleError}
     />
   );
@@ -138,8 +138,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     currentUser,
     logout,
     pinSetupRequiredForUser,
-    appLogoUrl, 
-    defaultAppLogoUrl, 
+    appLogoUrl,
+    defaultAppLogoUrl,
     headerLogoUrl, // Get headerLogoUrl
     updateAppLogo,
     setDefaultAppLogo,
@@ -156,14 +156,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
-  
+
   const [isHeaderLogoCropperOpen, setIsHeaderLogoCropperOpen] = useState(false); // New state for header logo cropper
   const [headerLogoImageToCropSrc, setHeaderLogoImageToCropSrc] = useState<string | null>(null); // New state
 
 
-  if (typeof window !== 'undefined') { 
-    console.log('[AppContent] Rendering. Context values - appLogoUrl:', appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null', "headerLogoUrl:", headerLogoUrl ? `len: ${headerLogoUrl.length}`: 'null');
-  }
+  // if (typeof window !== 'undefined') {
+  //   console.log('[AppContent] Rendering. Context values - appLogoUrl:', appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null', "headerLogoUrl:", headerLogoUrl ? `len: ${headerLogoUrl.length}`: 'null');
+  // }
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -201,52 +201,52 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[AppContent] handleAppLogoFileChange triggered.');
+    // console.log('[AppContent] handleAppLogoFileChange triggered.');
     const file = event.target.files?.[0];
-    console.log('[AppContent] Selected file for App Logo:', file);
+    // console.log('[AppContent] Selected file for App Logo:', file);
 
     if (file) {
-      console.log('[AppContent] App Logo File type:', file.type, 'File size:', file.size);
+      // console.log('[AppContent] App Logo File type:', file.type, 'File size:', file.size);
       if (file.type !== 'image/png') {
-        console.log('[AppContent] Invalid file type for App Logo. Toasting.');
+        // console.log('[AppContent] Invalid file type for App Logo. Toasting.');
         toast({ title: "Invalid File Type", description: "Please upload a PNG file for the app logo.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
-        console.log('[AppContent] App Logo file input reset due to invalid type.');
+        // console.log('[AppContent] App Logo file input reset due to invalid type.');
         return;
       }
-      if (file.size > 1 * 1024 * 1024) { 
-        console.log('[AppContent] App Logo file too large. Toasting.');
+      if (file.size > 1 * 1024 * 1024) {
+        // console.log('[AppContent] App Logo file too large. Toasting.');
         toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 1MB.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
-        console.log('[AppContent] App Logo file input reset due to size.');
+        // console.log('[AppContent] App Logo file input reset due to size.');
         return;
       }
-      console.log('[AppContent] App Logo file validation passed. Creating FileReader.');
+      // console.log('[AppContent] App Logo file validation passed. Creating FileReader.');
       const reader = new FileReader();
       reader.onloadend = () => {
-        console.log('[AppContent] App Logo FileReader onloadend. Result length:', (reader.result as string)?.length);
+        // console.log('[AppContent] App Logo FileReader onloadend. Result length:', (reader.result as string)?.length);
         setAppLogoImageToCropSrc(reader.result as string);
-        console.log('[AppContent] Set appLogoImageToCropSrc. Now setting isAppLogoCropperOpen to true.');
+        // console.log('[AppContent] Set appLogoImageToCropSrc. Now setting isAppLogoCropperOpen to true.');
         setIsAppLogoCropperOpen(true);
       };
       reader.onerror = (e) => {
         console.error('[AppContent] App Logo FileReader onerror:', e);
         toast({ title: "File Read Error", description: "Could not read the selected app logo file.", variant: "destructive" });
       };
-      console.log('[AppContent] Calling reader.readAsDataURL(file) for App Logo.');
+      // console.log('[AppContent] Calling reader.readAsDataURL(file) for App Logo.');
       reader.readAsDataURL(file);
       if (appLogoInputRef.current) {
-        console.log('[AppContent] Resetting App Logo file input after readAsDataURL call.');
+        // console.log('[AppContent] Resetting App Logo file input after readAsDataURL call.');
         appLogoInputRef.current.value = '';
       }
     } else {
-      console.log('[AppContent] No file selected for App Logo or event.target.files is empty.');
+      // console.log('[AppContent] No file selected for App Logo or event.target.files is empty.');
     }
   };
 
   const handleAppLogoCropSave = (croppedDataUri: string) => {
-    console.log("[AppContent] handleAppLogoCropSave called. CroppedDataUri length:", croppedDataUri.length);
-    console.log("[AppContent] Calling updateAppLogo from AuthContext...");
+    // console.log("[AppContent] handleAppLogoCropSave called. CroppedDataUri length:", croppedDataUri.length);
+    // console.log("[AppContent] Calling updateAppLogo from AuthContext...");
     updateAppLogo(croppedDataUri);
     setIsAppLogoCropperOpen(false);
     setAppLogoImageToCropSrc(null);
@@ -254,7 +254,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleSetCurrentLogoAsDefault = () => {
     if (appLogoUrl && currentUser?.role === 'partner') {
-      console.log("[AppContent] Calling setDefaultAppLogo from AuthContext with current appLogoUrl.");
+      // console.log("[AppContent] Calling setDefaultAppLogo from AuthContext with current appLogoUrl.");
       setDefaultAppLogo(appLogoUrl);
     } else {
       toast({ title: "Action Not Available", description: "No custom app logo is currently set, or you don't have permission.", variant: "default"});
@@ -263,7 +263,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   // New handlers for Header Text Logo
   const handleHeaderTextLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[AppContent] handleHeaderTextLogoFileChange triggered.');
+    // console.log('[AppContent] handleHeaderTextLogoFileChange triggered.');
     const file = event.target.files?.[0];
     if (file) {
       if (file.type !== 'image/png') {
@@ -467,7 +467,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         type="file"
                         ref={appLogoInputRef}
                         onChange={handleAppLogoFileChange}
-                        accept="image/png" 
+                        accept="image/png"
                         className="hidden"
                       />
                     <Button
@@ -483,7 +483,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         type="file"
                         ref={headerLogoInputRef}
                         onChange={handleHeaderTextLogoFileChange}
-                        accept="image/png" 
+                        accept="image/png"
                         className="hidden"
                       />
                     <Button
@@ -567,7 +567,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={headerLogoImageToCropSrc}
           onCropSave={handleHeaderLogoCropSave}
-          aspectRatio={16 / 9} 
+          aspectRatio={16 / 9}
         />
       )}
     </>
