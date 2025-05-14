@@ -253,7 +253,7 @@ body {
   color: hsl(var(--accent));
 }
 .dark .react-datepicker__day--today {
-  color: hsl(var(--accent)) !important;
+  color: #ffffff !important; /* White text for today's date in dark mode */
   border-color: hsl(var(--accent) / 0.7);
   font-weight: bold;
 }
@@ -355,5 +355,3 @@ body {
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
-    
