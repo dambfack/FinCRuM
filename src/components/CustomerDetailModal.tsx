@@ -34,25 +34,40 @@ interface CustomerDetailModalProps {
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
-  let displayValue: React.ReactNode;
+  let valueNode: React.ReactNode;
+  const isTruncateRequested = className?.includes('truncate');
+
   if (React.isValidElement(value)) {
-    displayValue = value;
+    // If the value is already a React element (e.g., a Badge), render it directly.
+    // Truncation for complex elements should be handled within those elements if needed.
+    valueNode = value;
   } else if (value instanceof Date) {
-    displayValue = formatDateTime(value as string);
+    const dateString = formatDateTime(value as string);
+    valueNode = (
+      <p className={cn("text-sm text-foreground", isTruncateRequested && "truncate")} title={isTruncateRequested ? dateString : undefined}>
+        {dateString}
+      </p>
+    );
+  } else if (value !== null && value !== undefined) {
+    const valueString = String(value);
+    valueNode = (
+      <p className={cn("text-sm text-foreground", isTruncateRequested && "truncate")} title={isTruncateRequested ? valueString : undefined}>
+        {valueString}
+      </p>
+    );
   } else {
-    displayValue = String(value);
+    // This case should ideally not be reached due to the initial check, but good for completeness
+    return null;
   }
 
   return (
+    // The outer className (which might include 'truncate') is applied to this root div.
+    // 'truncate' on the root div sets white-space: nowrap for its children.
     <div className={cn("flex items-start space-x-3 py-2", className)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div>
+      <div className="min-w-0 flex-1"> {/* This div is crucial for allowing its children to be truncated */}
         <p className="text-xs text-muted-foreground">{label}</p>
-        {React.isValidElement(displayValue) ? (
-          displayValue
-        ) : (
-          <p className="text-sm text-foreground">{displayValue}</p>
-        )}
+        {valueNode}
       </div>
     </div>
   );
@@ -146,7 +161,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
           </Avatar>
           <div>
-            <DialogTitle className="text-2xl font-heading"> {/* Removed tracking-wide */}
+            <DialogTitle className="text-2xl font-heading">
               {contact.firstName} {contact.lastName}
             </DialogTitle>
             <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -166,7 +181,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
-            {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />} {/* New Detail Item */}
+            {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
             {contact.profilePictureUrl && <DetailItem icon={ImageIcon} label="Profile Picture URL" value={contact.profilePictureUrl} className="truncate" />}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
