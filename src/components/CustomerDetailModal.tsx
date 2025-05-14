@@ -6,8 +6,8 @@ import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import type { Contact, User } from '@/lib/types'; // Added User
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { formatDateTime, cn, saveData, getData } from '@/lib/utils';
-import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase } from 'lucide-react'; // Renamed User to UserIcon, added Briefcase
+import { formatDateTime, cn, saveData, getData, getFirstInitial } from '@/lib/utils'; // Added getFirstInitial
+import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase, Image as ImageIcon } from 'lucide-react'; // Renamed User to UserIcon, added Briefcase, ImageIcon
 import { DataItemType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileAttachmentManager from './FileAttachmentManager';
 import { Badge } from './ui/badge'; // Added Badge
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -32,7 +33,7 @@ interface CustomerDetailModalProps {
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
-  
+
   let displayValue: React.ReactNode;
   if (React.isValidElement(value)) {
     displayValue = value;
@@ -135,12 +136,17 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
-        <DialogHeader className="mb-2">
-          <DialogTitle className="text-2xl font-heading tracking-wide flex items-center">
-            <UserIcon className="mr-3 h-6 w-6 text-accent" /> {/* Changed from User to UserIcon */}
-            {contact.firstName} {contact.lastName}
-          </DialogTitle>
-          <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
+        <DialogHeader className="mb-2 flex flex-row items-center space-x-4">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
+            <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <DialogTitle className="text-2xl font-heading tracking-wide">
+              {contact.firstName} {contact.lastName}
+            </DialogTitle>
+            <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
+          </div>
         </DialogHeader>
 
         <Tabs defaultValue="details" className="w-full">
@@ -157,6 +163,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
             {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />} {/* New Detail Item */}
+            {contact.profilePictureUrl && <DetailItem icon={ImageIcon} label="Profile Picture URL" value={contact.profilePictureUrl} className="truncate" />}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />

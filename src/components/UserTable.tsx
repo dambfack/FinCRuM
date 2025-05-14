@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Edit, Trash2, MoreVertical } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getFirstInitial } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface UserTableProps {
   users: User[];
@@ -25,7 +26,7 @@ interface UserTableProps {
 
 const getRoleBadgeVariant = (role: User['role']) => {
   switch (role) {
-    case 'partner': return 'default'; 
+    case 'partner': return 'default';
     case 'employee': return 'secondary';
     default: return 'outline';
   }
@@ -38,22 +39,29 @@ const UserTable: React.FC<UserTableProps> = ({ users, onEditUser, onDeleteUser }
 
   return (
     <div className={cn(
-      "overflow-x-auto rounded-xl border shadow-xl", 
-      "bg-card/60 dark:bg-card/40 backdrop-blur-lg", 
-      "border-white/20 dark:border-white/10" 
+      "overflow-x-auto rounded-xl border shadow-xl",
+      "bg-card/40 dark:bg-card/40 backdrop-blur-lg",
+      "border-white/20 dark:border-white/10"
     )}>
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent dark:hover:bg-transparent border-b border-white/10 dark:border-white/5">
+            <TableHead className="text-foreground/80 dark:text-foreground/70 w-[80px]">Avatar</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Name</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Email</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Role</TableHead>
-            <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead> 
+            <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id} className="hover:bg-white/5 dark:hover:bg-white/5 border-b border-white/10 dark:border-white/5 last:border-b-0">
+              <TableCell>
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                  <AvatarFallback>{getFirstInitial(user.name)}</AvatarFallback>
+                </Avatar>
+              </TableCell>
               <TableCell className="font-medium text-foreground">
                 {user.name}
               </TableCell>

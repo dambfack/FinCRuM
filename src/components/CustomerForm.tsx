@@ -46,6 +46,7 @@ const customerFormSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   assignedToUserId: z.string().optional(),
+  profilePictureUrl: z.string().url({ message: "Please enter a valid URL for the profile picture." }).optional().or(z.literal('')),
   // Approval flow fields - not directly in form, but handled by logic
   contactStatus: z.enum(['approved', 'pending_approval', 'pending_deletion']).optional(),
   changeProposal: z.any().optional(), // Using z.any() for Partial<Contact> for simplicity
@@ -83,6 +84,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
+        profilePictureUrl: initialData.profilePictureUrl || '',
     }
     : {
       firstName: '',
@@ -98,6 +100,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       contactStatus: 'approved',
       changeProposal: undefined,
       lastModifiedByRole: currentUser?.role,
+      profilePictureUrl: '',
     },
   });
 
@@ -113,6 +116,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
+        profilePictureUrl: initialData.profilePictureUrl || '',
       });
     } else {
       form.reset({
@@ -129,6 +133,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         contactStatus: 'approved',
         changeProposal: undefined,
         lastModifiedByRole: currentUser?.role,
+        profilePictureUrl: '',
       });
     }
   }, [initialData, form, currentUser]);
@@ -156,6 +161,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         notes: data.notes,
         status: data.status, // Deal status
         assignedToUserId: finalAssignedToUserId,
+        profilePictureUrl: data.profilePictureUrl || undefined,
         // attachments are handled by FileAttachmentManager
     };
 
@@ -170,7 +176,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             contactStatus: 'pending_approval',
             lastModifiedByRole: 'employee',
             changeProposal: formInputAsContactShape, // Employee's proposed changes
-        };
+        } as Contact; // Added 'as Contact' to satisfy type, assuming other required fields are there
 
         if (isNewContact) {
             customerDataToSave = baseContactDetails;
@@ -183,7 +189,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                 // They are in `changeProposal`. The `initialData` here is the *approved* version.
             };
         }
-        
+
         // Notify partners
         const partners = allUsers.filter(u => u.role === 'partner');
         partners.forEach(partner => {
@@ -305,7 +311,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Deal Status (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""} >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select deal status" />
@@ -330,6 +336,19 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                   <FormLabel>Company (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Acme Corp" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="profilePictureUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profile Picture URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://example.com/image.jpg" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -389,8 +408,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={form.formState.isSubmitting} className="h-11 px-4 py-3">
-              {form.formState.isSubmitting ? 'Saving...' : 
-                (currentUser?.role === 'employee' ? (initialData ? 'Submit Changes for Approval' : 'Add Contact for Approval') : 
+              {form.formState.isSubmitting ? 'Saving...' :
+                (currentUser?.role === 'employee' ? (initialData ? 'Submit Changes for Approval' : 'Add Contact for Approval') :
                 (initialData ? 'Update Customer' : 'Add Customer'))}
             </Button>
           </CardFooter>

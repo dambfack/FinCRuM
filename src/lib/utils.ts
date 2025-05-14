@@ -133,3 +133,13 @@ export function createNotification(notificationData: Omit<Notification, 'id' | '
   console.log("Notification created:", newNotification);
 }
 
+/**
+ * Gets the first initial of a name.
+ * @param name The name string.
+ * @param fallback The fallback character if name is empty.
+ * @returns The capitalized first initial or the fallback.
+ */
+export function getFirstInitial(name?: string, fallback: string = '?'): string {
+  if (!name || name.trim() === '') return fallback;
+  return name.trim().charAt(0).toUpperCase();
+}

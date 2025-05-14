@@ -1,16 +1,16 @@
 
-'use client'; 
+'use client';
 
-import type { Metadata } from 'next'; 
+import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Anton, Montserrat } from 'next/font/google';
 import './globals.css';
-import { cn } from '@/lib/utils';
+import { cn, getFirstInitial } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'; 
-import PinLoginScreen from '@/components/PinLoginScreen'; 
-import SetPinScreen from '@/components/SetPinScreen'; 
-import NotificationBell from '@/components/NotificationBell'; // Import NotificationBell
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import PinLoginScreen from '@/components/PinLoginScreen';
+import SetPinScreen from '@/components/SetPinScreen';
+import NotificationBell from '@/components/NotificationBell';
 import {
   SidebarProvider,
   Sidebar,
@@ -30,7 +30,8 @@ import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton'; 
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 
 const anton = Anton({
   subsets: ['latin'],
@@ -83,6 +84,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <Logo />
               <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
+             {/* Sidebar trigger is now at the bottom */}
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -103,7 +105,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-             {currentUser?.role === 'partner' && ( 
+             {currentUser?.role === 'partner' && (
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="Team Management">
                     <Link href="/users">
@@ -163,8 +165,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="hidden md:block text-xl font-semibold font-heading tracking-wide">Finsculpt CRM</div>
 
           <div className="flex items-center gap-3">
-            <NotificationBell /> {/* Added NotificationBell */}
+            <NotificationBell />
             <ThemeSwitcher />
+             {currentUser && (
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+              </Avatar>
+            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">
@@ -173,6 +181,21 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
+                <div className="p-1">
+                  <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">User</h4>
+                  {currentUser && (
+                    <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                        <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <BackgroundImageSwitcher />
                 {isAuthenticated && (
                   <Button onClick={logout} variant="outline" size="sm" className="w-full mt-4">

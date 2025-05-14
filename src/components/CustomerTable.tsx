@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Contact, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData } from '@/lib/utils';
+import { getData, getFirstInitial } from '@/lib/utils'; // Added getFirstInitial
 import {
   Table,
   TableHeader,
@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus, User as UserIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { formatDateTime, cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 
 interface CustomerTableProps {
   contacts: Contact[];
@@ -65,9 +66,6 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
 
-  console.log('[CustomerTable] Rendering. onDelete prop type:', typeof onDelete, 'onDelete prop itself:', onDelete);
-
-
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
     setAllUsers(loadedUsers);
@@ -86,7 +84,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   return (
     <div className={cn(
       "overflow-x-auto rounded-xl border shadow-xl",
-      "bg-card/60 dark:bg-card/40 backdrop-blur-lg",
+      "bg-card/40 dark:bg-card/40 backdrop-blur-lg",
       "border-white/20 dark:border-white/10"
     )}>
       <Table>
@@ -116,10 +114,14 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               )}
             >
               <TableCell
-                className="font-medium text-foreground hover:text-accent hover:underline cursor-pointer select-none"
+                className="font-medium text-foreground hover:text-accent hover:underline cursor-pointer select-none flex items-center gap-3"
                 onClick={() => onViewDetails(contact)}
                 title={`View details for ${contact.firstName} ${contact.lastName}`}
               >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
+                  <AvatarFallback>{getFirstInitial(contact.firstName)}</AvatarFallback>
+                </Avatar>
                 {contact.firstName} {contact.lastName}
               </TableCell>
               {currentUser?.role === 'partner' && (
@@ -169,9 +171,6 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10"
-                      onClick={(e) => {
-                        console.log('[CustomerTable] DropdownMenuTrigger clicked for contact:', contact.id);
-                      }}
                     >
                       <MoreVertical className="h-4 w-4" />
                       <span className="sr-only">Actions</span>
@@ -192,7 +191,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        console.log('[CustomerTable] Delete DropdownMenuItem clicked for contact ID:', contact.id, 'Calling onDelete prop.');
+                        console.log('[CustomerTable] Delete DropdownMenuItem clicked for contact ID:', contact.id);
                         onDelete(contact.id);
                       }}
                       className={cn(
@@ -217,4 +216,3 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 };
 
 export default CustomerTable;
-

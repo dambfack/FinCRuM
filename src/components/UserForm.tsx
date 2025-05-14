@@ -25,6 +25,7 @@ const userFormSchema = z.object({
     .refine(val => !val || (/^\d{4}$/.test(val)), {
       message: "PIN must be 4 digits, or leave blank for no PIN.",
     }),
+  profilePictureUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -38,21 +39,22 @@ interface UserFormProps {
 const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) => {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: initialData ? 
-      { ...initialData, pin: initialData.pin || '' } 
+    defaultValues: initialData ?
+      { ...initialData, pin: initialData.pin || '', profilePictureUrl: initialData.profilePictureUrl || '' }
       : {
         name: '',
         email: '',
         role: 'employee',
         pin: '',
+        profilePictureUrl: '',
       },
   });
 
   useEffect(() => {
     if (initialData) {
-      form.reset({ ...initialData, pin: initialData.pin || '' });
+      form.reset({ ...initialData, pin: initialData.pin || '', profilePictureUrl: initialData.profilePictureUrl || '' });
     } else {
-      form.reset({ name: '', email: '', role: 'employee', pin: '' });
+      form.reset({ name: '', email: '', role: 'employee', pin: '', profilePictureUrl: '' });
     }
   }, [initialData, form]);
 
@@ -61,15 +63,16 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
       ...data,
       id: initialData?.id || `user-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       pin: data.pin || undefined, // Store as undefined if empty
+      profilePictureUrl: data.profilePictureUrl || undefined,
     };
 
     const users = getData<User[]>(DataItemType.Users) || [];
     const existingUserIndex = users.findIndex(u => u.id === userData.id);
 
     if (existingUserIndex > -1) {
-      users[existingUserIndex] = userData; 
+      users[existingUserIndex] = userData;
     } else {
-      users.push(userData); 
+      users.push(userData);
     }
     saveData<User[]>(DataItemType.Users, users);
     onSave(userData);
@@ -132,10 +135,10 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
             <FormItem>
               <FormLabel>4-Digit PIN (Optional)</FormLabel>
               <FormControl>
-                <Input 
+                <Input
                   type="password" // Use password type to mask input
-                  placeholder="Enter 4-digit PIN" 
-                  {...field} 
+                  placeholder="Enter 4-digit PIN"
+                  {...field}
                   maxLength={4}
                   pattern="\d*" // Allows only digits, but Zod handles full validation
                   onChange={(e) => {
@@ -146,6 +149,22 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
               </FormControl>
               <FormDescription>
                 Leave blank if no PIN is desired for this user.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="profilePictureUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Profile Picture URL (Optional)</FormLabel>
+              <FormControl>
+                <Input type="url" placeholder="https://example.com/image.jpg" {...field} />
+              </FormControl>
+              <FormDescription>
+                Enter a direct URL to an image.
               </FormDescription>
               <FormMessage />
             </FormItem>

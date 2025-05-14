@@ -54,6 +54,7 @@ export interface User {
   email: string;
   role: 'partner' | 'employee';
   pin?: string; // Optional 4-digit PIN, stored as string
+  profilePictureUrl?: string; // Optional URL for profile picture
 }
 
   /**
@@ -76,6 +77,7 @@ export interface Contact {
   contactStatus?: 'approved' | 'pending_approval' | 'pending_deletion'; // Approval status of the contact record itself
   changeProposal?: Partial<Contact>; // Stores proposed changes by an employee, awaiting approval
   lastModifiedByRole?: 'partner' | 'employee'; // Role of the user who last modified/proposed changes
+  profilePictureUrl?: string; // Optional URL for profile picture
 }
 
 /**
@@ -244,3 +246,4 @@ export interface Notification {
   read: boolean;
   payload?: any; // For approval_request, might contain proposed changes or original item details
 }
+
