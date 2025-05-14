@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Anton, Montserrat } from 'next/font/google';
+import { Inter, Montserrat } from 'next/font/google'; // Changed Anton to Inter
 import './globals.css';
 import { cn, getFirstInitial } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -35,14 +35,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Renamed to NextImage to avoid conflict
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 
 
-const anton = Anton({
+const interBlack = Inter({ // Changed from anton
   subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-anton',
+  weight: ['900'], // 'Black' weight for Inter
+  variable: '--font-inter-black', // Updated variable name
 });
 
 const montserrat = Montserrat({
@@ -60,27 +60,29 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0);
+  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render on error/fallback
 
-  const ultimateFallbackPngLogo = "/f_logo.png";
+  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming this is your ultimate PNG fallback in public/
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
+    // console.log(`[Logo Component] useEffect triggered. Theme: ${resolvedTheme}, Props:`, props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
     } else { // light or system resolved to light
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
-    console.log(`[Logo Component] useEffect theme: ${resolvedTheme}, determinedSrc: ${determinedSrc ? determinedSrc.substring(0,70) : 'null'}`);
-    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-    setImgError(false);
-    // setAttemptCounter(prev => prev + 1); // Force re-render on prop/theme change
-  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
+    // console.log(`[Logo Component] Determined Src for ${resolvedTheme} theme: ${determinedSrc ? determinedSrc.substring(0,70) : 'null'}`);
+    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo); // Ensure currentSrc is never null if ultimate fallback is set
+    setImgError(false); // Reset error state when props change
+  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]); // Added attemptCounter
 
   const handleError = useCallback(() => {
+    // console.error(`[Logo Component] Error loading image: ${currentSrc ? currentSrc.substring(0,70) : 'null'}`);
     setImgError(true);
     let nextSrc = '';
+
     if (currentSrc && currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       if (resolvedTheme === 'dark') {
         if (currentSrc === props.appLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
@@ -88,7 +90,7 @@ const Logo: React.FC<{
         else if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = ultimateFallbackPngLogo;
         else nextSrc = ultimateFallbackPngLogo;
-      } else {
+      } else { // Light or system resolved to light
         if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.appLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
@@ -98,14 +100,17 @@ const Logo: React.FC<{
     } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       nextSrc = absoluteUltimatePlaceholder;
     } else {
-      return; // All fallbacks exhausted
+      // console.log("[Logo Component] All fallbacks exhausted or currentSrc is already the absolute placeholder.");
+      return; // All fallbacks exhausted or already at the absolute placeholder
     }
-
+    
     if (nextSrc && currentSrc !== nextSrc) {
+      // console.log(`[Logo Component] Falling back to: ${nextSrc.substring(0,70)}`);
       setCurrentSrc(nextSrc);
-      setImgError(false);
-      setAttemptCounter(prev => prev + 1);
+      setImgError(false); // Reset error for the new src
+      setAttemptCounter(prev => prev + 1); // Increment attempt counter to force re-render with new key
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+        // console.log(`[Logo Component] Falling back to absolute placeholder.`);
         setCurrentSrc(absoluteUltimatePlaceholder);
         setImgError(false);
         setAttemptCounter(prev => prev + 1);
@@ -114,6 +119,7 @@ const Logo: React.FC<{
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
+    // console.log("[Logo Component] No valid src or error on absolute placeholder, rendering error indicator.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -121,14 +127,16 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
+  // console.log(`[Logo Component] Rendering Image. Src: ${currentSrc.substring(0,70)}, Unoptimized: ${unoptimized}, Key: ${currentSrc}-${attemptCounter}`);
+
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`}
+      key={`${currentSrc}-${attemptCounter}`} // Key to force re-render on src change or error fallback
       src={currentSrc}
       alt="App Logo"
       width={24}
       height={24}
-      className="h-6 w-6 object-contain"
+      className="h-6 w-6 object-contain" // object-contain ensures aspect ratio is maintained
       data-ai-hint="company app logo"
       unoptimized={unoptimized}
       onError={handleError}
@@ -173,10 +181,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
-    console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
+    // console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
+      // console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
@@ -188,11 +196,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
          return;
       }
       const reader = new FileReader();
-      reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
-      reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress - loaded: ${e.loaded}, total: ${e.total}`);
+      // reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
+      // reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress - loaded: ${e.loaded}, total: ${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri?.length}`);
+        // console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri?.length}`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -203,7 +211,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
     } else {
-      console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null`);
+      // console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null`);
     }
   };
 
@@ -233,7 +241,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
-    console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
+    // console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
   }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
 
 
@@ -463,7 +471,7 @@ export default function RootLayout({
       <body
         className={cn(
           GeistSans.variable,
-          anton.variable,
+          interBlack.variable, // Updated from anton.variable
           montserrat.variable,
           'antialiased font-sans flex min-h-screen flex-col'
         )}

@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
 
@@ -11,8 +12,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        sans: ["var(--font-montserrat)", "var(--font-geist-sans)", ...fontFamily.sans], // Montserrat as default, Geist as fallback
-        heading: ["var(--font-anton)", ...fontFamily.sans],
+        sans: ["var(--font-montserrat)", "var(--font-geist-sans)", ...fontFamily.sans], 
+        heading: ["var(--font-inter-black)", ...fontFamily.sans], // Changed from --font-anton
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -68,11 +69,11 @@ export default {
   			}
   		},
   		borderRadius: {
-  			lg: 'var(--radius)', // Will be 0.75rem
-  			md: 'calc(var(--radius) - 0.25rem)', // 0.5rem
-  			sm: 'calc(var(--radius) - 0.5rem)', // 0.25rem
-        xl: 'calc(var(--radius) + 0.25rem)', // 1rem
-        '2xl': 'calc(var(--radius) + 0.5rem)', // 1.25rem
+  			lg: 'var(--radius)', 
+  			md: 'calc(var(--radius) - 0.25rem)', 
+  			sm: 'calc(var(--radius) - 0.5rem)', 
+        xl: 'calc(var(--radius) + 0.25rem)', 
+        '2xl': 'calc(var(--radius) + 0.5rem)', 
   		},
   		keyframes: {
   			'accordion-down': {
