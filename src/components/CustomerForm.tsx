@@ -154,7 +154,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
         toast({
           title: "Image Too Large",
           description: "Please select an image smaller than 2MB.",
@@ -183,6 +183,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   };
 
   const onSubmit = (data: CustomerFormValues) => {
+    console.log("[CustomerForm] onSubmit data:", data); // DEBUG LOG
     if (!currentUser) {
         toast({ title: "Error", description: "No authenticated user found. Cannot save.", variant: "destructive" });
         return;
@@ -223,10 +224,18 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         if (isNewContact) {
             customerDataToSave = baseContactDetails;
         } else {
+            // For existing contacts, preserve fields not in formInputAsContactShape from originalData
+            // but overlay with the structure expected for a pending change.
             customerDataToSave = {
-                ...(initialData as Contact),
-                ...baseContactDetails,
+                ...(initialData as Contact), // Base with all original fields
+                updatedAt: now, // Always update this
+                contactStatus: 'pending_approval',
+                lastModifiedByRole: 'employee',
+                changeProposal: formInputAsContactShape, // Store just the proposed changes
             };
+             // If initialData already had a profilePictureUrl and formInputAsContactShape.profilePictureUrl is undefined (meaning user didn't change it)
+            // ensure the original is not lost in the proposal if it's part of the fields an employee can change.
+            // However, formInputAsContactShape.profilePictureUrl should contain the new one if changed, or empty string if cleared.
         }
 
         const partners = allUsers.filter(u => u.role === 'partner');
@@ -243,17 +252,24 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         });
         toast({ title: "Changes Submitted", description: "Your changes have been submitted for partner approval." });
 
-    } else {
+    } else { // Partner is saving
         customerDataToSave = {
             id: contactId,
             ...formInputAsContactShape,
             createdAt: initialData?.createdAt || now,
             updatedAt: now,
-            attachments: initialData?.attachments || [],
+            attachments: initialData?.attachments || [], // Ensure attachments are carried over
             contactStatus: 'approved',
             lastModifiedByRole: 'partner',
-            changeProposal: undefined,
+            changeProposal: undefined, // Clear any pending proposal
         } as Contact;
+
+        // Ensure all fields from initialData are carried over if not present in formInputAsContactShape
+        if(initialData) {
+            customerDataToSave = { ...initialData, ...customerDataToSave, id: contactId, createdAt: initialData.createdAt };
+        }
+
+
          toast({ title: initialData ? "Customer Updated" : "Customer Added", description: `${customerDataToSave.firstName} ${customerDataToSave.lastName} has been saved.` });
     }
 
@@ -266,10 +282,16 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       onSave?.(customerDataToSave);
-      if (!initialData && currentUser.role === 'partner') {
+      if (!initialData && currentUser.role === 'partner') { // Only reset for new contacts added by partners
         form.reset();
         setImagePreview(null);
+      } else if (initialData && currentUser.role === 'partner') {
+        // For edits by partners, update the form and preview to reflect saved data
+        form.reset(customerDataToSave);
+        setImagePreview(customerDataToSave.profilePictureUrl || null);
       }
+      // For employees, the form may not reset immediately, or may reflect the pending state
+      // which is handled by how `initialData` is managed by the parent page after approval.
     } catch (error) {
       console.error("Error saving customer:", error);
       toast({
@@ -499,4 +521,4 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
 };
 
 export default CustomerForm;
-
+     
