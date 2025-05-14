@@ -22,66 +22,79 @@ function canvasToDataURL(canvas: HTMLCanvasElement, mimeType = 'image/png', qual
   return canvas.toDataURL(mimeType, quality);
 }
 
-// Helper to get cropped image
+// Temporarily simplified getCroppedImg for debugging - rotation removed
 async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: Crop, // This is the PixelCrop relative to ORIGINAL image dimensions
-  rotation = 0,
-  uiZoomScale = 1 // Renamed to uiZoomScale to avoid confusion; this is from the UI zoom slider
+  pixelCrop: Crop
 ): Promise<string | null> {
   const image = new Image();
   image.src = imageSrc;
   await new Promise((resolve, reject) => {
     image.onload = resolve;
-    image.onerror = reject;
+    image.onerror = (err) => {
+      console.error("[getCroppedImg] Image load error:", err);
+      reject(err);
+    };
   });
 
-  const canvas = document.createElement('canvas');
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-  const ctx = canvas.getContext('2d');
+  console.log("[getCroppedImg] Received pixelCrop:", JSON.parse(JSON.stringify(pixelCrop)));
+  console.log("[getCroppedImg] Image natural WxH:", image.naturalWidth, image.naturalHeight);
 
-  if (!ctx) {
+  if (!pixelCrop.width || !pixelCrop.height || image.naturalWidth === 0 || image.naturalHeight === 0) {
+    console.error("[getCroppedImg] pixelCrop width/height is zero/undefined, or image natural dimensions are zero.");
     return null;
   }
 
-  // Since pixelCrop is already in terms of the original image's pixels (due to how it's generated
-  // using convertToPixelCrop with naturalWidth/Height), we use its coordinates directly.
-  // The uiZoomScale affects the display in the cropper but not these absolute coordinates.
-  const sourceX = pixelCrop.x;
-  const sourceY = pixelCrop.y;
-  const sourceWidth = pixelCrop.width;
-  const sourceHeight = pixelCrop.height;
+  // Ensure x and y are numbers, default to 0 if undefined (though they should be defined by PixelCrop)
+  const sx = typeof pixelCrop.x === 'number' ? pixelCrop.x : 0;
+  const sy = typeof pixelCrop.y === 'number' ? pixelCrop.y : 0;
+  const sWidth = pixelCrop.width;
+  const sHeight = pixelCrop.height;
 
-  // Ensure source dimensions don't exceed natural image dimensions (safety clamping)
-  const clampedSourceX = Math.max(0, sourceX);
-  const clampedSourceY = Math.max(0, sourceY);
-  const clampedSourceWidth = Math.min(image.naturalWidth - clampedSourceX, sourceWidth);
-  const clampedSourceHeight = Math.min(image.naturalHeight - clampedSourceY, sourceHeight);
+  // Clamp source coordinates and dimensions to be within the image bounds
+  const clampedSx = Math.max(0, sx);
+  const clampedSy = Math.max(0, sy);
+  const clampedSWidth = Math.min(sWidth, image.naturalWidth - clampedSx);
+  const clampedSHeight = Math.min(sHeight, image.naturalHeight - clampedSy);
 
-  ctx.save();
-  // Translate and rotate around the center of the destination canvas
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotation * Math.PI / 180);
-  
-  // Draw the source rectangle (from original image) onto the destination canvas
+  if (clampedSWidth <= 0 || clampedSHeight <= 0) {
+    console.error("[getCroppedImg] Clamped source width or height is zero or less.");
+    return null;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = clampedSWidth; // Canvas size should match the actual source width/height being drawn
+  canvas.height = clampedSHeight;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    console.error("[getCroppedImg] Failed to get canvas context.");
+    return null;
+  }
+
+  console.log(
+    "[getCroppedImg] Drawing with clamped params:",
+    "sx:", clampedSx,
+    "sy:", clampedSy,
+    "sWidth:", clampedSWidth,
+    "sHeight:", clampedSHeight,
+    "dx: 0, dy: 0, dWidth:", canvas.width,
+    "dHeight:", canvas.height
+  );
+
   ctx.drawImage(
     image,
-    clampedSourceX,
-    clampedSourceY,
-    clampedSourceWidth,
-    clampedSourceHeight,
-    -canvas.width / 2, 
-    -canvas.height / 2,
-    canvas.width,
-    canvas.height
+    clampedSx,      // sourceX
+    clampedSy,      // sourceY
+    clampedSWidth,  // sourceWidth
+    clampedSHeight, // sourceHeight
+    0,              // destinationX on canvas
+    0,              // destinationY on canvas
+    canvas.width,   // destinationWidth on canvas
+    canvas.height   // destinationHeight on canvas
   );
-  
-  ctx.restore();
 
-  return new Promise((resolve) => {
-    resolve(canvasToDataURL(canvas));
-  });
+  return canvasToDataURL(canvas);
 }
 
 
@@ -90,22 +103,22 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   onClose,
   imageSrc,
   onCropSave,
-  aspectRatio = 1 / 1, // Default to 1:1 square
+  aspectRatio = 1 / 1,
 }) => {
-  const [crop, setCrop] = useState<Crop>(); // Will be in percentage
-  const [completedCrop, setCompletedCrop] = useState<Crop | null>(null); // Will be in pixels relative to original image
-  const [scale, setScale] = useState(1); // UI Zoom scale
-  const [rotate, setRotate] = useState(0); 
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<Crop | null>(null);
+  const [scale, setScale] = useState(1);
+  // const [rotate, setRotate] = useState(0); // Rotation temporarily removed for debugging
   const imgRef = useRef<HTMLImageElement | null>(null);
-  
+
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
-    const { naturalWidth, naturalHeight } = e.currentTarget; // Use natural dimensions
+    const { naturalWidth, naturalHeight } = e.currentTarget;
     const newCrop = centerCrop(
       makeAspectCrop(
         {
-          unit: '%', // Work with percentages for the crop state
-          width: 90, 
+          unit: '%',
+          width: 90,
         },
         aspectRatio,
         naturalWidth,
@@ -115,48 +128,46 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       naturalHeight
     );
     setCrop(newCrop);
-    setCompletedCrop(null); // Reset completedCrop on new image load
+    setCompletedCrop(null);
   };
 
   const handleCropImage = useCallback(async () => {
     if (!completedCrop || !imgRef.current || !imageSrc) {
-      console.error('Crop details or image source missing. CompletedCrop:', completedCrop, "ImageRef:", imgRef.current, "ImageSrc:", !!imageSrc);
+      console.error('[ImageCropperModal] Crop details, image ref, or image source missing. CompletedCrop:', completedCrop, "ImageRef:", imgRef.current, "ImageSrc:", !!imageSrc);
       return;
     }
+    console.log("[ImageCropperModal] handleCropImage | completedCrop to be used:", JSON.parse(JSON.stringify(completedCrop)));
+    console.log("[ImageCropperModal] handleCropImage | imageSrc length:", imageSrc.length);
 
     try {
-      // Pass the UI scale to getCroppedImg, though it's not used for source coordinate calculation if completedCrop is absolute
-      const croppedImageUrl = await getCroppedImg(imageSrc, completedCrop, rotate, scale);
+      // Call simplified getCroppedImg (rotation temporarily removed from signature)
+      const croppedImageUrl = await getCroppedImg(imageSrc, completedCrop);
       if (croppedImageUrl) {
         onCropSave(croppedImageUrl);
-        onClose(); 
+        onClose();
       } else {
-        console.error('Failed to crop image.');
+        console.error('[ImageCropperModal] Failed to crop image - getCroppedImg returned null.');
       }
     } catch (e) {
-      console.error('Error cropping image:', e);
+      console.error('[ImageCropperModal] Error cropping image:', e);
     }
-  }, [completedCrop, imageSrc, rotate, scale, onCropSave, onClose]);
+  }, [completedCrop, imageSrc, /*rotate,*/ scale, onCropSave, onClose]); // rotate removed from deps
 
 
   const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/90 dark:bg-card/80";
 
-  // Reset state when modal is closed or imageSrc changes
   useEffect(() => {
     if (!isOpen) {
       setCrop(undefined);
       setCompletedCrop(null);
       setScale(1);
-      setRotate(0);
+      // setRotate(0);
       imgRef.current = null;
     } else if (imageSrc) {
-      // If modal opens with a new image, we want onImageLoad to fire
-      // This is usually handled by the img src change triggering onLoad
-      // But resetting crop state here ensures clean state for new image
       setCrop(undefined);
       setCompletedCrop(null);
       setScale(1);
-      setRotate(0);
+      // setRotate(0);
     }
   }, [isOpen, imageSrc]);
 
@@ -172,36 +183,39 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
           <DialogTitle className="font-heading tracking-wide">Crop Image</DialogTitle>
           <DialogDescription>Adjust the selection to crop your image. Aspect ratio: {aspectRatio === 1 ? '1:1 (Square)' : aspectRatio.toFixed(2)}.</DialogDescription>
         </DialogHeader>
-        
+
         {imageSrc && (
           <div className="my-4 space-y-4">
             <div className="flex justify-center items-center max-h-[50vh] overflow-hidden rounded-md border bg-black/10">
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
-                onComplete={(c) => { // c is the crop in percentages
+                onComplete={(c) => {
                   if (imgRef.current) {
-                      const pixelCrop = convertToPixelCrop(
-                        c, // c is already in percentage, matching what makeAspectCrop unit:'%' created
-                        imgRef.current.naturalWidth,
-                        imgRef.current.naturalHeight
-                      );
-                      setCompletedCrop(pixelCrop);
+                    console.log("[ImageCropperModal] ReactCrop onComplete | c (PercentCrop):", JSON.parse(JSON.stringify(c)));
+                    console.log("[ImageCropperModal] ReactCrop onComplete | naturalWidth:", imgRef.current.naturalWidth, "naturalHeight:", imgRef.current.naturalHeight);
+                    const pixelCrop = convertToPixelCrop(
+                      c,
+                      imgRef.current.naturalWidth,
+                      imgRef.current.naturalHeight
+                    );
+                    console.log("[ImageCropperModal] ReactCrop onComplete | resulting pixelCrop (PixelCrop):", JSON.parse(JSON.stringify(pixelCrop)));
+                    setCompletedCrop(pixelCrop);
                   }
                 }}
                 aspect={aspectRatio}
                 className="max-w-full max-h-full"
-                minWidth={50} 
+                minWidth={50}
                 minHeight={50}
-                // circularCrop={aspectRatio === 1 / 1} // Optionally make crop selection UI circular for 1:1
               >
                 <img
                   ref={imgRef}
                   alt="Crop me"
                   src={imageSrc}
-                  style={{ transform: `scale(${scale}) rotate(${rotate}deg)`, transformOrigin: 'center center', maxHeight: '45vh' }} // Added maxHeight to ensure it fits
+                  // Rotation temporarily removed from style for debugging
+                  style={{ transform: `scale(${scale})`, transformOrigin: 'center center', maxHeight: '45vh' }}
                   onLoad={onImageLoad}
-                  className="object-contain" // Use object-contain
+                  className="object-contain"
                 />
               </ReactCrop>
             </div>
@@ -217,6 +231,20 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 className="mt-2"
               />
             </div>
+            {/* Rotation slider temporarily removed
+            <div>
+              <Label htmlFor="rotate-slider" className="text-sm">Rotate</Label>
+              <Slider
+                id="rotate-slider"
+                min={0}
+                max={360}
+                step={1}
+                value={[rotate]}
+                onValueChange={(value) => setRotate(value[0])}
+                className="mt-2"
+              />
+            </div>
+            */}
           </div>
         )}
 
@@ -236,3 +264,4 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 };
 
 export default ImageCropperModal;
+
