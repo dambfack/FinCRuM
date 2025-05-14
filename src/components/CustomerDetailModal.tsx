@@ -2,12 +2,12 @@
 // src/components/CustomerDetailModal.tsx
 'use client';
 
-import React from 'react';
-import type { Contact } from '@/lib/types'; // Added FileAttachmentMeta
+import React, { useState, useEffect } from 'react'; // Added useState, useEffect
+import type { Contact, User } from '@/lib/types'; // Added User
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, cn, saveData, getData } from '@/lib/utils';
-import { User, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase } from 'lucide-react'; // Renamed User to UserIcon, added Briefcase
 import { DataItemType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -15,8 +15,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // For tabs
-import FileAttachmentManager from './FileAttachmentManager'; // Import the new component
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FileAttachmentManager from './FileAttachmentManager';
+import { Badge } from './ui/badge'; // Added Badge
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -26,12 +27,21 @@ interface CustomerDetailModalProps {
   onAddAppointmentRequest?: (contact: Contact) => void;
   onAddReminderRequest?: (contact: Contact) => void;
   onAddTaskRequest?: (contact: Contact) => void;
-  onContactUpdate?: (updatedContact: Contact) => void; // Changed signature
+  onContactUpdate?: (updatedContact: Contact) => void;
 }
 
-const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date; className?: string }> = ({ icon: Icon, label, value, className }) => {
-  if (!value && typeof value !== 'number') return null; // Allow 0 to be displayed
-  const displayValue = value instanceof Date ? formatDateTime(value as string) : String(value);
+const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
+  if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
+  
+  let displayValue: React.ReactNode;
+  if (React.isValidElement(value)) {
+    displayValue = value;
+  } else if (value instanceof Date) {
+    displayValue = formatDateTime(value as string);
+  } else {
+    displayValue = String(value);
+  }
+
   return (
     <div className={cn("flex items-start space-x-3 py-2", className)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -60,9 +70,24 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     onAddTaskRequest,
     onContactUpdate
 }) => {
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    if (isOpen) { // Only load users if modal is open
+      const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+      setAllUsers(loadedUsers);
+    }
+  }, [isOpen]);
+
+  const getUserName = (userId?: string): string => {
+    if (!userId) return 'N/A';
+    const user = allUsers.find(u => u.id === userId);
+    return user ? `${user.name} (${user.role})` : 'Unknown User';
+  };
+
   if (!contact) return null;
 
-  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70"; // Wider for tabs
+  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
   const handleEditClick = () => {
     if (contact && onEditRequest) {
@@ -89,24 +114,30 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   };
 
   const handleAttachmentsUpdate = (updatedContactWithNewAttachments: Contact) => {
-    // Save the updated contact to localStorage
     const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
     const contactIndex = contacts.findIndex(c => c.id === updatedContactWithNewAttachments.id);
     if (contactIndex > -1) {
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
-        onContactUpdate(updatedContactWithNewAttachments); // Notify parent with the updated contact
+        onContactUpdate(updatedContactWithNewAttachments);
       }
     }
   };
+
+  const assignedUserDisplay = contact.assignedToUserId ? (
+    <Badge variant="secondary" className="text-xs">
+      <Briefcase className="h-3 w-3 mr-1.5" />
+      {getUserName(contact.assignedToUserId)}
+    </Badge>
+  ) : 'N/A';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
         <DialogHeader className="mb-2">
           <DialogTitle className="text-2xl font-heading tracking-wide flex items-center">
-            <User className="mr-3 h-6 w-6 text-accent" />
+            <UserIcon className="mr-3 h-6 w-6 text-accent" /> {/* Changed from User to UserIcon */}
             {contact.firstName} {contact.lastName}
           </DialogTitle>
           <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -125,12 +156,12 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
+            {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />} {/* New Detail Item */}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
           <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2">
-            {/* Ensure contact prop is passed, and it's non-null */}
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>

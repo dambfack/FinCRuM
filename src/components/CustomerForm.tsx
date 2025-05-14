@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react'; // Added useState
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,15 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Contact, FileAttachmentMeta } from '@/lib/types';
+import type { Contact, FileAttachmentMeta, User } from '@/lib/types'; // Added User
 import { DataItemType } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
-import { useRouter } from 'next/navigation'; // For redirecting
+import { useRouter } from 'next/navigation';
 
 const contactStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
 
-// Dummy schema for FileAttachmentMeta for form validation if needed,
-// but actual file objects are handled separately.
 const fileAttachmentMetaSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -30,13 +28,11 @@ const fileAttachmentMetaSchema = z.object({
   contactId: z.string(),
   createdAt: z.string(),
   encrypted: z.boolean(),
-  ivHex: z.string().optional(),
-  saltHex: z.string().optional(),
 });
 
 
 const customerFormSchema = z.object({
-  id: z.string().optional(), // Optional for new customers
+  id: z.string().optional(),
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
@@ -45,21 +41,29 @@ const customerFormSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   status: contactStatusSchema.optional(),
-  attachments: z.array(fileAttachmentMetaSchema).optional(), // For metadata
-  createdAt: z.string().optional(), // Will be set on save
-  updatedAt: z.string().optional(), // Will be set on save
+  attachments: z.array(fileAttachmentMetaSchema).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  assignedToUserId: z.string().optional(), // Added assignedToUserId
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
 
 interface CustomerFormProps {
-  initialData?: Contact; // For editing existing customer
-  onSave?: (customer: Contact) => void; // Optional: callback after saving
+  initialData?: Contact;
+  onSave?: (customer: Contact) => void;
 }
 
 const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const { toast } = useToast();
   const router = useRouter();
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAllUsers(loadedUsers);
+  }, []);
+
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: initialData ?
@@ -69,6 +73,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
         attachments: initialData.attachments || [],
+        assignedToUserId: initialData.assignedToUserId || undefined,
     }
     : {
       firstName: '',
@@ -79,7 +84,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       address: '',
       notes: '',
       status: undefined,
-      attachments: [], // Initialize attachments as an empty array for new contacts
+      attachments: [],
+      assignedToUserId: undefined,
     },
   });
 
@@ -91,6 +97,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
         attachments: initialData.attachments || [],
+        assignedToUserId: initialData.assignedToUserId || undefined,
       });
     }
   }, [initialData, form]);
@@ -99,12 +106,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     const now = new Date().toISOString();
     const customerData: Contact = {
       ...data,
-      id: initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, // Generate ID if new
+      id: initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: initialData?.createdAt || now,
       updatedAt: now,
       status: data.status || undefined,
-      // attachments are part of 'data' due to schema, ensure they are correctly passed
-      attachments: data.attachments || (initialData?.attachments || []), // Preserve existing if not changed
+      attachments: data.attachments || (initialData?.attachments || []),
+      assignedToUserId: data.assignedToUserId || undefined,
     } as Contact; 
 
     try {
@@ -112,9 +119,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       const existingContactIndex = contacts.findIndex(c => c.id === customerData.id);
 
       if (existingContactIndex > -1) {
-        contacts[existingContactIndex] = customerData; // Update existing
+        contacts[existingContactIndex] = customerData;
       } else {
-        contacts.push(customerData); // Add new
+        contacts.push(customerData);
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
 
@@ -124,7 +131,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       });
 
       onSave?.(customerData);
-      if (!initialData) form.reset(); // Reset form only if it was a new customer entry
+      if (!initialData) form.reset();
 
     } catch (error) {
       console.error("Error saving customer:", error);
@@ -144,7 +151,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 max-h-[60vh] overflow-y-auto pr-2"> {/* Added max-height and overflow */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
@@ -257,6 +264,31 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                   <FormControl>
                     <Textarea placeholder="Additional notes about the customer..." {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="assignedToUserId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assign to User (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user to assign" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem> {/* Allow unassigning */}
+                      {allUsers.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name} ({user.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

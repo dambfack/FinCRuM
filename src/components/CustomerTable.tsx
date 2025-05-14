@@ -1,8 +1,11 @@
+
 // src/components/CustomerTable.tsx
 'use client';
 
-import React from 'react';
-import type { Contact } from '@/lib/types';
+import React, { useState, useEffect } from 'react'; // Added useState, useEffect
+import type { Contact, User } from '@/lib/types'; // Added User
+import { DataItemType } from '@/lib/types'; // Added DataItemType
+import { getData } from '@/lib/utils'; // Added getData
 import {
   Table,
   TableHeader,
@@ -14,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus } from 'lucide-react';
+import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus, User as UserIcon } from 'lucide-react'; // Added UserIcon
 import { formatDateTime, cn } from '@/lib/utils';
 
 interface CustomerTableProps {
@@ -22,8 +25,8 @@ interface CustomerTableProps {
   onEdit: (contact: Contact) => void;
   onDelete: (contactId: string) => void;
   onViewDetails: (contact: Contact) => void;
-  onAddAppointment: (contact: Contact) => void; // New prop
-  onAddReminder: (contact: Contact) => void; // New prop
+  onAddAppointment: (contact: Contact) => void;
+  onAddReminder: (contact: Contact) => void;
 }
 
 const statusDisplayMap: Record<Exclude<Contact['status'], undefined>, string> = {
@@ -43,6 +46,19 @@ const getStatusBadgeVariant = (status?: Contact['status']) => {
 };
 
 const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelete, onViewDetails, onAddAppointment, onAddReminder }) => {
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
+    setAllUsers(loadedUsers);
+  }, []);
+
+  const getUserName = (userId?: string): string => {
+    if (!userId) return '-';
+    const user = allUsers.find(u => u.id === userId);
+    return user ? user.name : 'Unknown User';
+  };
+
   if (contacts.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No customers found. Add one to get started!</p>;
   }
@@ -61,6 +77,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
             <TableHead className="text-foreground/80 dark:text-foreground/70">Phone</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Company</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Status</TableHead>
+            <TableHead className="text-foreground/80 dark:text-foreground/70">Assigned To</TableHead> {/* New Column */}
             <TableHead className="text-foreground/80 dark:text-foreground/70">Last Updated</TableHead>
             <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead> 
           </TableRow>
@@ -85,6 +102,16 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     {statusDisplayMap[contact.status] || contact.status}
                   </Badge>
                 ) : <span className="text-foreground/90">-</span>}
+              </TableCell>
+              <TableCell className="text-foreground/90"> {/* Assigned To Cell */}
+                {contact.assignedToUserId ? (
+                  <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate">
+                    <UserIcon className="h-3 w-3 flex-shrink-0" /> 
+                    <span className="truncate" title={getUserName(contact.assignedToUserId)}>
+                        {getUserName(contact.assignedToUserId)}
+                    </span>
+                  </Badge>
+                ) : '-'}
               </TableCell>
               <TableCell className="text-foreground/90">{formatDateTime(contact.updatedAt as string)}</TableCell>
               <TableCell className="text-right">
