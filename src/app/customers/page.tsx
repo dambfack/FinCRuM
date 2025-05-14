@@ -3,21 +3,21 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Contact, Appointment, Reminder, User } from '@/lib/types'; 
+import type { Contact, Appointment, Reminder, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, deleteItemById, saveData, createNotification } from '@/lib/utils'; 
+import { getData, deleteItemById, saveData, createNotification } from '@/lib/utils';
 import CustomerTable from '@/components/CustomerTable';
 import CustomerForm from '@/components/CustomerForm';
 import CustomerDetailModal from '@/components/CustomerDetailModal';
-import AppointmentForm from '@/components/AppointmentForm'; 
-import ReminderForm from '@/components/ReminderForm'; 
+import AppointmentForm from '@/components/AppointmentForm';
+import ReminderForm from '@/components/ReminderForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CustomersPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -29,22 +29,22 @@ export default function CustomersPage() {
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
   const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
   const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
-  
+
   const { toast } = useToast();
-  const { currentUser } = useAuth(); 
+  const { currentUser } = useAuth();
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   const loadContacts = useCallback(() => {
     setLoading(true);
     const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
-    
+
     let visibleContacts = storedContacts;
     if (currentUser?.role === 'employee') {
       visibleContacts = storedContacts.filter(c => {
         const isExplicitlyApproved = c.contactStatus === 'approved';
         const isLegacyApproved = typeof c.contactStatus === 'undefined'; // Treat undefined as approved
-        const isOwnPendingChange = 
-          (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && 
+        const isOwnPendingChange =
+          (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') &&
           c.lastModifiedByRole === 'employee';
         return isExplicitlyApproved || isLegacyApproved || isOwnPendingChange;
       });
@@ -57,13 +57,17 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadContacts();
-    const loadedUsers = getData<User[]>(DataItemType.Users) || []; // Also load users for notifications
+    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
     setAllUsers(loadedUsers);
 
     const handleDataChange = (event: Event) => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail?.type === DataItemType.Contacts) {
         loadContacts();
+      }
+      if (customEvent.detail?.type === DataItemType.Users) {
+        const reloadedUsers = getData<User[]>(DataItemType.Users) || [];
+        setAllUsers(reloadedUsers);
       }
     };
     window.addEventListener('dataChanged', handleDataChange);
@@ -91,14 +95,17 @@ export default function CustomersPage() {
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) return;
 
+    // Fetch the latest list of users directly from localStorage to ensure we have up-to-date partner information
+    const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
+
     if (confirm(`Are you sure you want to ${contactToDelete.contactStatus === 'pending_deletion' && currentUser.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
       if (currentUser.role === 'employee') {
         if (contactToDelete.contactStatus === 'pending_deletion') {
             toast({title: "Action Not Allowed", description: "This contact is already pending deletion.", variant: "default"});
             return;
         }
-        const updatedContact: Contact = { 
-          ...contactToDelete, 
+        const updatedContact: Contact = {
+          ...contactToDelete,
           contactStatus: 'pending_deletion',
           lastModifiedByRole: 'employee',
           updatedAt: new Date().toISOString(),
@@ -107,25 +114,33 @@ export default function CustomersPage() {
         const contactIndex = currentContacts.findIndex(c => c.id === contactId);
         if (contactIndex > -1) {
             currentContacts[contactIndex] = updatedContact;
-            saveData<Contact[]>(DataItemType.Contacts, currentContacts);
+            saveData<Contact[]>(DataItemType.Contacts, currentContacts); // saveData will dispatch dataChanged
         }
-        
-        const partners = allUsers.filter(u => u.role === 'partner');
-        partners.forEach(partner => {
-            createNotification({
-                recipientUserId: partner.id,
-                type: 'approval_request',
-                title: `Contact Deletion Request: ${contactToDelete.firstName} ${contactToDelete.lastName}`,
-                message: `Employee ${currentUser.name} has requested to delete contact: ${contactToDelete.firstName} ${contactToDelete.lastName}.`,
-                relatedItemId: contactId,
-                relatedItemType: DataItemType.Contacts,
-                payload: { contactToDelete }
+
+        const partners = currentAllUsers.filter(u => u.role === 'partner');
+        if (partners.length > 0) {
+            partners.forEach(partner => {
+                createNotification({
+                    recipientUserId: partner.id,
+                    type: 'approval_request',
+                    title: `Contact Deletion Request: ${contactToDelete.firstName} ${contactToDelete.lastName}`,
+                    message: `Employee ${currentUser.name} has requested to delete contact: ${contactToDelete.firstName} ${contactToDelete.lastName}.`,
+                    relatedItemId: contactId,
+                    relatedItemType: DataItemType.Contacts,
+                    payload: { contactId: contactToDelete.id, contactName: `${contactToDelete.firstName} ${contactToDelete.lastName}` }
+                });
             });
-        });
-        toast({
-            title: 'Deletion Requested',
-            description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
-        });
+            toast({
+                title: 'Deletion Requested',
+                description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
+            });
+        } else {
+            toast({
+                title: 'Deletion Requested (No Partners Notified)',
+                description: `${contactToDelete.firstName} ${contactToDelete.lastName} marked for deletion. No partners found to notify.`,
+                variant: 'default'
+            });
+        }
       } else { // Partner is acting
         if (contactToDelete.contactStatus === 'pending_deletion') {
             // Partner is cancelling a pending deletion
@@ -136,7 +151,8 @@ export default function CustomersPage() {
                     ...contactToDelete,
                     contactStatus: 'approved', // Revert to approved
                     updatedAt: new Date().toISOString(),
-                    lastModifiedByRole: 'partner'
+                    lastModifiedByRole: 'partner',
+                    changeProposal: undefined // Clear any pending proposal
                 };
                 saveData<Contact[]>(DataItemType.Contacts, currentContacts);
                 toast({
@@ -146,14 +162,14 @@ export default function CustomersPage() {
             }
         } else {
             // Partner is deleting directly
-            deleteItemById<Contact>(DataItemType.Contacts, contactId);
+            deleteItemById<Contact>(DataItemType.Contacts, contactId); // deleteItemById also uses saveData, so it will dispatch dataChanged
             toast({
                 title: 'Customer Deleted',
                 description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
             });
         }
       }
-      loadContacts(); 
+      // loadContacts(); // This will be handled by the dataChanged event listener
     }
   };
 
@@ -165,26 +181,26 @@ export default function CustomersPage() {
   const handleSaveCustomer = () => {
     setIsEditModalOpen(false);
     setSelectedContact(null);
-    loadContacts(); 
+    // loadContacts(); // Handled by dataChanged event
   };
 
   const handleEditRequestFromDetail = (contact: Contact) => {
-    setIsDetailModalOpen(false); 
+    setIsDetailModalOpen(false);
     handleEdit(contact);
   };
 
   const handleOpenAppointmentModal = (contact: Contact) => {
     setContactForNewActivity(contact);
     setIsAppointmentFormOpen(true);
-    setIsDetailModalOpen(false); 
+    setIsDetailModalOpen(false);
   };
 
   const handleOpenReminderModal = (contact: Contact) => {
     setContactForNewActivity(contact);
     setIsReminderFormOpen(true);
-    setIsDetailModalOpen(false); 
+    setIsDetailModalOpen(false);
   };
-  
+
   const handleSaveAppointment = () => {
     setIsAppointmentFormOpen(false);
     setContactForNewActivity(null);
@@ -198,16 +214,17 @@ export default function CustomersPage() {
   };
 
   const handleContactUpdatedFromModal = (updatedContact: Contact) => {
-    setContacts(prevContacts =>
-      prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
-                  .sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
-    );
+    // loadContacts is called by dataChanged event now
+    // setContacts(prevContacts =>
+    //   prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
+    //               .sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
+    // );
     if (selectedContact && selectedContact.id === updatedContact.id) {
-      setSelectedContact(updatedContact);
+      setSelectedContact(updatedContact); // Keep the modal showing the updated contact if it was open for this contact
     }
-    loadContacts(); // Reload to ensure filters and sorting are reapplied correctly
+    // loadContacts(); // Reload to ensure filters and sorting are reapplied correctly - Handled by dataChanged event
   };
-  
+
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
   const activityDialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
 
@@ -242,10 +259,10 @@ export default function CustomersPage() {
         </Button>
       </div>
 
-      <CustomerTable 
-        contacts={contacts} 
-        onEdit={handleEdit} 
-        onDelete={handleDelete} 
+      <CustomerTable
+        contacts={contacts}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
         onViewDetails={handleViewDetails}
         onAddAppointment={handleOpenAppointmentModal}
         onAddReminder={handleOpenReminderModal}
@@ -253,7 +270,7 @@ export default function CustomersPage() {
 
       <Dialog open={isEditModalOpen} onOpenChange={(open) => {
           if (!open) {
-            setSelectedContact(null); 
+            setSelectedContact(null);
           }
           setIsEditModalOpen(open);
       }}>
@@ -262,7 +279,7 @@ export default function CustomersPage() {
             <DialogTitle className="font-heading tracking-wide">Edit Customer</DialogTitle>
             <DialogDescription>Update the customer's details below.</DialogDescription>
           </DialogHeader>
-          {selectedContact && ( 
+          {selectedContact && (
             <CustomerForm
               initialData={selectedContact}
               onSave={handleSaveCustomer}
@@ -276,18 +293,18 @@ export default function CustomersPage() {
         isOpen={isDetailModalOpen}
         onClose={() => {
             setIsDetailModalOpen(false);
-            setSelectedContact(null); 
+            setSelectedContact(null);
         }}
         onEditRequest={handleEditRequestFromDetail}
         onAddAppointmentRequest={(contact) => {
-            setIsDetailModalOpen(false); 
+            setIsDetailModalOpen(false);
             handleOpenAppointmentModal(contact);
         }}
         onAddReminderRequest={(contact) => {
-            setIsDetailModalOpen(false); 
+            setIsDetailModalOpen(false);
             handleOpenReminderModal(contact);
         }}
-        onContactUpdate={handleContactUpdatedFromModal} 
+        onContactUpdate={handleContactUpdatedFromModal}
       />
 
       <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>

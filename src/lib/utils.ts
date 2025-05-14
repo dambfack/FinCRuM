@@ -27,7 +27,7 @@ export function getData<T>(key: DataItemType): T | null {
 }
 
 /**
- * Saves data to localStorage.
+ * Saves data to localStorage and dispatches a 'dataChanged' event.
  * @param key The DataItemType key for the data.
  * @param data The data to save.
  */
@@ -35,6 +35,8 @@ export function saveData<T>(key: DataItemType, data: T): void {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(key, JSON.stringify(data));
+      // Dispatch custom event to notify components of data change
+      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: key, data } }));
     } catch (e) {
       console.error(`Failed to save local data for ${key}:`, e);
     }
@@ -53,7 +55,7 @@ export function deleteItemById<T extends { id: string }>(key: DataItemType, item
     const currentArray = getData<T[]>(key);
     if (Array.isArray(currentArray)) {
       const updatedArray = currentArray.filter(item => item.id !== itemId);
-      saveData<T[]>(key, updatedArray);
+      saveData<T[]>(key, updatedArray); // saveData will now dispatch 'dataChanged'
       return updatedArray;
     } else {
       console.warn(`Data for key ${key} is not an array or does not exist. Cannot delete item ${itemId}.`);
@@ -71,6 +73,8 @@ export function deleteDataCollection(key: DataItemType): void {
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(key);
+      // Dispatch custom event to notify components of data change
+      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: key, data: null } }));
     } catch (e) {
       console.error(`Failed to delete local data for ${key}:`, e);
     }
@@ -128,3 +132,4 @@ export function createNotification(notificationData: Omit<Notification, 'id' | '
   saveData<Notification[]>(DataItemType.Notifications, notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   console.log("Notification created:", newNotification);
 }
+
