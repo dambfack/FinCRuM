@@ -54,9 +54,9 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
   const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-  const [currentSrc, setCurrentSrc] = useState<string>(ultimateFallbackPngLogo);
+  const [currentSrc, setCurrentSrc] = useState<string>(props.appLogoUrl || props.defaultAppLogoUrl || ultimateFallbackPngLogo);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render with a new key
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
   useEffect(() => {
     let newSrc: string | null = null;
@@ -69,8 +69,8 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
     }
     // console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists (len ' + props.appLogoUrl.length +')' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists (len ' + props.defaultAppLogoUrl.length +')' : 'null'}. Attempting to set src to: ${newSrc ? newSrc.substring(0,70) : 'null'}...`, 'Attempt:', attemptCounter + 1);
     setCurrentSrc(newSrc || ultimateFallbackPngLogo);
-    setImgError(false); // Reset error state when props change
-    setAttemptCounter(prev => prev + 1); // Increment counter to ensure key change if src is same
+    setImgError(false); 
+    setAttemptCounter(prev => prev + 1); 
   }, [props.appLogoUrl, props.defaultAppLogoUrl]);
 
   const handleError = useCallback(() => {
@@ -88,11 +88,10 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
       setCurrentSrc(absoluteUltimatePlaceholder);
     } else {
       // console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored.");
-      // Potentially render a minimal error icon or nothing if absolute placeholder itself errors
       return;
     }
-    setAttemptCounter(prev => prev + 1); // Increment counter to try next fallback with a new key
-    setImgError(false); // Reset imgError for the new attempt
+    setAttemptCounter(prev => prev + 1); 
+    setImgError(false); 
   }, [currentSrc, props.appLogoUrl, props.defaultAppLogoUrl, attemptCounter]);
 
   if (currentSrc === absoluteUltimatePlaceholder && imgError) {
@@ -103,26 +102,29 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
+  
+  const dataAiHint = 
+    currentSrc === props.appLogoUrl ? "custom app logo" :
+    currentSrc === props.defaultAppLogoUrl ? "default app logo" :
+    currentSrc === ultimateFallbackPngLogo ? "fallback f logo" : "placeholder";
 
-  // console.log(`[Logo Component] Rendering NextImage. Source: ${currentSrc.substring(0,70)}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
+
+  // console.log(`[Logo Component] Rendering NextImage. Source: ${typeof currentSrc === 'string' ? currentSrc.substring(0,70) : currentSrc}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
 
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`} // Force re-render on src change or error attempt
+      key={`${currentSrc}-${attemptCounter}`} 
       src={currentSrc}
       alt={
-        currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo (Default)" :
-        currentSrc === absoluteUltimatePlaceholder ? "Logo Placeholder" :
-        "App Logo"
+        currentSrc === props.appLogoUrl ? "App Logo" :
+        currentSrc === props.defaultAppLogoUrl ? "Default App Logo" :
+        currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo (Fallback)" :
+        "Logo Placeholder"
       }
       width={24}
       height={24}
-      className="h-6 w-6 object-contain" // ensure image scales nicely
-      data-ai-hint={
-        currentSrc === ultimateFallbackPngLogo ? "default f logo" :
-        currentSrc === absoluteUltimatePlaceholder ? "placeholder" :
-        "custom app logo"
-      }
+      className="h-6 w-6 object-contain" 
+      data-ai-hint={dataAiHint}
       unoptimized={unoptimized}
       onError={handleError}
     />
@@ -320,7 +322,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultPinnedOpen={true}>
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
-        <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
+          <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
             </Link>
@@ -400,7 +402,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
              <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
               <div className="flex items-center font-heading tracking-wide">
                 {headerLogoUrl ? (
-                  <img src={headerLogoUrl} alt="Header Logo" className="h-5 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
+                  <img src={headerLogoUrl} alt="Header Logo" className="h-7 w-auto max-w-32 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
                 ) : (
                   <span className="mr-1">Finsculpt</span>
                 )}
@@ -410,7 +412,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading tracking-wide">
             {headerLogoUrl ? (
-              <img src={headerLogoUrl} alt="Header Logo" className="h-6 mr-1 object-contain" data-ai-hint="custom header logo" />
+              <img src={headerLogoUrl} alt="Header Logo" className="h-7 w-auto max-w-32 mr-1 object-contain" data-ai-hint="custom header logo" />
             ) : (
               <span className="mr-1">Finsculpt</span>
             )}
@@ -555,7 +557,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={appLogoImageToCropSrc}
           onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1} // App logo typically square
+          aspectRatio={1 / 1} 
         />
       )}
       {headerLogoImageToCropSrc && (
@@ -567,7 +569,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={headerLogoImageToCropSrc}
           onCropSave={handleHeaderLogoCropSave}
-          aspectRatio={16 / 9}
+          aspectRatio={16 / 9} 
         />
       )}
     </>
