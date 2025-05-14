@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle, Sun, Moon } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -36,6 +36,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
 import NextImage from 'next/image'; // Renamed to NextImage to avoid conflict
+import { useTheme } from 'next-themes';
+
 
 const anton = Anton({
   subsets: ['latin'],
@@ -49,96 +51,86 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming f_logo.png is in public
+const Logo: React.FC<{
+  appLogoLightUrl: string | null;
+  appLogoDarkUrl: string | null;
+  defaultAppLogoLightUrl: string | null;
+  defaultAppLogoDarkUrl: string | null;
+}> = (props) => {
+  const { resolvedTheme } = useTheme();
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+  const [attemptCounter, setAttemptCounter] = useState(0);
+
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-  const [currentSrc, setCurrentSrc] = useState<string>(props.appLogoUrl || props.defaultAppLogoUrl || ultimateFallbackPngLogo);
-  const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render via key
-
   useEffect(() => {
-    let newSrc: string | null = null;
-    if (props.appLogoUrl) {
-      newSrc = props.appLogoUrl;
-    } else if (props.defaultAppLogoUrl) {
-      newSrc = props.defaultAppLogoUrl;
-    } else {
-      newSrc = ultimateFallbackPngLogo;
+    let determinedSrc: string | null = null;
+    if (resolvedTheme === 'dark') {
+      determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+    } else { // light or system resolved to light
+      determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
-    // console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists (len ' + props.appLogoUrl.length +')' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists (len ' + props.defaultAppLogoUrl.length +')' : 'null'}. Attempting to set src to: ${newSrc ? newSrc.substring(0,70) : 'null'}...`, 'Attempt:', attemptCounter);
-    setCurrentSrc(newSrc || ultimateFallbackPngLogo);
-    setImgError(false); // Reset error on src change
-  }, [props.appLogoUrl, props.defaultAppLogoUrl, attemptCounter]); // Add attemptCounter to dependencies
-
+    console.log(`[Logo Component] useEffect theme: ${resolvedTheme}, determinedSrc: ${determinedSrc ? determinedSrc.substring(0,70) : 'null'}`);
+    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
+    setImgError(false);
+    // setAttemptCounter(prev => prev + 1); // Force re-render on prop/theme change
+  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
 
   const handleError = useCallback(() => {
-    // console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
     setImgError(true);
-
     let nextSrc = '';
-    if (currentSrc === props.appLogoUrl && props.defaultAppLogoUrl) {
-      // console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
-      nextSrc = props.defaultAppLogoUrl;
-    } else if ((currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) && currentSrc !== ultimateFallbackPngLogo) {
-      // console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo (/f_logo.png)");
-      nextSrc = ultimateFallbackPngLogo;
+    if (currentSrc && currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
+      if (resolvedTheme === 'dark') {
+        if (currentSrc === props.appLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.defaultAppLogoDarkUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = ultimateFallbackPngLogo;
+        else nextSrc = ultimateFallbackPngLogo;
+      } else {
+        if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.appLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
+        else if (currentSrc === props.defaultAppLogoDarkUrl) nextSrc = ultimateFallbackPngLogo;
+        else nextSrc = ultimateFallbackPngLogo;
+      }
     } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
-      // console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder (placehold.co)");
       nextSrc = absoluteUltimatePlaceholder;
     } else {
-      // console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored. Current src:", currentSrc);
-      if (currentSrc === absoluteUltimatePlaceholder) return;
-      nextSrc = absoluteUltimatePlaceholder;
+      return; // All fallbacks exhausted
     }
 
     if (nextSrc && currentSrc !== nextSrc) {
-        // Instead of directly setting currentSrc, which might not trigger re-render correctly with next/image caching,
-        // increment attemptCounter. The useEffect will then pick up the new props/state and set currentSrc.
-        // This is a trick to force a re-evaluation of the image source by changing the key.
-        setCurrentSrc(nextSrc); // Still set currentSrc to try the next source
-        setImgError(false); // Reset error for the new attempt
-        setAttemptCounter(prev => prev + 1);
+      setCurrentSrc(nextSrc);
+      setImgError(false);
+      setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
         setCurrentSrc(absoluteUltimatePlaceholder);
         setImgError(false);
         setAttemptCounter(prev => prev + 1);
     }
-
-  }, [currentSrc, props.appLogoUrl, props.defaultAppLogoUrl, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
+  }, [currentSrc, props, resolvedTheme, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    // console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed or currentSrc is empty. Rendering minimal error indicator.`);
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
-
+  
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  const dataAiHint =
-    currentSrc === props.appLogoUrl ? "custom app logo" :
-    currentSrc === props.defaultAppLogoUrl ? "default app logo" :
-    currentSrc === ultimateFallbackPngLogo ? "fallback f logo" : "placeholder";
-
-  // console.log(`[Logo Component] Rendering NextImage. Key: ${currentSrc}-${attemptCounter} Source: ${typeof currentSrc === 'string' ? currentSrc.substring(0,70) : currentSrc}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
-
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`} // Key to help React differentiate and re-render
+      key={`${currentSrc}-${attemptCounter}`}
       src={currentSrc}
-      alt={
-        currentSrc === props.appLogoUrl ? "App Logo" :
-        currentSrc === props.defaultAppLogoUrl ? "Default App Logo" :
-        currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo (Fallback)" :
-        "Logo Placeholder"
-      }
+      alt="App Logo"
       width={24}
       height={24}
-      className="h-6 w-6 object-contain" // Ensure object-contain for aspect ratio
-      data-ai-hint={dataAiHint}
-      unoptimized={unoptimized} // Important for data URIs and external placeholders
+      className="h-6 w-6 object-contain"
+      data-ai-hint="company app logo"
+      unoptimized={unoptimized}
       onError={handleError}
     />
   );
@@ -147,144 +139,102 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
 
 function AppContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
+  const { resolvedTheme } = useTheme();
   const {
-    isAuthenticated,
-    isLoadingAuth,
-    currentUser,
-    logout,
-    pinSetupRequiredForUser,
-    appLogoUrl,
-    defaultAppLogoUrl,
-    headerLogoUrl, // Use this from context
-    updateAppLogo,
-    setDefaultAppLogo,
-    updateUserProfilePicture,
-    updateHeaderLogo, // Use this from context
+    currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
+    appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl,
+    headerLogoLightUrl, headerLogoDarkUrl,
+    logout, updateUserProfilePicture,
+    updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
+    updateHeaderLogoLight, updateHeaderLogoDark,
   } = auth;
+  
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
-  const appLogoInputRef = useRef<HTMLInputElement>(null);
-  const headerLogoInputRef = useRef<HTMLInputElement>(null); // New ref for header logo input
+  
+  const appLogoLightInputRef = useRef<HTMLInputElement>(null);
+  const appLogoDarkInputRef = useRef<HTMLInputElement>(null);
+  const headerLogoLightInputRef = useRef<HTMLInputElement>(null);
+  const headerLogoDarkInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
 
   const [isUserProfileCropperOpen, setIsUserProfileCropperOpen] = useState(false);
   const [userImageToCropSrc, setUserImageToCropSrc] = useState<string | null>(null);
 
-  const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
-  const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
+  const [isAppLogoLightCropperOpen, setIsAppLogoLightCropperOpen] = useState(false);
+  const [appLogoLightImageToCropSrc, setAppLogoLightImageToCropSrc] = useState<string | null>(null);
+  const [isAppLogoDarkCropperOpen, setIsAppLogoDarkCropperOpen] = useState(false);
+  const [appLogoDarkImageToCropSrc, setAppLogoDarkImageToCropSrc] = useState<string | null>(null);
 
-  const [isHeaderLogoCropperOpen, setIsHeaderLogoCropperOpen] = useState(false);
-  const [headerLogoImageToCropSrc, setHeaderLogoImageToCropSrc] = useState<string | null>(null);
+  const [isHeaderLogoLightCropperOpen, setIsHeaderLogoLightCropperOpen] = useState(false);
+  const [headerLogoLightImageToCropSrc, setHeaderLogoLightImageToCropSrc] = useState<string | null>(null);
+  const [isHeaderLogoDarkCropperOpen, setIsHeaderLogoDarkCropperOpen] = useState(false);
+  const [headerLogoDarkImageToCropSrc, setHeaderLogoDarkImageToCropSrc] = useState<string | null>(null);
 
-  // console.log('[AppContent] Rendering. Context values - appLogoUrl:', appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null', "headerLogoUrl:", headerLogoUrl ? `len: ${headerLogoUrl.length}`: 'null');
 
-  const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
+    console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        toast({
-          title: "Image Too Large",
-          description: "Please select an image smaller than 2MB.",
-          variant: "destructive",
-        });
-         if (userProfilePicInputRef.current) {
-          userProfilePicInputRef.current.value = '';
-        }
+      console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
+        if (inputRef.current) inputRef.current.value = '';
         return;
       }
+      if (toastTitle.toLowerCase().includes("logo") && file.type !== 'image/png') {
+         toast({ title: "Invalid File Type", description: "Please upload a PNG file for logos.", variant: "destructive" });
+         if (inputRef.current) inputRef.current.value = '';
+         return;
+      }
       const reader = new FileReader();
+      reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
+      reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress - loaded: ${e.loaded}, total: ${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        setUserImageToCropSrc(dataUri);
-        setIsUserProfileCropperOpen(true);
-      };
-      reader.readAsDataURL(file);
-      if (userProfilePicInputRef.current) {
-        userProfilePicInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleUserCropSave = (croppedImageUrl: string) => {
-    if (currentUser) {
-        updateUserProfilePicture(croppedImageUrl);
-    }
-    setIsUserProfileCropperOpen(false);
-    setUserImageToCropSrc(null);
-  };
-
-  const handleAppLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'image/png') {
-        toast({ title: "Invalid File Type", description: "Please upload a PNG file for the app logo.", variant: "destructive" });
-        if (appLogoInputRef.current) appLogoInputRef.current.value = '';
-        return;
-      }
-      if (file.size > 1 * 1024 * 1024) { // 1MB limit for App Logo
-        toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 1MB.", variant: "destructive" });
-        if (appLogoInputRef.current) appLogoInputRef.current.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAppLogoImageToCropSrc(reader.result as string);
-        setIsAppLogoCropperOpen(true);
+        console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri?.length}`);
+        setCropSrc(dataUri);
+        setCropperOpen(true);
       };
       reader.onerror = (e) => {
-        console.error('[AppContent] App Logo FileReader onerror:', e);
-        toast({ title: "File Read Error", description: "Could not read the selected app logo file.", variant: "destructive" });
+        console.error(`[AppContent] ${toastTitle} - FileReader error:`, e);
+        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
       };
       reader.readAsDataURL(file);
-      if (appLogoInputRef.current) {
-        appLogoInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleAppLogoCropSave = (croppedDataUri: string) => {
-    updateAppLogo(croppedDataUri);
-    setIsAppLogoCropperOpen(false);
-    setAppLogoImageToCropSrc(null);
-  };
-
-  const handleSetCurrentLogoAsDefault = () => {
-    if (appLogoUrl && currentUser?.role === 'partner') {
-      setDefaultAppLogo(appLogoUrl);
+      if (inputRef.current) inputRef.current.value = '';
     } else {
-      toast({ title: "Action Not Available", description: "No custom app logo is currently set, or you don't have permission.", variant: "default"});
+      console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null`);
     }
   };
 
-  const handleHeaderTextLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'image/png') {
-        toast({ title: "Invalid File Type", description: "Please upload a PNG file for the header logo.", variant: "destructive" });
-        if (headerLogoInputRef.current) headerLogoInputRef.current.value = '';
-        return;
-      }
-      if (file.size > 512 * 1024) { // 512KB limit for header text logo
-        toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 512KB for the header.", variant: "destructive" });
-        if (headerLogoInputRef.current) headerLogoInputRef.current.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setHeaderLogoImageToCropSrc(reader.result as string);
-        setIsHeaderLogoCropperOpen(true);
-      };
-      reader.readAsDataURL(file);
-      if (headerLogoInputRef.current) {
-        headerLogoInputRef.current.value = '';
-      }
-    }
+  // Profile Picture
+  const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setUserImageToCropSrc, setIsUserProfileCropperOpen, 2, "User Profile Picture", userProfilePicInputRef);
+  const handleUserCropSave = (croppedImageUrl: string) => {
+    if (currentUser) updateUserProfilePicture(croppedImageUrl);
+    setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);
   };
 
-  const handleHeaderLogoCropSave = (croppedDataUri: string) => {
-    updateHeaderLogo(croppedDataUri);
-    setIsHeaderLogoCropperOpen(false);
-    setHeaderLogoImageToCropSrc(null);
-  };
+  // App Logos
+  const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
+  const handleAppLogoLightCropSave = (croppedDataUri: string) => { updateAppLogoLight(croppedDataUri); setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); };
+  
+  const handleAppLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoDarkImageToCropSrc, setIsAppLogoDarkCropperOpen, 1, "Dark App Logo", appLogoDarkInputRef);
+  const handleAppLogoDarkCropSave = (croppedDataUri: string) => { updateAppLogoDark(croppedDataUri); setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null); };
+
+  const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", description: "No custom light app logo is currently set, or insufficient permissions.", variant: "default"}); };
+  const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", description: "No custom dark app logo is currently set, or insufficient permissions.", variant: "default"}); };
+
+  // Header Logos
+  const handleHeaderLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoLightImageToCropSrc, setIsHeaderLogoLightCropperOpen, 0.5, "Light Header Logo", headerLogoLightInputRef);
+  const handleHeaderLogoLightCropSave = (croppedDataUri: string) => { updateHeaderLogoLight(croppedDataUri); setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null); };
+
+  const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
+  const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
+
+
+  useEffect(() => {
+    console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
+  }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
 
 
   if (isLoadingAuth) {
@@ -306,6 +256,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return <PinLoginScreen />;
   }
+  
+  const currentHeaderLogo = resolvedTheme === 'dark' ? (headerLogoDarkUrl || headerLogoLightUrl) : (headerLogoLightUrl || headerLogoDarkUrl);
 
   return (
     <>
@@ -314,7 +266,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
           <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-               <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
+               <Logo 
+                  appLogoLightUrl={appLogoLightUrl} appLogoDarkUrl={appLogoDarkUrl}
+                  defaultAppLogoLightUrl={defaultAppLogoLightUrl} defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
+                />
             </Link>
           </div>
         </SidebarHeader>
@@ -386,10 +341,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger />
             <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-             <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
+             <Logo 
+                appLogoLightUrl={appLogoLightUrl} appLogoDarkUrl={appLogoDarkUrl}
+                defaultAppLogoLightUrl={defaultAppLogoLightUrl} defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
+              />
               <div className="flex items-center font-heading tracking-wide">
-                {headerLogoUrl ? (
-                  <img src={headerLogoUrl} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
+                {currentHeaderLogo ? (
+                  <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
                 ) : (
                   <span className="mr-1">Finsculpt</span>
                 )}
@@ -398,8 +356,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading tracking-wide">
-            {headerLogoUrl ? (
-              <img src={headerLogoUrl} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo" />
+            {currentHeaderLogo ? (
+              <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo" />
             ) : (
               <span className="mr-1">Finsculpt</span>
             )}
@@ -431,69 +389,29 @@ function AppContent({ children }: { children: React.ReactNode }) {
                       </div>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    ref={userProfilePicInputRef}
-                    onChange={handleUserProfilePictureFileChange}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mb-3"
-                    onClick={() => userProfilePicInputRef.current?.click()}
-                  >
-                    <ImageUp className="mr-2 h-4 w-4" />
-                    Change Profile Picture
-                  </Button>
+                  <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
+                  <Button variant="outline" size="sm" className="w-full mb-3" onClick={() => userProfilePicInputRef.current?.click()}> <ImageUp className="mr-2 h-4 w-4" /> Change Profile Picture </Button>
                 </div>
 
                 {currentUser?.role === 'partner' && (
                   <div className="p-1 mt-2 border-t border-border/20 pt-3">
-                    <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">App Settings</h4>
-                     <input
-                        type="file"
-                        ref={appLogoInputRef}
-                        onChange={handleAppLogoFileChange}
-                        accept="image/png"
-                        className="hidden"
-                      />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mb-1"
-                      onClick={() => appLogoInputRef.current?.click()}
-                    >
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                       Change App Logo (PNG)
-                    </Button>
-                     <input
-                        type="file"
-                        ref={headerLogoInputRef}
-                        onChange={handleHeaderTextLogoFileChange}
-                        accept="image/png"
-                        className="hidden"
-                      />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mb-1"
-                      onClick={() => headerLogoInputRef.current?.click()}
-                    >
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                       Change Header Text Logo (PNG)
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mb-3"
-                      onClick={handleSetCurrentLogoAsDefault}
-                      disabled={!appLogoUrl}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                       Set Current App Logo as Default
-                    </Button>
+                    <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">App & Header Logos</h4>
+                    
+                    {/* App Logos */}
+                    <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
+                    <Button variant="outline" size="sm" className="w-full mb-1" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
+                    <Button variant="outline" size="sm" className="w-full mb-1" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light App Logo </Button>
+
+                    <input type="file" ref={appLogoDarkInputRef} onChange={handleAppLogoDarkFileChange} accept="image/png" className="hidden"/>
+                    <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
+                    <Button variant="outline" size="sm" className="w-full mb-3" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark App Logo </Button>
+
+                    {/* Header Logos */}
+                    <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
+                    <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
+                    
+                    <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
+                    <Button variant="outline" size="sm" className="w-full mb-3" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
                   </div>
                 )}
 
@@ -520,42 +438,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <Toaster />
       </SidebarInset>
     </SidebarProvider>
-    {userImageToCropSrc && (
-        <ImageCropperModal
-          isOpen={isUserProfileCropperOpen}
-          onClose={() => {
-            setIsUserProfileCropperOpen(false);
-            setUserImageToCropSrc(null);
-          }}
-          imageSrc={userImageToCropSrc}
-          onCropSave={handleUserCropSave}
-          aspectRatio={1 / 1}
-        />
-      )}
-      {appLogoImageToCropSrc && (
-        <ImageCropperModal
-          isOpen={isAppLogoCropperOpen}
-          onClose={() => {
-            setIsAppLogoCropperOpen(false);
-            setAppLogoImageToCropSrc(null);
-          }}
-          imageSrc={appLogoImageToCropSrc}
-          onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1}
-        />
-      )}
-      {headerLogoImageToCropSrc && (
-        <ImageCropperModal
-          isOpen={isHeaderLogoCropperOpen}
-          onClose={() => {
-            setIsHeaderLogoCropperOpen(false);
-            setHeaderLogoImageToCropSrc(null);
-          }}
-          imageSrc={headerLogoImageToCropSrc}
-          onCropSave={handleHeaderLogoCropSave}
-          aspectRatio={16 / 9}
-        />
-      )}
+    
+    {/* Cropper Modals */}
+    {userImageToCropSrc && <ImageCropperModal isOpen={isUserProfileCropperOpen} onClose={() => {setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);}} imageSrc={userImageToCropSrc} onCropSave={handleUserCropSave} aspectRatio={1/1} />}
+    {appLogoLightImageToCropSrc && <ImageCropperModal isOpen={isAppLogoLightCropperOpen} onClose={() => {setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null);}} imageSrc={appLogoLightImageToCropSrc} onCropSave={handleAppLogoLightCropSave} aspectRatio={1/1} />}
+    {appLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isAppLogoDarkCropperOpen} onClose={() => {setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null);}} imageSrc={appLogoDarkImageToCropSrc} onCropSave={handleAppLogoDarkCropSave} aspectRatio={1/1} />}
+    {headerLogoLightImageToCropSrc && <ImageCropperModal isOpen={isHeaderLogoLightCropperOpen} onClose={() => {setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null);}} imageSrc={headerLogoLightImageToCropSrc} onCropSave={handleHeaderLogoLightCropSave} aspectRatio={16/9} />}
+    {headerLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isHeaderLogoDarkCropperOpen} onClose={() => {setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null);}} imageSrc={headerLogoDarkImageToCropSrc} onCropSave={handleHeaderLogoDarkCropSave} aspectRatio={16/9} />}
     </>
   );
 }
@@ -593,4 +482,3 @@ export default function RootLayout({
     </html>
   );
 }
-

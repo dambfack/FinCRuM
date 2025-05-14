@@ -12,16 +12,25 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   pinSetupRequiredForUser: User | null;
-  appLogoUrl: string | null;
-  defaultAppLogoUrl: string | null;
-  headerLogoUrl: string | null; // New: for header text logo
+  
+  appLogoLightUrl: string | null;
+  appLogoDarkUrl: string | null;
+  defaultAppLogoLightUrl: string | null;
+  defaultAppLogoDarkUrl: string | null;
+  headerLogoLightUrl: string | null;
+  headerLogoDarkUrl: string | null;
+
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
-  updateAppLogo: (dataUri: string | null) => void;
-  setDefaultAppLogo: (dataUri: string) => void;
-  updateHeaderLogo: (dataUri: string | null) => void; // New: for header text logo
+
+  updateAppLogoLight: (dataUri: string | null) => void;
+  updateAppLogoDark: (dataUri: string | null) => void;
+  setDefaultAppLogoLight: (dataUri: string) => void;
+  setDefaultAppLogoDark: (dataUri: string) => void;
+  updateHeaderLogoLight: (dataUri: string | null) => void;
+  updateHeaderLogoDark: (dataUri: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,9 +41,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
   
-  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
-  const [_defaultAppLogoUrlInternal, _setDefaultAppLogoUrlInternal] = useState<string | null>(null);
-  const [headerLogoUrl, setHeaderLogoUrl] = useState<string | null>(null); // New state for header logo
+  const [appLogoLightUrl, setAppLogoLightUrl] = useState<string | null>(null);
+  const [appLogoDarkUrl, setAppLogoDarkUrl] = useState<string | null>(null);
+  const [defaultAppLogoLightUrl, setDefaultAppLogoLightUrl] = useState<string | null>(null);
+  const [defaultAppLogoDarkUrl, setDefaultAppLogoDarkUrl] = useState<string | null>(null);
+  const [headerLogoLightUrl, setHeaderLogoLightUrl] = useState<string | null>(null);
+  const [headerLogoDarkUrl, setHeaderLogoDarkUrl] = useState<string | null>(null);
   
   const { toast } = useToast();
 
@@ -42,24 +54,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('[AuthContext] Initial useEffect running - ONCE.');
     setIsLoadingAuth(true);
 
-    const storedAppLogo = getData<string>(DataItemType.AppLogo);
-    console.log('[AuthContext] Initial load - storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
-    if (storedAppLogo) {
-      setAppLogoUrl(storedAppLogo);
-    }
-
-    const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
-    console.log('[AuthContext] Initial load - storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
-    if (storedDefaultAppLogo) {
-      _setDefaultAppLogoUrlInternal(storedDefaultAppLogo);
-    }
-
-    const storedHeaderLogo = getData<string>(DataItemType.HeaderLogo); // Load header logo
-    console.log('[AuthContext] Initial load - storedHeaderLogo:', storedHeaderLogo ? `Length: ${storedHeaderLogo.length}` : 'null');
-    if (storedHeaderLogo) {
-      setHeaderLogoUrl(storedHeaderLogo);
-    }
-
+    setAppLogoLightUrl(getData<string>(DataItemType.AppLogoLight));
+    setAppLogoDarkUrl(getData<string>(DataItemType.AppLogoDark));
+    setDefaultAppLogoLightUrl(getData<string>(DataItemType.DefaultAppLogoLight));
+    setDefaultAppLogoDarkUrl(getData<string>(DataItemType.DefaultAppLogoDark));
+    setHeaderLogoLightUrl(getData<string>(DataItemType.HeaderLogoLight));
+    setHeaderLogoDarkUrl(getData<string>(DataItemType.HeaderLogoDark));
+    
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
       const defaultAdmin: User = {
@@ -190,82 +191,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  const updateAppLogo = useCallback((dataUri: string | null) => {
-    console.log('[AuthContext] updateAppLogo called. Data URI length:', dataUri?.length);
-    
-    console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage BEFORE saving AppLogo:', localStorage.getItem(DataItemType.DefaultAppLogo) ? `len: ${localStorage.getItem(DataItemType.DefaultAppLogo)!.length}` : 'null');
-    
-    setAppLogoUrl(dataUri); 
-    
+  const updateLogo = useCallback((setter: React.Dispatch<React.SetStateAction<string | null>>, key: DataItemType, dataUri: string | null, toastTitle: string, toastDescription: string) => {
+    setter(dataUri);
     if (dataUri) {
-      saveData<string>(DataItemType.AppLogo, dataUri);
-      console.log('[AuthContext] updateAppLogo: Saved AppLogo to localStorage:', DataItemType.AppLogo, 'Length:', dataUri.length);
-      toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
+      saveData<string>(key, dataUri);
     } else {
-      if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.AppLogo);
-      console.log('[AuthContext] updateAppLogo: Removed AppLogo from localStorage:', DataItemType.AppLogo);
-      toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
+      if (typeof window !== 'undefined') localStorage.removeItem(key);
     }
-     console.log('[AuthContext] updateAppLogo - DefaultAppLogo in localStorage AFTER saving AppLogo:', localStorage.getItem(DataItemType.DefaultAppLogo) ? `len: ${localStorage.getItem(DataItemType.DefaultAppLogo)!.length}` : 'null');
+    toast({ title: toastTitle, description: toastDescription });
   }, [toast]);
 
-  const setDefaultAppLogo = useCallback((dataUri: string) => {
-    console.trace("[AuthContext] setDefaultAppLogo trace"); 
-    _setDefaultAppLogoUrlInternal(dataUri); 
-    saveData<string>(DataItemType.DefaultAppLogo, dataUri); 
-    console.log('[AuthContext] setDefaultAppLogo: Saved DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo, 'Length:', dataUri.length);
-    updateAppLogo(null); 
-    toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
-  }, [toast, updateAppLogo]);
+  const updateAppLogoLight = useCallback((dataUri: string | null) => updateLogo(setAppLogoLightUrl, DataItemType.AppLogoLight, dataUri, "Light App Logo Updated", dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared."), [updateLogo]);
+  const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogo(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo Updated", dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared."), [updateLogo]);
+  
+  const setDefaultAppLogoLight = useCallback((dataUri: string) => {
+    setDefaultAppLogoLightUrl(dataUri);
+    saveData<string>(DataItemType.DefaultAppLogoLight, dataUri);
+    updateAppLogoLight(null); // Clear override
+    toast({ title: "Default Light App Logo Set", description: "The new default light mode app logo has been set." });
+  }, [toast, updateAppLogoLight]);
 
-  const updateHeaderLogo = useCallback((dataUri: string | null) => {
-    console.log('[AuthContext] updateHeaderLogo called. Data URI length:', dataUri?.length);
-    setHeaderLogoUrl(dataUri);
-    if (dataUri) {
-      saveData<string>(DataItemType.HeaderLogo, dataUri);
-      toast({ title: "Header Logo Updated", description: "The header text logo has been changed." });
-    } else {
-      if (typeof window !== 'undefined') localStorage.removeItem(DataItemType.HeaderLogo);
-      toast({ title: "Header Logo Cleared", description: "The custom header text logo has been removed." });
-    }
-  }, [toast]);
+  const setDefaultAppLogoDark = useCallback((dataUri: string) => {
+    setDefaultAppLogoDarkUrl(dataUri);
+    saveData<string>(DataItemType.DefaultAppLogoDark, dataUri);
+    updateAppLogoDark(null); // Clear override
+    toast({ title: "Default Dark App Logo Set", description: "The new default dark mode app logo has been set." });
+  }, [toast, updateAppLogoDark]);
+
+  const updateHeaderLogoLight = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoLightUrl, DataItemType.HeaderLogoLight, dataUri, "Light Header Logo Updated", dataUri ? "Light mode header logo changed." : "Light mode header logo cleared."), [updateLogo]);
+  const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo Updated", dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared."), [updateLogo]);
+
 
   const contextValue = React.useMemo(() => ({
     currentUser,
     isAuthenticated,
     isLoadingAuth,
     pinSetupRequiredForUser,
-    appLogoUrl,
-    defaultAppLogoUrl: _defaultAppLogoUrlInternal, 
-    headerLogoUrl, // New
+    appLogoLightUrl,
+    appLogoDarkUrl,
+    defaultAppLogoLightUrl,
+    defaultAppLogoDarkUrl,
+    headerLogoLightUrl,
+    headerLogoDarkUrl,
     login,
     logout,
     completePinSetupAndLogin,
     updateUserProfilePicture,
-    updateAppLogo,
-    setDefaultAppLogo,
-    updateHeaderLogo, // New
+    updateAppLogoLight,
+    updateAppLogoDark,
+    setDefaultAppLogoLight,
+    setDefaultAppLogoDark,
+    updateHeaderLogoLight,
+    updateHeaderLogoDark,
   }), [
     currentUser, 
     isAuthenticated, 
     isLoadingAuth, 
     pinSetupRequiredForUser, 
-    appLogoUrl, 
-    _defaultAppLogoUrlInternal,
-    headerLogoUrl, // New
-    logout, 
-    login,
-    completePinSetupAndLogin,
-    updateUserProfilePicture,
-    updateAppLogo,
-    setDefaultAppLogo,
-    updateHeaderLogo, // New
+    appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl,
+    logout, login, completePinSetupAndLogin, updateUserProfilePicture,
+    updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark, updateHeaderLogoLight, updateHeaderLogoDark,
   ]);
   
   if (typeof window !== 'undefined') { 
-    console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length, 'headerLogoUrl len:', headerLogoUrl?.length);
+    // console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length, 'headerLogoUrl len:', headerLogoUrl?.length);
   }
-
 
   return (
     <AuthContext.Provider value={contextValue}>

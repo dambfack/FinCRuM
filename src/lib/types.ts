@@ -195,9 +195,15 @@ export enum DataItemType {
   Users = 'users',
   CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
   Notifications = 'notifications', // For notifications
-  AppLogo = 'appLogo', // For storing custom app logo data URI (current override)
-  DefaultAppLogo = 'defaultAppLogo', // For storing the user-set default app logo
-  HeaderLogo = 'headerLogo', // For storing custom header text logo
+  AppLogo = 'appLogo', // For storing custom app logo data URI (current override) - DEPRECATED
+  DefaultAppLogo = 'defaultAppLogo', // For storing the user-set default app logo - DEPRECATED
+  HeaderLogo = 'headerLogo', // For storing custom header text logo - DEPRECATED
+  AppLogoLight = 'appLogoLight',
+  AppLogoDark = 'appLogoDark',
+  DefaultAppLogoLight = 'defaultAppLogoLight',
+  DefaultAppLogoDark = 'defaultAppLogoDark',
+  HeaderLogoLight = 'headerLogoLight',
+  HeaderLogoDark = 'headerLogoDark',
   BackgroundImage = 'backgroundImage', // For current custom background override
   DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
 }
@@ -216,9 +222,12 @@ export interface LocalData {
   notifications?: Notification[]; // Added notifications
   customerData?: ExcelData; // For imported excel data
   lastSyncTime?: string; // ISO string
-  appLogo?: string; // Data URI for custom app logo (current override)
-  defaultAppLogo?: string; // Data URI for the user-set default app logo
-  headerLogo?: string; // Data URI for custom header text logo
+  appLogoLight?: string;
+  appLogoDark?: string;
+  defaultAppLogoLight?: string;
+  defaultAppLogoDark?: string;
+  headerLogoLight?: string;
+  headerLogoDark?: string;
   backgroundImage?: string; // Data URI for current custom background
   defaultBackgroundImage?: string; // Data URI for user-set default background
 }
