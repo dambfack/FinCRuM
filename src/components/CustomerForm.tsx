@@ -87,7 +87,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
         attachments: initialData.attachments || [],
-        assignedToUserId: initialData.assignedToUserId || "none", 
+        assignedToUserId: initialData.assignedToUserId || "none",
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
@@ -103,7 +103,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       notes: '',
       status: undefined,
       attachments: [],
-      assignedToUserId: "none", 
+      assignedToUserId: "none",
       contactStatus: 'approved',
       changeProposal: undefined,
       lastModifiedByRole: currentUser?.role,
@@ -154,7 +154,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { 
+      if (file.size > 2 * 1024 * 1024) {
         toast({
           title: "Image Too Large",
           description: "Please select an image smaller than 2MB.",
@@ -169,8 +169,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         setIsCropperModalOpen(true);
       };
       reader.readAsDataURL(file);
-      if (fileInputRef.current) { // Clear the file input so the same file can be selected again if needed
-        fileInputRef.current.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset file input
       }
     }
   };
@@ -243,7 +243,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         });
         toast({ title: "Changes Submitted", description: "Your changes have been submitted for partner approval." });
 
-    } else { 
+    } else {
         customerDataToSave = {
             id: contactId,
             ...formInputAsContactShape,
@@ -412,7 +412,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                   control={form.control}
                   name="profilePictureUrl"
                   render={({ field }) => (
-                      <FormItem className="hidden">
+                      <FormItem className="hidden"> {/* Hidden as value is set via file upload logic */}
                           <FormControl>
                               <Input type="text" {...field} />
                           </FormControl>
@@ -491,7 +491,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
           }}
           imageSrc={imageToCropSrc}
           onCropSave={handleCropSave}
-          aspectRatio={1 / 1} 
+          aspectRatio={1 / 1}
         />
       )}
     </>

@@ -33,8 +33,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import React, { useRef, useState } from 'react'; 
-import ImageCropperModal from '@/components/ImageCropperModal'; 
+import React, { useRef, useState } from 'react';
+import ImageCropperModal from '@/components/ImageCropperModal';
 
 const anton = Anton({
   subsets: ['latin'],
@@ -66,7 +66,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { 
+      if (file.size > 2 * 1024 * 1024) {
         toast({
           title: "Image Too Large",
           description: "Please select an image smaller than 2MB.",
@@ -82,7 +82,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(file);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = ''; // Reset file input
       }
     }
   };
@@ -124,6 +124,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <Logo />
               <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
+             {/* SidebarTrigger was here, moved to footer */}
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -264,7 +265,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </header>
         <main className={cn(
           "flex-1 overflow-y-auto p-4 md:p-6",
-          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5"
+          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5" // Updated for subtle main content glass effect
         )}>
           {children}
         </main>
