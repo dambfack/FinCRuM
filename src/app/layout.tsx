@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  SidebarFooter, // Import SidebarFooter
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Users, Settings } from 'lucide-react';
@@ -78,7 +79,7 @@ export default function RootLayout({
                       {/* This span's visibility is controlled by group-data-[state=collapsed] in sidebar.tsx styles */}
                       <span className="group-data-[state=collapsed]:hidden font-heading tracking-wide">Finsculpt CRM</span>
                     </Link>
-                    <SidebarTrigger /> {/* This trigger is for desktop */}
+                    {/* <SidebarTrigger /> REMOVED from here */}
                 </div>
               </SidebarHeader>
               <SidebarContent>
@@ -125,6 +126,9 @@ export default function RootLayout({
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarContent>
+              <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
+                <SidebarTrigger /> {/* ADDED here */}
+              </SidebarFooter>
             </Sidebar>
             <SidebarInset className={cn(
               "flex flex-col",
