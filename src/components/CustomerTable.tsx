@@ -180,7 +180,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                       <BellPlus className="h-4 w-4" /> Add Reminder
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => onDelete(contact.id)}
+                      onClick={() => {
+                        console.log('[CustomerTable] Delete action clicked for contact ID:', contact.id);
+                        onDelete(contact.id);
+                      }}
                       className={cn("gap-2", (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" : "text-destructive focus:text-destructive focus:bg-destructive/10")}
                       disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
                     >
@@ -199,4 +202,3 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 };
 
 export default CustomerTable;
-

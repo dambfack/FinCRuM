@@ -92,6 +92,7 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (contactId: string) => {
+    console.log('[CustomersPage] handleDelete called with contact ID:', contactId); // DEBUG LINE
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) {
         console.error("Delete aborted: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
@@ -218,10 +219,13 @@ export default function CustomersPage() {
   };
 
   const handleContactUpdatedFromModal = (updatedContact: Contact) => {
+    setContacts(prevContacts => 
+        prevContacts.map(c => c.id === updatedContact.id ? updatedContact : c)
+    );
     if (selectedContact && selectedContact.id === updatedContact.id) {
       setSelectedContact(updatedContact); 
     }
-    // The 'dataChanged' event dispatched by saveData will trigger loadContacts
+    // The 'dataChanged' event dispatched by saveData will trigger loadContacts for full refresh if needed elsewhere
   };
 
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
