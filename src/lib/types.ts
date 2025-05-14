@@ -1,3 +1,4 @@
+
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -43,6 +44,7 @@ export interface Contact {
   company?: string; // Optional
   address?: string; // Optional
   notes?: string; // Optional
+  status?: 'approached' | 'open' | 'closed' | 'missed' | 'other'; // New field for deal status
   createdAt: Date | string;
   updatedAt: Date | string;
 }

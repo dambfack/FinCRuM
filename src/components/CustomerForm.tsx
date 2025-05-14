@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -10,11 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
 import { useRouter } from 'next/navigation'; // For redirecting
+
+const contactStatusSchema = z.enum(['approached', 'open', 'closed', 'missed', 'other']);
 
 const customerFormSchema = z.object({
   id: z.string().optional(), // Optional for new customers
@@ -25,6 +29,7 @@ const customerFormSchema = z.object({
   company: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
+  status: contactStatusSchema.optional(),
   createdAt: z.string().optional(), // Will be set on save
   updatedAt: z.string().optional(), // Will be set on save
 });
@@ -46,6 +51,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         ...initialData,
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
+        status: initialData.status || undefined,
     }
     : {
       firstName: '',
@@ -55,6 +61,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       company: '',
       address: '',
       notes: '',
+      status: undefined,
     },
   });
 
@@ -64,6 +71,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         ...initialData,
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
+        status: initialData.status || undefined,
       });
     }
   }, [initialData, form]);
@@ -75,6 +83,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       id: initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, // Generate ID if new
       createdAt: initialData?.createdAt || now,
       updatedAt: now,
+      status: data.status || undefined,
     } as Contact; // Type assertion because Zod schema dates are string, Contact dates are Date|string
 
     try {
@@ -110,7 +119,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle>
+        <CardTitle className="font-heading tracking-wide">{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle>
         {!initialData && <CardDescription>Fill in the details to add a new customer to your records.</CardDescription>}
       </CardHeader>
       <Form {...form}>
@@ -170,6 +179,30 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Deal Status (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select deal status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="approached">Approached</SelectItem>
+                      <SelectItem value="open">Open (Deal in Progress)</SelectItem>
+                      <SelectItem value="closed">Closed (Deal Won)</SelectItem>
+                      <SelectItem value="missed">Missed (Deal Lost)</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="company"
@@ -211,7 +244,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
             />
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button type="submit" disabled={form.formState.isSubmitting} className="h-11 px-4 py-3">
               {form.formState.isSubmitting ? 'Saving...' : (initialData ? 'Update Customer' : 'Add Customer')}
             </Button>
           </CardFooter>

@@ -1,10 +1,11 @@
+
 // src/components/Dashboard.tsx
 'use client';
 
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon, RefreshCw as RefreshCwIcon } from 'lucide-react'; // Renamed RefreshCw to RefreshCwIcon
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { BarChart, Users, TrendingUp, ListTodo, Calendar, Clock, Edit, Trash2, PlusCircle, UserPlus as UserPlusIcon, RefreshCw as RefreshCwIcon, PieChart as PieChartIcon } from 'lucide-react';
+import { Bar, BarChart as RechartsBarChart, PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType } from '@/lib/types';
@@ -20,6 +21,8 @@ import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
 import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { subMonths, startOfMonth, endOfMonth, format, eachMonthOfInterval } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 interface DashboardStats {
@@ -37,17 +40,36 @@ const initialStats: DashboardStats = {
 };
 
 const mockContacts: Contact[] = [
-  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()  },
+  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString()  },
+  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'approached', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() },
+  { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString() },
+  { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString() },
 ];
+
+type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
+
+const PIE_CHART_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
+
 
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    const [chartData, setChartData] = useState<{ name: string; customers: number }[]>([]);
+    const [allContacts, setAllContactsState] = useState<Contact[]>([]); // Renamed to avoid conflict with local var
+    const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
+    
+    const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
+    const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
+    const [dealStatusChartData, setDealStatusChartData] = useState<{ name: string; value: number }[]>([]);
+
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -56,21 +78,20 @@ const Dashboard: FC = () => {
     const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
     const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
     
-    // isGoogleCalendarLinked now derived from useDataSync's isGoogleDriveConnected
     const isGoogleCalendarLinked = isGoogleDriveConnected;
 
 
     const loadDashboardData = useCallback(() => {
         setLoading(true);
         try {
-            const customerData = getData<Contact[]>(DataItemType.Contacts) || []; 
-            const importedData = getData<ExcelData>(DataItemType.CustomerData); 
+            const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || []; 
+            const importedDataStore = getData<ExcelData>(DataItemType.CustomerData); 
             
-            let allContacts: Contact[] = [...customerData];
+            let loadedContacts: Contact[] = [...customerDataStore];
 
-            if (importedData && importedData.rows) {
-                const importedContactsAsContacts: Contact[] = importedData.rows.map((row, index) => {
-                    const h = importedData.headers;
+            if (importedDataStore && importedDataStore.rows) {
+                const importedContactsAsContacts: Contact[] = importedDataStore.rows.map((row, index) => {
+                    const h = importedDataStore.headers;
                     return {
                         id: `imported-${index}-${Date.now()}`,
                         firstName: row[h.indexOf('firstName')] || '',
@@ -78,25 +99,33 @@ const Dashboard: FC = () => {
                         email: row[h.indexOf('email')] || '',
                         phone: row[h.indexOf('phone')] || undefined,
                         company: row[h.indexOf('company')] || undefined,
+                        status: (row[h.indexOf('status')] as Contact['status']) || 'other',
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString(),
                     };
                 });
-                const combined = [...customerData, ...importedContactsAsContacts];
-                allContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
+                const combined = [...customerDataStore, ...importedContactsAsContacts];
+                loadedContacts = Array.from(new Map(combined.map(c => [c.email, c])).values());
             }
             
+            // If no data from store, use mock data for initial view
+            if (loadedContacts.length === 0) {
+                loadedContacts = mockContacts;
+            }
+            setAllContactsState(loadedContacts);
+
+
             const tasks = getData<TaskType[]>(DataItemType.Tasks) || [];
             const appointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
             const today = new Date().toISOString().split('T')[0];
 
-            const newCustomersToday = allContacts.filter(c => {
+            const newCustomersToday = loadedContacts.filter(c => {
                 const createdAtDate = c.createdAt ? (parseDate(c.createdAt as string)?.toISOString().split('T')[0]) : null;
                 return createdAtDate === today;
             }).length;
 
             setStats({
-                totalCustomers: allContacts.length,
+                totalCustomers: loadedContacts.length,
                 newCustomersToday: newCustomersToday,
                 tasksPending: tasks.filter(t => t.status !== 'done').length,
                 appointmentsToday: appointments.filter(a => {
@@ -105,45 +134,72 @@ const Dashboard: FC = () => {
                 }).length,
             });
 
-            setContacts(allContacts.sort((a,b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()).slice(0, 5));
+            setRecentContacts(loadedContacts.sort((a,b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()).slice(0, 5));
 
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            // Calculate Customer Growth Chart Data
+            const numMonths = parseInt(barChartTimeRange.replace('m', ''), 10);
+            const endDate = new Date();
+            const startDate = startOfMonth(subMonths(endDate, numMonths - 1));
+            
+            const monthsInterval = eachMonthOfInterval({ start: startDate, end: endDate });
             const customerCountsByMonth: Record<string, number> = {};
-            const sixMonthsAgo = new Date();
-            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); 
-            sixMonthsAgo.setDate(1);
 
-            allContacts.forEach(contact => {
+            monthsInterval.forEach(monthStart => {
+                const monthKey = format(monthStart, 'MMM yyyy'); // Use 'MMM yyyy' for unique keys if > 12 months
+                customerCountsByMonth[monthKey] = 0;
+            });
+
+            loadedContacts.forEach(contact => {
                 const contactDate = parseDate(contact.createdAt as string);
-                if (contactDate && contactDate >= sixMonthsAgo) {
-                    const monthName = months[contactDate.getMonth()];
-                    customerCountsByMonth[monthName] = (customerCountsByMonth[monthName] || 0) + 1;
+                if (contactDate && contactDate >= startDate && contactDate <= endDate) {
+                    const monthKey = format(startOfMonth(contactDate), 'MMM yyyy');
+                    if (customerCountsByMonth.hasOwnProperty(monthKey)) {
+                       customerCountsByMonth[monthKey]++;
+                    }
                 }
             });
             
-            const currentMonthIndex = new Date().getMonth();
-            const lastSixMonthsChartData = [];
-            for (let i = 5; i >= 0; i--) {
-                const monthIndex = (currentMonthIndex - i + 12) % 12;
-                const monthName = months[monthIndex];
-                lastSixMonthsChartData.push({ name: monthName, customers: customerCountsByMonth[monthName] || 0 });
-            }
-            setChartData(lastSixMonthsChartData);
+            const growthChartData = monthsInterval.map(monthStart => {
+                const monthKey = format(monthStart, 'MMM yyyy');
+                const shortMonthKey = format(monthStart, 'MMM');
+                return { name: shortMonthKey, customers: customerCountsByMonth[monthKey] || 0 };
+            });
+            setCustomerGrowthChartData(growthChartData);
+
+
+            // Calculate Deal Status Pie Chart Data
+            const statusCounts: Record<string, number> = {
+                approached: 0, open: 0, closed: 0, missed: 0, other: 0,
+            };
+            loadedContacts.forEach(contact => {
+                const status = contact.status || 'other';
+                if (statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status]++;
+                } else {
+                    statusCounts.other++; 
+                }
+            });
+            const pieData = Object.entries(statusCounts)
+                .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+                .filter(item => item.value > 0); // Only show statuses with counts
+            setDealStatusChartData(pieData);
+
 
         } catch (error) {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setContacts(mockContacts.slice(0,5));
-            setChartData([]);
+            setRecentContacts(mockContacts.slice(0,5)); // Fallback to some mock
+            setCustomerGrowthChartData([]);
+            setDealStatusChartData([]);
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, barChartTimeRange]); // Added barChartTimeRange as dependency
 
     useEffect(() => {
         loadDashboardData();
-    }, [loadDashboardData]);
+    }, [loadDashboardData]); // loadDashboardData itself depends on barChartTimeRange
 
     const handleGoogleCalendarAuth = useCallback(async () => {
       if (isGoogleCalendarLinked) {
@@ -151,18 +207,17 @@ const Dashboard: FC = () => {
           localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
           localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
           localStorage.removeItem('googleDriveTokenExpiry');
-          // The isGoogleDriveConnected state in useDataSync should update, triggering re-render
         }
         toast({ title: "Google Calendar Unlinked", description: "You may need to re-authenticate to use calendar features."});
       } else {
         try {
             await initiateAuthentication('googledrive'); 
-            // Successful redirect will handle token storage and state update in useDataSync
         } catch(error) {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-    }, [isGoogleCalendarLinked, initiateAuthentication, toast]);
+      loadDashboardData(); // Refresh data to update UI reflecting link status change
+    }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
         loadDashboardData();
@@ -181,11 +236,11 @@ const Dashboard: FC = () => {
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <h1 className="text-3xl font-bold font-heading tracking-wide">Dashboard</h1>
           <div className="flex items-center gap-2">
-            <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="whitespace-nowrap">
+            <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="whitespace-nowrap h-11 px-4 py-3">
                 <Calendar className="mr-2 h-4 w-4" />
                 {isGoogleCalendarLinked ? 'Unlink Google Calendar' : 'Link Google Calendar'}
             </Button>
-            <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="whitespace-nowrap">
+            <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="whitespace-nowrap h-11 px-4 py-3">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 {syncStatus === 'syncing' ? 'Syncing...' : (lastSyncTime ? `Last Sync: ${formatDateTime(lastSyncTime).split(',')[0]}` : 'Sync Now')}
             </Button>
@@ -201,7 +256,7 @@ const Dashboard: FC = () => {
           ].map(stat => (
             <Card key={stat.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -212,39 +267,103 @@ const Dashboard: FC = () => {
           ))}
         </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer Growth (Last 6 Months)</CardTitle>
-           <CardDescription>Shows customers added each month.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? <Skeleton className="h-[300px] w-full" /> : chartData.length > 0 ? (
-               <ResponsiveContainer width="100%" height={300}>
-                <RechartsBarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
-                  <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} />
-                  <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false}/>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      borderColor: 'hsl(var(--border))',
-                      color: 'hsl(var(--popover-foreground))',
-                      borderRadius: 'var(--radius)',
-                      boxShadow: 'var(--shadow-lg)'
-                     }}
-                    cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
-                  />
-                  <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }}/>
-                  <Bar dataKey="customers" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-                </RechartsBarChart>
-              </ResponsiveContainer>
-          ) : <p className="text-sm text-muted-foreground text-center py-10">No customer data available for the chart.</p>}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <CardTitle className="font-heading tracking-wide">Customer Growth</CardTitle>
+                <Select value={barChartTimeRange} onValueChange={(value: BarChartTimeRange) => setBarChartTimeRange(value)}>
+                    <SelectTrigger className="w-full sm:w-[180px] h-9">
+                        <SelectValue placeholder="Select time range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="1m">Last 1 Month</SelectItem>
+                        <SelectItem value="3m">Last 3 Months</SelectItem>
+                        <SelectItem value="6m">Last 6 Months</SelectItem>
+                        <SelectItem value="12m">Last 12 Months</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <CardDescription>Shows customers added each month for the selected period.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-[300px] w-full" /> : customerGrowthChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsBarChart data={customerGrowthChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} />
+                    <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false}/>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        borderColor: 'hsl(var(--border))',
+                        color: 'hsl(var(--popover-foreground))',
+                        borderRadius: 'var(--radius)',
+                        boxShadow: 'var(--shadow-lg)'
+                      }}
+                      cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
+                    />
+                    <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }}/>
+                    <Bar dataKey="customers" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+            ) : <p className="text-sm text-muted-foreground text-center py-10">No customer data available for the selected period.</p>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-heading tracking-wide">Client Deal Status</CardTitle>
+            <CardDescription>Distribution of clients by their current deal status.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                    <RechartsPieChart>
+                        <Pie
+                            data={dealStatusChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                                const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
+                                const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+                                return (
+                                <text x={x} y={y} fill="hsl(var(--popover-foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
+                                    {`${(percent * 100).toFixed(0)}%`}
+                                </text>
+                                );
+                            }}
+                        >
+                        {dealStatusChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
+                        ))}
+                        </Pie>
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'hsl(var(--popover))',
+                                borderColor: 'hsl(var(--border))',
+                                color: 'hsl(var(--popover-foreground))',
+                                borderRadius: 'var(--radius)',
+                                boxShadow: 'var(--shadow-lg)'
+                            }}
+                        />
+                        <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }} />
+                    </RechartsPieChart>
+                </ResponsiveContainer>
+             ) : <p className="text-sm text-muted-foreground text-center py-10">No deal status data available.</p>}
+          </CardContent>
+        </Card>
+      </div>
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
@@ -254,9 +373,9 @@ const Dashboard: FC = () => {
             <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
-          ) : contacts.length > 0 ? (
+          ) : recentContacts.length > 0 ? (
             <ul className="space-y-2">
-                {contacts.map((contact) => (
+                {recentContacts.map((contact) => (
                 <li key={contact.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
                     <div>
                     <span className="font-medium">{contact.firstName} {contact.lastName}</span>
@@ -283,21 +402,19 @@ const Dashboard: FC = () => {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
+           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+              <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
+           </Button>
         </CardHeader>
         <CardContent>
           <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
-              <DialogTrigger asChild>
-                   <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
-                      <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
-                   </Button>
-              </DialogTrigger>
               <DialogContent className={dialogContentClassName}>
                   <DialogHeader>
-                      <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                      <DialogTitle className="font-heading tracking-wide">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                   </DialogHeader>
                   <TaskForm
                       task={editingTask}
@@ -312,21 +429,19 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
+            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+                <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
+            </Button>
         </CardHeader>
         <CardContent>
             <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
-                  <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
-                          <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
-                      </Button>
-                  </DialogTrigger>
                   <DialogContent className={dialogContentClassName}>
                       <DialogHeader>
-                          <DialogTitle>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                          <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
                       </DialogHeader>
                       <ReminderForm
                           initialReminder={editingReminder}
@@ -341,21 +456,19 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
+          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mt-2"> {/* Moved button here */}
+            <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
+          </Button>
         </CardHeader>
         <CardContent>
             <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full whitespace-normal text-center h-11 px-4 py-3 mb-4">
-                        <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
-                    </Button>
-                </DialogTrigger>
                 <DialogContent className={dialogContentClassName}>
                     <DialogHeader>
-                        <DialogTitle>{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
+                        <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
                     </DialogHeader>
                     <AppointmentForm
                         initialData={editingAppointment}
