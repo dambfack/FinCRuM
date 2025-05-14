@@ -39,8 +39,8 @@ const statusDisplayMap: Record<Exclude<Contact['status'], undefined>, string> = 
 
 const getStatusBadgeVariant = (status?: Contact['status']) => {
   switch (status) {
-    case 'open': return 'default'; 
-    case 'closed': return 'secondary'; 
+    case 'open': return 'default';
+    case 'closed': return 'secondary';
     case 'missed': return 'destructive';
     default: return 'outline';
   }
@@ -81,9 +81,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 
   return (
     <div className={cn(
-      "overflow-x-auto rounded-xl border shadow-xl", 
-      "bg-card/60 dark:bg-card/40 backdrop-blur-lg", 
-      "border-white/20 dark:border-white/10" 
+      "overflow-x-auto rounded-xl border shadow-xl",
+      "bg-card/60 dark:bg-card/40 backdrop-blur-lg",
+      "border-white/20 dark:border-white/10"
     )}>
       <Table>
         <TableHeader>
@@ -96,22 +96,26 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
             <TableHead className="text-foreground/80 dark:text-foreground/70">Deal Status</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Assigned To</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Last Updated</TableHead>
-            <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead> 
+            <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {contacts.map((contact) => {
             const contactStatusInfo = getContactStatusDisplay(contact.contactStatus);
             return (
-            <TableRow 
-              key={contact.id} 
+            <TableRow
+              key={contact.id}
               className={cn(
                 "hover:bg-white/5 dark:hover:bg-white/5 border-b border-white/10 dark:border-white/5 last:border-b-0",
                 contact.contactStatus === 'pending_approval' && currentUser?.role === 'partner' && "bg-orange-500/10 dark:bg-orange-500/20",
                 contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner' && "bg-red-500/10 dark:bg-red-500/20"
               )}
             >
-              <TableCell className="font-medium text-foreground">
+              <TableCell
+                className="font-medium text-foreground hover:text-accent hover:underline cursor-pointer"
+                onClick={() => onViewDetails(contact)}
+                title={`View details for ${contact.firstName} ${contact.lastName}`}
+              >
                 {contact.firstName} {contact.lastName}
               </TableCell>
               {currentUser?.role === 'partner' && (
@@ -131,7 +135,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               <TableCell className="text-foreground/90">{contact.company || '-'}</TableCell>
               <TableCell>
                 {contact.status ? (
-                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize text-xs", 
+                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize text-xs",
                     contact.status === 'open' && 'bg-sky-500/80 hover:bg-sky-500/70 text-white',
                     contact.status === 'closed' && 'bg-green-500/80 hover:bg-green-500/70 text-white',
                     contact.status === 'missed' && 'bg-red-500/80 hover:bg-red-500/70 text-white',
@@ -144,7 +148,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               <TableCell className="text-foreground/90">
                 {contact.assignedToUserId ? (
                   <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate text-xs">
-                    <UserIcon className="h-3 w-3 flex-shrink-0" /> 
+                    <UserIcon className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate" title={getUserName(contact.assignedToUserId)}>
                         {getUserName(contact.assignedToUserId)}
                     </span>
@@ -164,7 +168,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2">
                       <Eye className="h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2" 
+                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2"
                       disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
                     >
                       <Edit className="h-4 w-4" /> Edit
@@ -175,12 +179,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     <DropdownMenuItem onClick={() => onAddReminder(contact)} className="gap-2">
                       <BellPlus className="h-4 w-4" /> Add Reminder
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => onDelete(contact.id)} 
+                    <DropdownMenuItem
+                      onClick={() => onDelete(contact.id)}
                       className={cn("gap-2", (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" : "text-destructive focus:text-destructive focus:bg-destructive/10")}
                       disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
                     >
-                      <Trash2 className="h-4 w-4" /> 
+                      <Trash2 className="h-4 w-4" />
                       {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
