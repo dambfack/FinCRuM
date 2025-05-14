@@ -1,4 +1,5 @@
 
+
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -32,6 +33,21 @@ export type ConflictResolutionOption =
   | 'manual';
 
 
+/**
+ * Represents metadata for a file attached to a contact.
+ */
+export interface FileAttachmentMeta {
+  id: string; // Unique identifier for the attachment
+  name: string; // Original name of the file
+  type: string; // MIME type of the file
+  size: number; // Size of the file in bytes
+  contactId: string; // ID of the contact this file is attached to
+  createdAt: string; // ISO date string of when it was attached
+  encrypted: boolean; // Flag indicating if the file is (intended to be) encrypted
+  ivHex?: string; // Hex-encoded Initialization Vector (for AES) - Placeholder
+  saltHex?: string; // Hex-encoded salt (for PBKDF2) - Placeholder
+}
+
   /**
  * Represents a contact with details.
  */
@@ -47,6 +63,7 @@ export interface Contact {
   status?: 'open' | 'closed' | 'missed' | 'other';
   createdAt: Date | string;
   updatedAt: Date | string;
+  attachments?: FileAttachmentMeta[]; // Array of file attachment metadata
 }
 
 /**
@@ -193,3 +210,4 @@ export interface GoogleTokens {
   token_type?: string | null;
   expiry_date?: number | null;
 }
+

@@ -13,12 +13,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Contact } from '@/lib/types';
+import type { Contact, FileAttachmentMeta } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
 import { useRouter } from 'next/navigation'; // For redirecting
 
 const contactStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
+
+// Dummy schema for FileAttachmentMeta for form validation if needed,
+// but actual file objects are handled separately.
+const fileAttachmentMetaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  size: z.number(),
+  contactId: z.string(),
+  createdAt: z.string(),
+  encrypted: z.boolean(),
+  ivHex: z.string().optional(),
+  saltHex: z.string().optional(),
+});
+
 
 const customerFormSchema = z.object({
   id: z.string().optional(), // Optional for new customers
@@ -30,6 +45,7 @@ const customerFormSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   status: contactStatusSchema.optional(),
+  attachments: z.array(fileAttachmentMetaSchema).optional(), // For metadata
   createdAt: z.string().optional(), // Will be set on save
   updatedAt: z.string().optional(), // Will be set on save
 });
@@ -52,6 +68,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
+        attachments: initialData.attachments || [],
     }
     : {
       firstName: '',
@@ -62,6 +79,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       address: '',
       notes: '',
       status: undefined,
+      attachments: [], // Initialize attachments as an empty array for new contacts
     },
   });
 
@@ -72,6 +90,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         createdAt: initialData.createdAt instanceof Date ? initialData.createdAt.toISOString() : initialData.createdAt,
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined,
+        attachments: initialData.attachments || [],
       });
     }
   }, [initialData, form]);
@@ -84,7 +103,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       createdAt: initialData?.createdAt || now,
       updatedAt: now,
       status: data.status || undefined,
-    } as Contact; // Type assertion because Zod schema dates are string, Contact dates are Date|string
+      // attachments are part of 'data' due to schema, ensure they are correctly passed
+      attachments: data.attachments || (initialData?.attachments || []), // Preserve existing if not changed
+    } as Contact; 
 
     try {
       const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
@@ -103,7 +124,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       });
 
       onSave?.(customerData);
-      // router.push('/data-grid'); // Or wherever you list customers
       if (!initialData) form.reset(); // Reset form only if it was a new customer entry
 
     } catch (error) {
