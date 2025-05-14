@@ -48,7 +48,11 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm text-foreground">{displayValue}</p>
+        {React.isValidElement(displayValue) ? (
+          displayValue
+        ) : (
+          <p className="text-sm text-foreground">{displayValue}</p>
+        )}
       </div>
     </div>
   );
@@ -218,3 +222,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
+
