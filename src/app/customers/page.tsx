@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Contact, Appointment, Reminder, User } from '@/lib/types';
+import type { Contact, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, deleteItemById, saveData, createNotification } from '@/lib/utils';
 import CustomerTable from '@/components/CustomerTable';
@@ -51,7 +51,7 @@ export default function CustomersPage() {
     }
     // For partners, all contacts are visible, including pending ones. CustomerTable can highlight them.
 
-    setContacts(visibleContacts.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
+    setContacts([...visibleContacts].sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
     setLoading(false);
   }, [currentUser]);
 
@@ -93,7 +93,11 @@ export default function CustomersPage() {
 
   const handleDelete = (contactId: string) => {
     const contactToDelete = contacts.find(c => c.id === contactId);
-    if (!contactToDelete || !currentUser) return;
+    if (!contactToDelete || !currentUser) {
+        console.error("Delete aborted: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
+        toast({ title: "Error", description: "Could not proceed with delete. Contact not found or user not authenticated.", variant: "destructive"});
+        return;
+    }
 
     // Fetch the latest list of users directly from localStorage to ensure we have up-to-date partner information
     const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
@@ -214,15 +218,10 @@ export default function CustomersPage() {
   };
 
   const handleContactUpdatedFromModal = (updatedContact: Contact) => {
-    // loadContacts is called by dataChanged event now
-    // setContacts(prevContacts =>
-    //   prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
-    //               .sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
-    // );
     if (selectedContact && selectedContact.id === updatedContact.id) {
-      setSelectedContact(updatedContact); // Keep the modal showing the updated contact if it was open for this contact
+      setSelectedContact(updatedContact); 
     }
-    // loadContacts(); // Reload to ensure filters and sorting are reapplied correctly - Handled by dataChanged event
+    // The 'dataChanged' event dispatched by saveData will trigger loadContacts
   };
 
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
