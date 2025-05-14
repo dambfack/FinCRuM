@@ -39,6 +39,10 @@
     --chart-3: 180 60% 45%;
     --chart-4: 180 40% 55%;
     --chart-5: 180 20% 65%;
+    --chart-pie-1: 180 100% 25%; /* Teal for 'Open' */
+    --chart-pie-2: 210 100% 45%; /* Blue for 'Closed' */
+    --chart-pie-3: 40 100% 50%;  /* Yellow/Orange for 'Missed' */
+    --chart-pie-4: 220 10% 60%;  /* Gray for 'Other' */
     --radius: 0.75rem; /* Increased radius for more rounded look */
     --sidebar-background: 220 10% 92%; /* Slightly darker gray for sidebar */
     --sidebar-foreground: 220 10% 20%;
@@ -75,6 +79,10 @@
     --chart-3: 180 60% 55%;
     --chart-4: 180 40% 65%;
     --chart-5: 180 20% 75%;
+    --chart-pie-1: 180 100% 35%; /* Lighter Teal for 'Open' */
+    --chart-pie-2: 210 90% 55%;  /* Lighter Blue for 'Closed' */
+    --chart-pie-3: 40 90% 60%;   /* Lighter Yellow/Orange for 'Missed' */
+    --chart-pie-4: 220 10% 50%;  /* Darker Gray for 'Other' */
     --sidebar-background: 220 10% 15%; /* Slightly lighter dark gray for sidebar */
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 180 100% 35%; /* Teal for primary sidebar elements */
@@ -356,3 +364,6 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
+
+
+    

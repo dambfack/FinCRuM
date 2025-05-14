@@ -42,7 +42,7 @@ const initialStats: DashboardStats = {
 const mockContacts: Contact[] = [
   { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
   { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString()  },
-  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() }, // Was 'approached'
+  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() },
   { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString() },
   { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString() },
 ];
@@ -50,11 +50,11 @@ const mockContacts: Contact[] = [
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
 const PIE_CHART_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
+  'hsl(var(--chart-pie-1))', // Teal for 'Open'
+  'hsl(var(--chart-pie-2))', // Blue for 'Closed'
+  'hsl(var(--chart-pie-3))', // Yellow/Orange for 'Missed'
+  'hsl(var(--chart-pie-4))', // Gray for 'Other'
+  'hsl(var(--chart-5))', // Fallback
 ];
 
 
@@ -486,3 +486,6 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
+
+    
