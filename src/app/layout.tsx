@@ -567,7 +567,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={headerLogoImageToCropSrc}
           onCropSave={handleHeaderLogoCropSave}
-          aspectRatio={undefined} // Allow free aspect for header text logo, or set specific like 3/1
+          aspectRatio={16 / 9} 
         />
       )}
     </>
