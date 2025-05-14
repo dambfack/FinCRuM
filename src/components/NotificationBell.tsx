@@ -203,7 +203,7 @@ const NotificationBell: React.FC = () => {
                   key={notification.id}
                   className={cn(
                     "p-3 space-y-1 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors",
-                    !notification.read && "bg-primary/10 dark:bg-primary/20" // More distinct background for unread
+                    !notification.read && "bg-primary/10 dark:bg-primary/20" 
                   )}
                 >
                   <div className="flex items-start gap-2">
@@ -251,5 +251,6 @@ const NotificationBell: React.FC = () => {
 };
 
 export default NotificationBell;
+    
     
     
