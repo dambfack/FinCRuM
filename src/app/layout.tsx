@@ -51,34 +51,42 @@ const montserrat = Montserrat({
 
 const Logo = ({ appLogoUrl, defaultAppLogoUrl }: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
   const logoToDisplay = appLogoUrl || defaultAppLogoUrl || "https://placehold.co/64x64.png?text=LOGO";
+  const isDataUri = logoToDisplay.startsWith("data:");
   const isPlaceholder = logoToDisplay.startsWith("https://placehold.co");
+
+  // console.log('[Logo Component] Rendering with:', {
+  //   appLogoUrl: appLogoUrl ? `Data URI (len: ${appLogoUrl.length})` : 'null',
+  //   defaultAppLogoUrl: defaultAppLogoUrl ? `Data URI (len: ${defaultAppLogoUrl.length})` : 'null',
+  //   logoToDisplay: logoToDisplay ? (isDataUri ? `Data URI (len: ${logoToDisplay.length})` : logoToDisplay) : 'null',
+  //   isDataUri,
+  //   isPlaceholder
+  // });
 
   return (
     <Image
       src={logoToDisplay}
       alt="Finsculpt CRM Logo"
-      width={isPlaceholder ? 64 : 24} // Adjust width if it's the text placeholder
-      height={isPlaceholder ? 64 : 24} // Adjust height
+      width={24} 
+      height={24} 
       className="h-6 w-6 object-contain"
       data-ai-hint={appLogoUrl ? "custom company logo" : defaultAppLogoUrl ? "default company logo" : "placeholder logo"}
-      unoptimized={logoToDisplay.startsWith("data:")} // Important for data URIs
+      unoptimized={isDataUri}
     />
   );
 };
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { 
-    isAuthenticated, 
-    isLoadingAuth, 
-    currentUser, 
-    logout, 
-    pinSetupRequiredForUser, 
-    updateUserProfilePicture, 
-    appLogoUrl, // current override
-    defaultAppLogoUrl, // user-set default
-    updateAppLogo, // updates the override
-    setDefaultAppLogo // sets the new default
+  const {
+    isAuthenticated,
+    isLoadingAuth,
+    currentUser,
+    logout,
+    pinSetupRequiredForUser,
+    appLogoUrl,
+    defaultAppLogoUrl,
+    updateAppLogo,
+    setDefaultAppLogo
   } = useAuth();
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   const appLogoInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +97,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
+
+  // React.useEffect(() => {
+  //   console.log('[AppContent] AuthContext values updated:', { appLogoUrl, defaultAppLogoUrl });
+  // }, [appLogoUrl, defaultAppLogoUrl]);
+
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -133,7 +146,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
         return;
       }
-      if (file.size > 1 * 1024 * 1024) { // 1MB limit for app logo
+      if (file.size > 1 * 1024 * 1024) {
         toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 1MB.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
         return;
@@ -149,14 +162,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoCropSave = (croppedDataUri: string) => {
-    updateAppLogo(croppedDataUri); // This sets the current override
+    updateAppLogo(croppedDataUri);
     setIsAppLogoCropperOpen(false);
     setAppLogoImageToCropSrc(null);
   };
 
   const handleSetCurrentLogoAsDefault = () => {
     if (appLogoUrl && currentUser?.role === 'partner') {
-      setDefaultAppLogo(appLogoUrl); // This sets the new default AND clears the current override
+      setDefaultAppLogo(appLogoUrl);
     } else {
       toast({ title: "Action Not Available", description: "No custom logo is currently set, or you don't have permission.", variant: "default"});
     }
@@ -265,7 +278,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger />
             <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-              <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
+             <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
               <span className="font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
           </div>
@@ -313,7 +326,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                     Change Profile Picture
                   </Button>
                 </div>
-                
+
                 {currentUser?.role === 'partner' && (
                   <div className="p-1 mt-2 border-t border-border/20 pt-3">
                     <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">App Settings</h4>
@@ -321,7 +334,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         type="file"
                         ref={appLogoInputRef}
                         onChange={handleAppLogoFileChange}
-                        accept="image/png" 
+                        accept="image/png"
                         className="hidden"
                       />
                     <Button
@@ -338,7 +351,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                       size="sm"
                       className="w-full mb-3"
                       onClick={handleSetCurrentLogoAsDefault}
-                      disabled={!appLogoUrl} // Enabled only if a custom logo is set
+                      disabled={!appLogoUrl}
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
                        Set Current as Default
@@ -393,7 +406,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={appLogoImageToCropSrc}
           onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1} 
+          aspectRatio={1 / 1}
         />
       )}
     </>

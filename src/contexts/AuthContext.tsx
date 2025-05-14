@@ -40,10 +40,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
+    console.log('[AuthContext] Initial storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
+
     const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
     if (storedDefaultAppLogo) {
       setDefaultAppLogoUrl(storedDefaultAppLogo);
     }
+    console.log('[AuthContext] Initial storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
+
 
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
@@ -53,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: 'admin@example.com',
         role: 'partner',
         pin: '0000',
-        profilePictureUrl: `https://placehold.co/128x128.png?text=A`, 
+        profilePictureUrl: `https://placehold.co/128x128.png?text=A`,
       };
       users = [defaultAdmin];
       saveData<User[]>(DataItemType.Users, users);
@@ -160,7 +164,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
     users[userIndex] = updatedUser;
     saveData<User[]>(DataItemType.Users, users);
-    setCurrentUser(updatedUser); 
+    setCurrentUser(updatedUser);
 
     toast({ title: "Profile Picture Updated", description: "Your profile picture has been changed." });
     setIsLoadingAuth(false);
@@ -168,6 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateAppLogo = (dataUri: string | null) => {
+    console.log('[AuthContext] updateAppLogo - dataUri length:', dataUri?.length, 'Saving to localStorage.');
     setAppLogoUrl(dataUri);
     if (dataUri) {
       saveData<string>(DataItemType.AppLogo, dataUri);
@@ -179,9 +184,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const setDefaultAppLogo = (dataUri: string) => {
+    console.log('[AuthContext] setDefaultAppLogo - dataUri length:', dataUri?.length);
     setDefaultAppLogoUrl(dataUri);
     saveData<string>(DataItemType.DefaultAppLogo, dataUri);
-    updateAppLogo(null); // Clear the current override so the new default takes effect
+    updateAppLogo(null);
     toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   };
 
@@ -194,17 +200,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-        currentUser, 
-        isAuthenticated, 
-        isLoadingAuth, 
-        pinSetupRequiredForUser, 
-        appLogoUrl, 
-        defaultAppLogoUrl, 
-        login, 
-        logout, 
-        completePinSetupAndLogin, 
-        updateUserProfilePicture, 
+    <AuthContext.Provider value={{
+        currentUser,
+        isAuthenticated,
+        isLoadingAuth,
+        pinSetupRequiredForUser,
+        appLogoUrl,
+        defaultAppLogoUrl,
+        login,
+        logout,
+        completePinSetupAndLogin,
+        updateUserProfilePicture,
         updateAppLogo,
         setDefaultAppLogo
       }}>
