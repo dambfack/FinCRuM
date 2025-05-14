@@ -54,20 +54,21 @@ async function getAuthenticatedClient(passedTokens: GoogleTokens): Promise<impor
   if (passedTokens.expiry_date && passedTokens.expiry_date < Date.now() + 60000) { // Refresh if expiring soon
     if (passedTokens.refresh_token) {
       try {
-        console.log('Google access token expired or expiring soon, attempting to refresh...');
+        console.log('Google Calendar access token expired or expiring soon, attempting to refresh...');
         const { credentials } = await client.refreshAccessToken();
         client.setCredentials(credentials);
-        console.log('Google access token refreshed.');
-        // The calling function will need to be aware of these new tokens to update localStorage
-        // This function will effectively return the client with new credentials set.
+        console.log('Google Calendar access token refreshed.');
       } catch (refreshError: any) {
-        console.error('Error refreshing Google access token:', refreshError.response?.data || refreshError.message);
-        // If refresh fails, the user might need to re-authenticate.
-        throw new Error('Failed to refresh Google access token. Please re-authenticate.');
+        console.error('Error refreshing Google Calendar access token:', refreshError.response?.data || refreshError.message, 'Status Code:', refreshError.response?.status);
+        const err = new Error(`Failed to refresh Google Calendar access token. Please re-authenticate. Details: ${refreshError.message}`);
+        (err as any).statusCode = refreshError.response?.status || 500; // Add status code
+        throw err;
       }
     } else {
-      console.warn('Google access token expired, but no refresh token available. User may need to re-authenticate.');
-      throw new Error('Google access token expired and no refresh token. Please re-authenticate.');
+      console.warn('Google Calendar access token expired, but no refresh token available. User may need to re-authenticate.');
+      const err = new Error('Google Calendar access token expired and no refresh token is available. Please re-authenticate.');
+      (err as any).statusCode = 401; // Indicate auth failure
+      throw err;
     }
   }
   return client;
@@ -157,8 +158,10 @@ export async function createCalendarEvent(
     return { event: res.data, newTokens: client.credentials };
   } catch (error: any) {
     console.error('Error creating Google Calendar event:', error.response?.data || error.message);
-    if (error.message.includes('re-authenticate')) throw error; // Propagate auth errors
-    throw new Error(`Failed to create Google Calendar event: ${error.message}`);
+    if (error.message.includes('re-authenticate') || (error as any).statusCode === 401 || (error as any).statusCode === 403) throw error; // Propagate auth errors
+    const newError = new Error(`Failed to create Google Calendar event: ${error.message}`);
+    (newError as any).statusCode = (error as any).statusCode || error.response?.status || 500;
+    throw newError;
   }
 }
 
@@ -180,8 +183,10 @@ export async function updateCalendarEvent(
     return { event: res.data, newTokens: client.credentials };
   } catch (error: any) {
     console.error('Error updating Google Calendar event:', error.response?.data || error.message);
-    if (error.message.includes('re-authenticate')) throw error;
-    throw new Error(`Failed to update Google Calendar event: ${error.message}`);
+    if (error.message.includes('re-authenticate') || (error as any).statusCode === 401 || (error as any).statusCode === 403) throw error;
+    const newError = new Error(`Failed to update Google Calendar event: ${error.message}`);
+    (newError as any).statusCode = (error as any).statusCode || error.response?.status || 500;
+    throw newError;
   }
 }
 
@@ -196,8 +201,10 @@ export async function deleteCalendarEvent(eventId: string, tokens: GoogleTokens)
     return { success: true, newTokens: client.credentials };
   } catch (error: any) {
     console.error('Error deleting Google Calendar event:', error.response?.data || error.message);
-    if (error.message.includes('re-authenticate')) throw error;
-    throw new Error(`Failed to delete Google Calendar event: ${error.message}`);
+    if (error.message.includes('re-authenticate') || (error as any).statusCode === 401 || (error as any).statusCode === 403) throw error;
+    const newError = new Error(`Failed to delete Google Calendar event: ${error.message}`);
+    (newError as any).statusCode = (error as any).statusCode || error.response?.status || 500;
+    throw newError;
   }
 }
 
@@ -221,32 +228,9 @@ export async function listCalendarEvents(
     return { events: res.data.items || [], newTokens: client.credentials };
   } catch (error: any) {
     console.error('Error listing Google Calendar events:', error.response?.data || error.message);
-    if (error.message.includes('re-authenticate')) throw error;
-    throw new Error(`Failed to list Google Calendar events: ${error.message}`);
+    if (error.message.includes('re-authenticate') || (error as any).statusCode === 401 || (error as any).statusCode === 403) throw error;
+    const newError = new Error(`Failed to list Google Calendar events: ${error.message}`);
+    (newError as any).statusCode = (error as any).statusCode || error.response?.status || 500;
+    throw newError;
   }
 }
-
-// Specific wrappers - these are now more like examples, direct calls might be better from useDataSync
-export const addReminderToGoogleCalendar = async (reminder: Reminder, tokens: GoogleTokens) => {
-    return createCalendarEvent(reminder, 'reminder', tokens);
-};
-
-export const updateReminderInGoogleCalendar = async (reminder: Reminder, tokens: GoogleTokens) => {
-    if (!reminder.googleCalendarEventId) {
-        console.warn("Reminder does not have a Google Calendar event ID. Creating new event.");
-        return createCalendarEvent(reminder, 'reminder', tokens);
-    }
-    return updateCalendarEvent(reminder.googleCalendarEventId, reminder, 'reminder', tokens);
-};
-
-export const createGoogleCalendarEventForAppointment = async (appointment: Appointment, tokens: GoogleTokens) => {
-    return createCalendarEvent(appointment, 'appointment', tokens);
-};
-
-export const updateGoogleCalendarEventForAppointment = async (appointment: Appointment, tokens: GoogleTokens) => {
-    if (!appointment.googleCalendarEventId) {
-        console.warn("Appointment does not have a Google Calendar event ID. Creating new event.");
-        return createCalendarEvent(appointment, 'appointment', tokens);
-    }
-    return updateCalendarEvent(appointment.googleCalendarEventId, appointment, 'appointment', tokens);
-};

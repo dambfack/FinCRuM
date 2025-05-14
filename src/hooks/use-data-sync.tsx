@@ -8,9 +8,10 @@ import {
   generateGoogleAuthUrl, 
   createCalendarEvent as apiCreateCalendarEvent,
   updateCalendarEvent as apiUpdateCalendarEvent,
-  // listCalendarEvents as apiListCalendarEvents, // Uncomment if needed
+  deleteCalendarEvent as apiDeleteCalendarEvent, // Added for completeness if needed
+  listCalendarEvents as apiListCalendarEvents, 
 } from '@/services/google-calendar';
-import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, FileMetadata } from '@/lib/types'; 
+import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, FileMetadata, Contact } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from 'lucide-react';
@@ -29,6 +30,10 @@ export function useDataSync() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const { toast } = useToast();
+  // States to track connection status for UI updates
+  const [isOneDriveConnectedInternal, setIsOneDriveConnectedInternal] = useState<boolean | null>(null);
+  const [isGoogleDriveConnectedInternal, setIsGoogleDriveConnectedInternal] = useState<boolean | null>(null);
+
 
   const SYNC_INTERVAL = 24 * 60 * 60 * 1000; // Daily sync interval
 
@@ -56,7 +61,25 @@ export function useDataSync() {
     if (tokens.expiry_date) {
       localStorage.setItem('googleDriveTokenExpiry', tokens.expiry_date.toString());
     }
+    setIsGoogleDriveConnectedInternal(!!tokens.access_token); // Update internal state
   };
+
+  const clearGoogleTokens = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
+      localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
+      localStorage.removeItem('googleDriveTokenExpiry');
+      setIsGoogleDriveConnectedInternal(false); // Update internal state
+    }
+  };
+
+  // Check connection status on mount and when specific local storage items change (though storage event listener is more robust for cross-tab)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        setIsOneDriveConnectedInternal(!!localStorage.getItem(DataItemType.OneDriveAccessToken));
+        setIsGoogleDriveConnectedInternal(!!localStorage.getItem(DataItemType.GoogleDriveAccessToken));
+    }
+  }, []);
 
 
   const performSync = useCallback(async () => {
@@ -67,147 +90,155 @@ export function useDataSync() {
     toast({ title: "Sync Started", description: "Synchronizing data with cloud storage..." });
 
     const localCustomerData: ExcelData | null = getData<ExcelData>(DataItemType.CustomerData);
-    // Other local data items (tasks, reminders, appointments) are synced via syncCalendar
-
     let isAnyLocalDataPresent = !!localCustomerData;
-    // Consider if other data types should gatekeep this general file sync
-    // For now, focusing on CustomerData for file sync.
-
-    if (!isAnyLocalDataPresent) {
-        toast({ title: "Sync Skipped", description: "No local customer data found to sync via file backup.", variant: "default" });
-        // Don't set error, as calendar sync might still proceed
-    }
     
     let encounteredConflicts: DataConflict[] = [];
     let mergedData: ExcelData | null = localCustomerData ? { headers: [...localCustomerData.headers], rows: [...localCustomerData.rows] } : null;
 
-
-    // Google Drive File Sync
-    const googleTokens = getGoogleTokensFromStorage();
+    // --- Google Drive File Sync ---
+    let googleTokens = getGoogleTokensFromStorage();
     if (googleTokens && googleTokens.access_token) {
+      setIsGoogleDriveConnectedInternal(true);
       try {
+        toast({ title: "Google Drive Syncing...", description: "Fetching remote data..." });
         const { data: cloudData, newTokens: gDriveRefreshedTokens } = await downloadFromGoogleDrive(googleTokens);
-        if (gDriveRefreshedTokens) storeGoogleTokens(gDriveRefreshedTokens);
+        if (gDriveRefreshedTokens) {
+          storeGoogleTokens(gDriveRefreshedTokens);
+          googleTokens = gDriveRefreshedTokens; // Use refreshed tokens for subsequent operations in this sync cycle
+        }
         
         if (cloudData && localCustomerData) {
-          // Basic conflict detection (simplified: if different, it's a conflict)
-          // This is a placeholder for more sophisticated row-by-row comparison & merging logic
           if (JSON.stringify(localCustomerData) !== JSON.stringify(cloudData)) {
-             // For simplicity, let's assume local wins or a very basic merge/conflict
-             // A real scenario needs row-level diffing.
-             // Here, we'll just push a generic conflict if they differ, for UI demonstration.
-              const conflict: DataConflict = {
-                  rowIndex: 0, // Placeholder, real diffing would identify specific rows
-                  localValue: localCustomerData.rows[0] || [], // Example
-                  cloudValue: cloudData.rows[0] || [], // Example
-                  headers: localCustomerData.headers,
-              };
-              // encounteredConflicts.push(conflict); // Simplified conflict for demo
-              console.warn("Simplified conflict: Local and Google Drive data differ. Manual review or more advanced merging needed.");
-              // For now, if different, prefer local and re-upload.
-              mergedData = localCustomerData; // Or apply merge logic
+              console.warn("Simplified conflict: Local and Google Drive data differ. For now, local data is preferred.");
+              mergedData = localCustomerData; 
           } else {
-            mergedData = localCustomerData; // They are the same
+            mergedData = localCustomerData; 
           }
         } else if (cloudData && !localCustomerData) {
-          mergedData = cloudData; // No local data, use cloud data
+          mergedData = cloudData; 
         }
-        // If localCustomerData exists and no cloudData, localCustomerData is already set in mergedData
 
-        if (mergedData && encounteredConflicts.length === 0) { // Only upload if no conflicts from this provider
-          const { success, newTokens: gDriveUploadRefreshedTokens } = await uploadToGoogleDrive(mergedData, gDriveRefreshedTokens || googleTokens);
+        if (mergedData && encounteredConflicts.length === 0 && isAnyLocalDataPresent) { // Only upload if data exists and no critical errors
+          toast({ title: "Google Drive Syncing...", description: "Uploading data..." });
+          const { success, newTokens: gDriveUploadRefreshedTokens } = await uploadToGoogleDrive(mergedData, googleTokens); // Use potentially refreshed tokens
           if (gDriveUploadRefreshedTokens) storeGoogleTokens(gDriveUploadRefreshedTokens);
-          if (success) toast({ title: "Google Drive Synced", description: "Customer data backed up." });
+          if (success) toast({ title: "Google Drive Synced", description: "Customer data backed up to Google Drive." });
+        } else if (!isAnyLocalDataPresent && cloudData) {
+           saveData<ExcelData>(DataItemType.CustomerData, cloudData); // Save cloud data locally if no local data
+           toast({ title: "Google Drive Synced", description: "Data downloaded from Google Drive."});
         }
 
       } catch (error: any) {
         console.error(`Error syncing with Google Drive:`, error);
+        const statusCode = error.statusCode || error.response?.status;
         toast({ title: `Google Drive Sync Error`, description: error.message, variant: "destructive" });
-        if (error.message.includes('re-authenticate')) {
-            localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
-            localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
+        if (error.message.toLowerCase().includes('authentication') || 
+            error.message.toLowerCase().includes('invalid_grant') || 
+            statusCode === 401 || statusCode === 403) {
+          clearGoogleTokens();
+          toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google Drive.", variant: "warning" });
         }
       }
-    } else if (getData(DataItemType.GoogleDriveAccessToken)) { // Token key exists but couldn't parse to object
-        console.warn("Google Drive configured but tokens issue, skipping sync.");
+    } else {
+      setIsGoogleDriveConnectedInternal(false);
     }
 
 
-    // OneDrive File Sync (similar structure to Google Drive)
+    // --- OneDrive File Sync ---
     const oneDriveAccessToken = typeof window !== 'undefined' ? localStorage.getItem(DataItemType.OneDriveAccessToken) : null;
     if (oneDriveAccessToken) {
+        setIsOneDriveConnectedInternal(true);
         try {
+            toast({ title: "OneDrive Syncing...", description: "Fetching remote data..." });
             const oneDriveAuth: CloudAuthInfo = { accessToken: oneDriveAccessToken, provider: 'onedrive' };
             const cloudData = await downloadFromOneDrive(oneDriveAuth);
             
             if (cloudData && localCustomerData) {
                  if (JSON.stringify(localCustomerData) !== JSON.stringify(cloudData)) {
-                    console.warn("Simplified conflict: Local and OneDrive data differ. Manual review or more advanced merging needed.");
-                    // Prefer local for now
-                    mergedData = localCustomerData;
+                    console.warn("Simplified conflict: Local and OneDrive data differ. For now, local data is preferred.");
+                    mergedData = localCustomerData; // Prefer local if already exists
                 } else {
-                    mergedData = localCustomerData;
+                    // Data is the same, no change to mergedData if it was already localCustomerData
                 }
-            } else if (cloudData && !localCustomerData) {
+            } else if (cloudData && !localCustomerData && !mergedData) { // If no Google Drive data either, use OneDrive
                 mergedData = cloudData;
             }
-
-            if (mergedData && encounteredConflicts.length === 0) { // Only upload if no conflicts from this provider
+            
+            if (mergedData && encounteredConflicts.length === 0 && isAnyLocalDataPresent) {
+                 toast({ title: "OneDrive Syncing...", description: "Uploading data..." });
                  await uploadToOneDrive(mergedData, oneDriveAuth);
-                 toast({ title: "OneDrive Synced", description: "Customer data backed up." });
+                 toast({ title: "OneDrive Synced", description: "Customer data backed up to OneDrive." });
+            } else if (!isAnyLocalDataPresent && cloudData && !mergedData) { // No local, no GDrive, save OD data
+                 saveData<ExcelData>(DataItemType.CustomerData, cloudData);
+                 toast({ title: "OneDrive Synced", description: "Data downloaded from OneDrive."});
             }
 
         } catch (error: any) {
             console.error(`Error syncing with OneDrive:`, error);
             toast({ title: `OneDrive Sync Error`, description: error.message, variant: "destructive" });
-             if (error.message.toLowerCase().includes('token') || error.message.toLowerCase().includes('authentication')) {
+             if (error.message.toLowerCase().includes('token') || error.message.toLowerCase().includes('authentication') || error.statusCode === 401 || error.statusCode === 403) {
                 localStorage.removeItem(DataItemType.OneDriveAccessToken);
-                // localStorage.removeItem(DataItemType.OneDriveRefreshToken); // If you add refresh token for OneDrive
+                setIsOneDriveConnectedInternal(false);
+                toast({ title: "OneDrive Authentication Invalid", description: "Your OneDrive session is invalid. Please re-connect OneDrive.", variant: "warning" });
             }
         }
+    } else {
+        setIsOneDriveConnectedInternal(false);
+    }
+    
+    if (mergedData && encounteredConflicts.length === 0 && (isAnyLocalDataPresent || mergedData !== localCustomerData)) {
+        saveData<ExcelData>(DataItemType.CustomerData, mergedData); // Save the final merged data
     }
 
-    // Finalize sync status
-    if (mergedData && encounteredConflicts.length === 0 && isAnyLocalDataPresent) { // Only save if there was data to sync and no conflicts
-        saveData<ExcelData>(DataItemType.CustomerData, mergedData);
+    // Sync Calendar Items
+    if (isGoogleDriveConnectedInternal && googleTokens?.access_token) { // Check internal state which reflects current attempt
+        await syncCalendar(false); // Pass false to indicate it's part of a larger sync
     }
+
 
     if (encounteredConflicts.length === 0) {
         const now = new Date();
         setLastSyncTime(now);
         saveData<string>(DataItemType.LastSyncTime, now.toISOString());
         setSyncStatus('synced');
-        toast({ title: "File Sync Complete", description: "Customer data synchronization finished." });
+        toast({ title: "Sync Complete", description: "Data synchronization finished." });
     } else {
         setConflicts(encounteredConflicts);
-        toast({ title: "File Sync Complete with Conflicts", description: "Manual resolution needed for some data.", variant: "default" });
         setSyncStatus('conflict');
+        toast({ title: "Sync Complete with Conflicts", description: "Manual resolution needed for some data.", variant: "default" });
     }
 
     setIsSyncing(false);
   }, [isSyncing, toast]);
 
 
-  const syncCalendar = useCallback(async () => {
-    const googleTokens = getGoogleTokensFromStorage();
+  const syncCalendar = useCallback(async (showIndividualToasts = true) => {
+    let googleTokens = getGoogleTokensFromStorage();
     if (!googleTokens || !googleTokens.access_token) {
-      toast({ title: "Google Calendar Sync Failed", description: "Not authenticated with Google. Please link Google Calendar.", variant: "destructive"});
+      if (showIndividualToasts) {
+        toast({ title: "Google Calendar Sync Failed", description: "Not authenticated with Google. Please link Google Calendar.", variant: "destructive"});
+      }
+      setIsGoogleDriveConnectedInternal(false);
       return;
     }
+    setIsGoogleDriveConnectedInternal(true);
 
-    toast({ title: "Syncing Calendar...", description: "Updating Google Calendar events." });
-    let currentTokens = googleTokens;
-
+    if (showIndividualToasts) {
+        toast({ title: "Syncing Calendar...", description: "Updating Google Calendar events." });
+    }
+    
     try {
         const localTasks: Task[] = getData<Task[]>(DataItemType.Tasks) || [];
         const localReminders: Reminder[] = getData<Reminder[]>(DataItemType.Reminders) || [];
         const localAppointments: Appointment[] = getData<Appointment[]>(DataItemType.Appointments) || [];
 
-        const processItems = async <T extends { id: string, googleCalendarEventId?: string }>(
+        const processItems = async <T extends { id: string, googleCalendarEventId?: string, title?: string }>(
             items: T[],
             itemType: 'task' | 'reminder' | 'appointment'
-        ): Promise<T[]> => {
-            const syncedItems: T[] = [];
+        ): Promise<{syncedItems: T[], newTokens?: GoogleTokens}> => {
+            const syncedItemsAccumulator: T[] = [];
+            let currentTokens = googleTokens!; // Assert non-null as checked above
+
             for (const item of items) {
                 try {
                     let result;
@@ -218,39 +249,51 @@ export function useDataSync() {
                     }
                     if (result.newTokens) {
                       storeGoogleTokens(result.newTokens);
-                      currentTokens = result.newTokens; // Use refreshed tokens for subsequent calls
+                      currentTokens = result.newTokens; 
                     }
-                    syncedItems.push({ ...item, googleCalendarEventId: result.event.id });
+                    syncedItemsAccumulator.push({ ...item, googleCalendarEventId: result.event.id });
                 } catch (error: any) {
                      console.error(`Error syncing ${itemType} ${item.id} with Google Calendar:`, error);
-                     toast({ title: `Calendar Sync Error`, description: `Failed to sync ${itemType} "${(item as any).title || item.id}": ${error.message}`, variant: "destructive"});
-                     syncedItems.push(item); // Keep local item even if sync failed
-                     if (error.message.includes('re-authenticate')) { // If auth error, stop further attempts
-                        localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
-                        localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
-                        throw error; // Propagate to stop sync
+                     const statusCode = error.statusCode || error.response?.status;
+                     if (showIndividualToasts) {
+                        toast({ title: `Calendar Sync Error`, description: `Failed to sync ${itemType} "${item.title || item.id}": ${error.message}`, variant: "destructive"});
+                     }
+                     syncedItemsAccumulator.push(item); 
+                     if (error.message.toLowerCase().includes('authentication') || error.message.toLowerCase().includes('invalid_grant') || statusCode === 401 || statusCode === 403) {
+                        clearGoogleTokens();
+                        if (showIndividualToasts) {
+                             toast({ title: "Google Authentication Invalid", description: "Calendar sync failed. Please re-connect Google.", variant: "warning" });
+                        }
+                        throw error; 
                      }
                 }
             }
-            return syncedItems;
+            return {syncedItems: syncedItemsAccumulator, newTokens: currentTokens};
         };
         
-        const syncedTasks = await processItems(localTasks, 'task');
-        saveData<Task[]>(DataItemType.Tasks, syncedTasks);
+        const taskResult = await processItems(localTasks, 'task');
+        saveData<Task[]>(DataItemType.Tasks, taskResult.syncedItems);
+        if(taskResult.newTokens) googleTokens = taskResult.newTokens;
 
-        const syncedReminders = await processItems(localReminders, 'reminder');
-        saveData<Reminder[]>(DataItemType.Reminders, syncedReminders);
+
+        const reminderResult = await processItems(localReminders, 'reminder');
+        saveData<Reminder[]>(DataItemType.Reminders, reminderResult.syncedItems);
+        if(reminderResult.newTokens) googleTokens = reminderResult.newTokens;
         
-        const syncedAppointments = await processItems(localAppointments, 'appointment');
-        saveData<Appointment[]>(DataItemType.Appointments, syncedAppointments);
+        const appointmentResult = await processItems(localAppointments, 'appointment');
+        saveData<Appointment[]>(DataItemType.Appointments, appointmentResult.syncedItems);
+        if(appointmentResult.newTokens) googleTokens = appointmentResult.newTokens;
 
-        toast({ title: "Calendar Synced", description: "Google Calendar events updated." });
+
+        if (showIndividualToasts) {
+            toast({ title: "Calendar Synced", description: "Google Calendar events updated." });
+        }
     } catch (error: any) {
-        // This catch is for errors propagated from processItems, like auth failure
-        console.error("Critical error during Google Calendar sync:", error);
-        // Toast for this critical failure already handled or will be general
+        // This catch is for critical auth errors propagated from processItems
+        console.error("Critical error during Google Calendar sync, likely auth failure:", error);
+        // The toast for this type of failure is handled within processItems before re-throwing
     }
-}, [toast]);
+}, [toast]); // Removed storeGoogleTokens, clearGoogleTokens from deps as they are stable
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -258,13 +301,8 @@ export function useDataSync() {
         if (storedLastSyncTimeString) {
             setLastSyncTime(new Date(storedLastSyncTimeString));
         }
-        // Auto-sync on interval is disabled for now, to focus on manual OAuth flow
-        // const intervalId = setInterval(() => {
-        //     performSync();
-        // }, SYNC_INTERVAL);
-        // return () => clearInterval(intervalId);
     }
-  }, [SYNC_INTERVAL]); // Removed performSync from deps to avoid re-triggering interval on its change
+  }, []); 
 
     const resolveConflict = useCallback((resolvedConflict: DataConflict) => {
         const conflictIndex = conflicts.findIndex(c => c.rowIndex === resolvedConflict.rowIndex);
@@ -298,23 +336,20 @@ export function useDataSync() {
     const initiateAuthentication = async (provider: 'onedrive' | 'googledrive') => {
       if (provider === 'googledrive') {
         try {
+          clearGoogleTokens(); // Clear old tokens before starting new auth
           const authUrl = await generateGoogleAuthUrl();
-          window.location.href = authUrl; // Redirect user to Google's OAuth consent screen
+          window.location.href = authUrl; 
         } catch (error: any) {
           console.error("Error generating Google Auth URL:", error);
           toast({ title: "Google Auth Error", description: `Could not initiate Google authentication: ${error.message}`, variant: "destructive" });
         }
       } else if (provider === 'onedrive') {
-        // Placeholder for OneDrive OAuth initiation
         toast({ title: `Connecting ${provider}...`, description: "OneDrive OAuth flow not yet implemented." });
-        // In a real scenario:
-        // const authUrl = await generateOneDriveAuthUrl(); // From onedrive.ts
-        // window.location.href = authUrl;
-        // For mock:
+        // Placeholder:
         // const mockToken = `mock-onedrive-token-${Date.now()}`;
         // localStorage.setItem(DataItemType.OneDriveAccessToken, mockToken);
+        // setIsOneDriveConnectedInternal(true);
         // toast({ title: `Connected to ${provider} (Mock)`, description: "Mock token stored." });
-        // performSync(); // Or some other update mechanism
       }
     };
 
@@ -328,10 +363,13 @@ export function useDataSync() {
     resolveConflict,
     initiateAuthentication,
     syncCalendar,
+    isGoogleDriveConnected: isGoogleDriveConnectedInternal, // Expose internal state
+    isOneDriveConnected: isOneDriveConnectedInternal,     // Expose internal state
     getLocalData: getData, 
     setLocalData: saveData
   };
 }
+
 const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflict[]; onResolve: (resolvedConflict: DataConflict) => void }) => {
     const [resolutions, setResolutions] = useState<Record<number, 'local' | 'cloud' | 'manual'>>({});
     const [manualValues, setManualValues] = useState<Record<number, string[]>>({});
@@ -388,7 +426,7 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
 
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[101] p-4 backdrop-blur-sm"> {/* Increased z-index */}
           <Card className="w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border-border">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">

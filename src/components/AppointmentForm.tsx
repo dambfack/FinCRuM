@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, Contact, DataItemType } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { createGoogleCalendarEvent, updateGoogleCalendarEvent } from '../services/google-calendar';
+import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar'; // Corrected import
 import { getData, saveData, parseDate } from '../lib/utils';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import DatePicker from 'react-datepicker'; // Using react-datepicker
 import "react-datepicker/dist/react-datepicker.css";
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface AppointmentFormProps {
@@ -30,8 +31,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
   const [invitedContactIds, setInvitedContactIds] = useState<string[]>(initialData?.invitedContacts || []);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const { triggerSync, syncCalendar } = useDataSync();
+  const { syncCalendar } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || [];
@@ -99,26 +101,48 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
     saveData<Appointment[]>(DataItemType.Appointments, appointments);
 
     try {
-      if (!newOrUpdatedAppointment.googleCalendarEventId){
-        const googleEvent = await createGoogleCalendarEvent(newOrUpdatedAppointment); // Pass the specific appointment
-        if (googleEvent && googleEvent.id) {
-            newOrUpdatedAppointment.googleCalendarEventId = googleEvent.id;
-            // Update local storage again with the event ID
-            const updatedAppointments = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
-            saveData<Appointment[]>(DataItemType.Appointments, updatedAppointments);
-        }
+      const googleTokens = typeof window !== 'undefined' ? {
+        access_token: localStorage.getItem(DataItemType.GoogleDriveAccessToken),
+        refresh_token: localStorage.getItem(DataItemType.GoogleDriveRefreshToken),
+        expiry_date: parseInt(localStorage.getItem('googleDriveTokenExpiry') || '0', 10)
+      } : null;
+
+      if (!googleTokens || !googleTokens.access_token) {
+        console.warn("No Google tokens found, skipping calendar sync for appointment.");
+        toast({ title: "Google Calendar Sync Skipped", description: "Not authenticated with Google. Please link Google Calendar.", variant: "default"});
       } else {
-        await updateGoogleCalendarEvent(newOrUpdatedAppointment); // Pass the specific appointment
+        if (!newOrUpdatedAppointment.googleCalendarEventId){
+          const result = await createCalendarEvent(newOrUpdatedAppointment, 'appointment', googleTokens); // Corrected function call
+          if (result.event && result.event.id) {
+              newOrUpdatedAppointment.googleCalendarEventId = result.event.id;
+              const updatedAppointmentsWithEventId = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
+              saveData<Appointment[]>(DataItemType.Appointments, updatedAppointmentsWithEventId);
+          }
+          if (result.newTokens) {
+             if (typeof window !== 'undefined') {
+                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
+                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
+                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
+             }
+          }
+        } else {
+          const result = await updateCalendarEvent(newOrUpdatedAppointment.googleCalendarEventId, newOrUpdatedAppointment, 'appointment', googleTokens); // Corrected function call
+          if (result.newTokens) {
+             if (typeof window !== 'undefined') {
+                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
+                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
+                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
+             }
+          }
+        }
+        await syncCalendar();
       }
-      // Consider calling syncCalendar() here or as part of a broader sync strategy
-      await syncCalendar();
     } catch (error) {
-      console.error('Error saving or updating with Google Calendar:', error);
-      // Handle error (e.g., show a toast notification)
+      console.error('Error saving or updating appointment with Google Calendar:', error);
+      toast({ title: "Google Calendar Error", description: `Failed to sync appointment: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
     }
 
     onSave(newOrUpdatedAppointment);
-    // triggerSync(); // This might be too broad, consider specific sync needs
   };
 
   const datePickerInputClassName = cn(

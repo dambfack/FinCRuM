@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Reminder, Contact, DataItemType } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { addReminderToGoogleCalendar, updateReminderInGoogleCalendar } from '../services/google-calendar';
+import { createCalendarEvent as addReminderToGoogleCalendar, updateCalendarEvent as updateReminderInGoogleCalendar } from '../services/google-calendar';
 import { getData, saveData, parseDate } from '../lib/utils';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -85,17 +85,36 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
     saveData<Reminder[]>(DataItemType.Reminders, currentReminders);
 
     try {
-      if (initialReminder?.googleCalendarEventId) {
-        await updateReminderInGoogleCalendar(newOrUpdatedReminder);
+      // Retrieve tokens from localStorage within the async function if needed by the calendar service
+      // Note: services/google-calendar.ts functions already expect tokens to be passed.
+      const googleTokens = typeof window !== 'undefined' ? {
+        access_token: localStorage.getItem(DataItemType.GoogleDriveAccessToken),
+        refresh_token: localStorage.getItem(DataItemType.GoogleDriveRefreshToken),
+        expiry_date: parseInt(localStorage.getItem('googleDriveTokenExpiry') || '0', 10)
+      } : null;
+
+      if (!googleTokens || !googleTokens.access_token) {
+        console.warn("No Google tokens found, skipping calendar sync for reminder.");
       } else {
-        const googleEvent = await addReminderToGoogleCalendar(newOrUpdatedReminder);
-        if (googleEvent && googleEvent.id) {
-            newOrUpdatedReminder.googleCalendarEventId = googleEvent.id;
-            const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
-            saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
+        if (initialReminder?.googleCalendarEventId) {
+          await updateReminderInGoogleCalendar(initialReminder.googleCalendarEventId, newOrUpdatedReminder, 'reminder', googleTokens);
+        } else {
+          const result = await addReminderToGoogleCalendar(newOrUpdatedReminder, 'reminder', googleTokens);
+          if (result.event && result.event.id) {
+              newOrUpdatedReminder.googleCalendarEventId = result.event.id;
+              const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
+              saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
+          }
+          if (result.newTokens) {
+             if (typeof window !== 'undefined') {
+                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
+                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
+                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
+             }
+          }
         }
+        await syncCalendar(); 
       }
-      await syncCalendar(); 
     } catch (error) {
       console.error('Error saving reminder or syncing with Google Calendar:', error);
     }
