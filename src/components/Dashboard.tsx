@@ -169,17 +169,17 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Contact['status'] | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
                 if (statusCounts.hasOwnProperty(status)) {
                     statusCounts[status]++;
                 } else {
-                    statusCounts.other++;
+                    statusCounts.other++; // Should not happen if status is well-defined or defaults to 'other'
                 }
             });
             const pieDataForApex = Object.entries(statusCounts)
-                .filter(([, value]) => value > 0)
+                .filter(([, value]) => value > 0) // Only include statuses with counts > 0
                 .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
             setDealStatusSeries(pieDataForApex.map(item => item.value));
@@ -293,16 +293,16 @@ const Dashboard: FC = () => {
             blur: 3,
             opacity: 0.3
           },
-          states: {
+          states: { // Configure hover effects for pie slices
             hover: {
               filter: {
                 type: 'lighten',
-                value: 0.10,
+                value: 0.25, // Increased from 0.10 to make hover more pronounced
               }
             },
-            active: {
+            active: { // Styles for clicked/active slice (due to expandOnClick)
               filter: {
-                type: 'none',
+                type: 'none', // No additional filter, rely on expand
               }
             }
           }
@@ -571,3 +571,6 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
+
+    
