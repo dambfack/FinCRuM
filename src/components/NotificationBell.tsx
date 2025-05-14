@@ -61,12 +61,15 @@ const NotificationBell: React.FC = () => {
   const clearReadNotifications = () => {
     if (!currentUser || !hasReadNotifications) return;
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
+    
+    // Keep notifications that are not for the current user OR are for the current user but are unread
     const remainingNotifications = allNotifications.filter(n => 
       n.recipientUserId !== currentUser.id || (n.recipientUserId === currentUser.id && !n.read)
     );
+    
     saveData<Notification[]>(DataItemType.Notifications, remainingNotifications);
     loadNotifications();
-    toast({ title: "Read Notifications Cleared" });
+    toast({ title: "Read Notifications Cleared", description: "Your read notifications have been removed." });
   };
 
   const handleApprovalAction = (notification: Notification, action: 'approve' | 'reject') => {
@@ -254,4 +257,6 @@ const NotificationBell: React.FC = () => {
 export default NotificationBell;
     
     
+    
+
     
