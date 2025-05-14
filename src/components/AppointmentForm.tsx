@@ -42,10 +42,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
 
+  // Load all contacts once on mount
   useEffect(() => {
     const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
     setAllContacts(loadedContacts);
+  }, []);
 
+  // Effect for handling initialData and resetting form
+  useEffect(() => {
     if (initialData) {
         setTitle(initialData.title);
         setDescription(initialData.description || '');
@@ -55,11 +59,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
 
         if (initialData.attendeesList) {
             setCurrentAttendees(initialData.attendeesList);
-        } else if (initialData.invitedContacts && initialData.invitedContacts.length > 0) {
-            // Convert old invitedContacts (IDs) to attendeesList structure
+        } else if (initialData.invitedContacts && initialData.invitedContacts.length > 0 && allContacts.length > 0) {
             const mappedAttendees = initialData.invitedContacts
                 .map(contactId => {
-                    const contact = loadedContacts.find(c => c.id === contactId);
+                    const contact = allContacts.find(c => c.id === contactId);
                     if (contact) {
                         return {
                             email: contact.email,
@@ -71,8 +74,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
                 })
                 .filter(Boolean) as AppointmentAttendee[];
             setCurrentAttendees(mappedAttendees);
-        } else {
-            setCurrentAttendees([]);
+        } else if (!initialData.attendeesList) { 
+             setCurrentAttendees([]);
         }
     } else {
       // Reset for new form
@@ -83,7 +86,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       setLocation('');
       setCurrentAttendees([]);
     }
-  }, [initialData]);
+  }, [initialData, allContacts]); // Depend on allContacts to ensure mapping uses fresh data
 
   const handleAttendeeInputChange = (value: string) => {
     setAttendeeInput(value);
@@ -91,7 +94,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
         const suggestions = allContacts.filter(contact =>
             `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
             contact.email.toLowerCase().includes(value.toLowerCase())
-        ).slice(0, 5); // Limit suggestions
+        ).slice(0, 5); 
         setContactSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
     } else {
@@ -116,30 +119,22 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
   const addManualAttendee = () => {
     const input = attendeeInput.trim();
     if (input) {
-        // Basic email validation
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         let email = '';
         let displayName = input;
 
         if (emailPattern.test(input)) {
             email = input;
-        } else {
-            // If not an email, treat it as a name. We might need a way to prompt for email or handle name-only.
-            // For now, we'll add with an empty email if it's not an email, which Google Calendar might ignore.
-            // A better approach would be to validate or prompt for email.
-            toast({ title: "Manual Attendee", description: "Please enter a valid email for manual attendees.", variant: "default" });
-            // return; // Or handle differently
         }
         
         if (email && !currentAttendees.find(a => a.email.toLowerCase() === email.toLowerCase())) {
              setCurrentAttendees(prev => [...prev, { email, displayName }]);
-        } else if (!email && !currentAttendees.find(a => a.displayName?.toLowerCase() === displayName.toLowerCase())) {
-            // Allowing adding by name only, but email is preferred for calendar invites
+        } else if (!email && displayName && !currentAttendees.find(a => a.displayName?.toLowerCase() === displayName.toLowerCase())) {
             setCurrentAttendees(prev => [...prev, { email: '', displayName }]);
              toast({ title: "Attendee Added by Name", description: "Note: Email is needed for calendar invitations.", variant: "default" });
         } else if (email) {
             toast({ title: "Attendee Exists", description: "This email is already in the attendee list.", variant: "default" });
-        } else {
+        } else if (displayName) {
             toast({ title: "Attendee Exists", description: "This name is already in the attendee list.", variant: "default" });
         }
         setAttendeeInput('');
@@ -148,8 +143,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
     }
   };
   
-  const removeAttendee = (emailToRemove: string) => {
-    setCurrentAttendees(prev => prev.filter(attendee => attendee.email !== emailToRemove));
+  const removeAttendee = (emailToRemove: string, displayNameToRemove?: string) => {
+    setCurrentAttendees(prev => prev.filter(attendee => {
+        if (emailToRemove) return attendee.email !== emailToRemove;
+        if (displayNameToRemove) return attendee.displayName !== displayNameToRemove;
+        return false; 
+    }));
   };
 
   const validateForm = () => {
@@ -184,10 +183,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       date: appointmentDate.toISOString(),
       time,
       start: appointmentDateTime.toISOString(),
-      end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), // Default 1 hour
+      end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), 
       location,
-      attendeesList: currentAttendees, // Use the new detailed attendee list
-      invitedContacts: currentAttendees.filter(a => a.contactId).map(a => a.contactId!), // Still populate for potential CRM filtering
+      attendeesList: currentAttendees, 
+      invitedContacts: currentAttendees.filter(a => a.contactId).map(a => a.contactId!), 
       googleCalendarEventId: initialData?.googleCalendarEventId,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -221,7 +220,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
           result = await createCalendarEvent(newOrUpdatedAppointment, 'appointment', googleTokens);
           if (result.event && result.event.id) {
               newOrUpdatedAppointment.googleCalendarEventId = result.event.id;
-              // Save the appointment again with the event ID
               const updatedAppointmentsWithEventId = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
               saveData<Appointment[]>(DataItemType.Appointments, updatedAppointmentsWithEventId);
           }
@@ -305,7 +303,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
         />
       </div>
       
-      {/* New Attendee Input Section */}
       <div className="space-y-2">
         <Label htmlFor="attendeeInput">Attendees</Label>
         <div className="flex items-center gap-2">
@@ -314,25 +311,32 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
                     id="attendeeInput"
                     value={attendeeInput}
                     onValueChange={handleAttendeeInputChange}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} // Delay to allow click on suggestion
-                    onFocus={() => attendeeInput && contactSuggestions.length > 0 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} 
+                    onFocus={() => {
+                      if (attendeeInput.trim().length > 1 && contactSuggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
                     placeholder="Type name or email..."
                     className="h-10"
                 />
-                {showSuggestions && contactSuggestions.length > 0 && (
-                    <div className="absolute z-10 top-full mt-1 w-full rounded-md border bg-popover shadow-md">
+                {showSuggestions && (
+                    <div className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover shadow-md">
                         <CommandList>
-                            <CommandEmpty>No contacts found.</CommandEmpty>
-                            {contactSuggestions.map(contact => (
-                                <CommandItem
-                                    key={contact.id}
-                                    value={`${contact.firstName} ${contact.lastName} (${contact.email})`}
-                                    onSelect={() => addExistingContactAsAttendee(contact)}
-                                    className="cursor-pointer"
-                                >
-                                    {contact.firstName} {contact.lastName} ({contact.email})
-                                </CommandItem>
-                            ))}
+                            {contactSuggestions.length === 0 ? (
+                                <CommandEmpty>No contacts found.</CommandEmpty>
+                            ) : (
+                                contactSuggestions.map(contact => (
+                                    <CommandItem
+                                        key={contact.id}
+                                        value={`${contact.firstName} ${contact.lastName} (${contact.email})`}
+                                        onSelect={() => addExistingContactAsAttendee(contact)}
+                                        className="cursor-pointer"
+                                    >
+                                        {contact.firstName} {contact.lastName} ({contact.email})
+                                    </CommandItem>
+                                ))
+                            )}
                         </CommandList>
                     </div>
                 )}
@@ -348,7 +352,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
                     {currentAttendees.map((attendee, index) => (
                         <Badge key={index} variant="secondary" className="flex items-center gap-1">
                             {attendee.displayName || attendee.email}
-                            <button type="button" onClick={() => removeAttendee(attendee.email)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                            <button type="button" onClick={() => removeAttendee(attendee.email, attendee.displayName)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
                                 <X className="h-3 w-3" />
                             </button>
                         </Badge>
