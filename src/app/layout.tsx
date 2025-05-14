@@ -217,12 +217,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <NotificationBell />
             <ThemeSwitcher />
-             {currentUser && (
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
-                <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
-              </Avatar>
-            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md">
@@ -271,6 +265,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 )}
               </PopoverContent>
             </Popover>
+             {currentUser && (
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+              </Avatar>
+            )}
           </div>
         </header>
         <main className={cn(
