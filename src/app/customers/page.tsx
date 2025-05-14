@@ -13,6 +13,16 @@ import AppointmentForm from '@/components/AppointmentForm';
 import ReminderForm from '@/components/ReminderForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -29,6 +39,10 @@ export default function CustomersPage() {
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
   const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
   const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+
 
   const { toast } = useToast();
   const { currentUser } = useAuth();
@@ -80,120 +94,103 @@ export default function CustomersPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = (contactId: string) => {
-    console.log('[CustomersPage] handleDelete HAS BEEN CALLED WITH:', contactId);
+  const handleDeleteRequest = (contactId: string) => {
+    console.log('[CustomersPage] handleDeleteRequest called with contact ID:', contactId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (contact) {
+      setContactToDelete(contact);
+      setIsDeleteConfirmOpen(true);
+    } else {
+      toast({ title: "Error", description: "Contact not found for deletion.", variant: "destructive" });
+    }
+  };
 
-    setTimeout(() => {
-      console.log('[CustomersPage] Inside setTimeout for delete. Contact ID:', contactId);
-      const contactToDeleteFromTimeout = contacts.find(c => c.id === contactId);
-      
-      if (!contactToDeleteFromTimeout || !currentUser) {
-        console.error("Delete aborted in setTimeout: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDeleteFromTimeout, currentUserExists: !!currentUser });
-        toast({ title: "Error", description: "Could not proceed with delete. Contact not found or user not authenticated (checked in setTimeout).", variant: "destructive"});
-        return;
+  const executeDelete = () => {
+    if (!contactToDelete || !currentUser) {
+      toast({ title: "Error", description: "Cannot execute delete. Contact or user data missing.", variant: "destructive" });
+      setIsDeleteConfirmOpen(false);
+      setContactToDelete(null);
+      return;
+    }
+
+    const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
+    const contactId = contactToDelete.id;
+
+    if (currentUser.role === 'employee') {
+      if (contactToDelete.contactStatus === 'pending_deletion') {
+          toast({title: "Action Not Allowed", description: "This contact is already pending deletion.", variant: "default"});
+          setIsDeleteConfirmOpen(false);
+          setContactToDelete(null);
+          return;
+      }
+      const updatedContact: Contact = {
+        ...contactToDelete,
+        contactStatus: 'pending_deletion',
+        lastModifiedByRole: 'employee',
+        updatedAt: new Date().toISOString(),
+      };
+      const currentContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      const contactIndex = currentContacts.findIndex(c => c.id === contactId);
+      if (contactIndex > -1) {
+          currentContacts[contactIndex] = updatedContact;
+          saveData<Contact[]>(DataItemType.Contacts, currentContacts);
       }
 
-      const confirmMessage = contactToDeleteFromTimeout
-        ? `Are you sure you want to ${contactToDeleteFromTimeout.contactStatus === 'pending_deletion' && currentUser?.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDeleteFromTimeout.firstName} ${contactToDeleteFromTimeout.lastName}?`
-        : 'Are you sure you want to delete this contact?';
-
-      console.log('[CustomersPage] About to call window.confirm with message:', confirmMessage);
-      let userConfirmed = false;
-      try {
-        userConfirmed = window.confirm(confirmMessage);
-      } catch (e) {
-        console.error("Error during window.confirm call:", e);
-        toast({ title: "Dialog Error", description: "Could not display confirmation dialog.", variant: "destructive"});
-        return;
+      const partners = currentAllUsers.filter(u => u.role === 'partner');
+      if (partners.length > 0) {
+          partners.forEach(partner => {
+              createNotification({
+                  recipientUserId: partner.id,
+                  type: 'approval_request',
+                  title: `Contact Deletion Request: ${contactToDelete.firstName} ${contactToDelete.lastName}`,
+                  message: `Employee ${currentUser.name} has requested to delete contact: ${contactToDelete.firstName} ${contactToDelete.lastName}.`,
+                  relatedItemId: contactId,
+                  relatedItemType: DataItemType.Contacts,
+                  payload: { contactId: contactToDelete.id, contactName: `${contactToDelete.firstName} ${contactToDelete.lastName}` }
+              });
+          });
+          toast({
+              title: 'Deletion Requested',
+              description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
+          });
+      } else {
+          toast({
+              title: 'Deletion Requested (No Partners Notified)',
+              description: `${contactToDelete.firstName} ${contactToDelete.lastName} marked for deletion. No partners found to notify.`,
+              variant: 'default'
+          });
       }
-      console.log('[CustomersPage] window.confirm result:', userConfirmed, 'for contact ID:', contactId);
-      
-      if (userConfirmed) {
-        console.log('[CustomersPage] User confirmed deletion for contact ID:', contactId);
-        // Re-fetch contactToDelete to ensure it's the latest version from state after the timeout
-        const contactToDelete = contacts.find(c => c.id === contactId);
-         if (!contactToDelete) {
-            console.error("Delete aborted after confirm: Contact not found (refetched).", { contactId });
-            toast({ title: "Error", description: "Could not proceed with delete. Contact disappeared.", variant: "destructive"});
-            return;
-        }
-
-        const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
-
-        if (currentUser.role === 'employee') {
-          if (contactToDelete.contactStatus === 'pending_deletion') {
-              toast({title: "Action Not Allowed", description: "This contact is already pending deletion.", variant: "default"});
-              return;
-          }
-          const updatedContact: Contact = {
-            ...contactToDelete,
-            contactStatus: 'pending_deletion',
-            lastModifiedByRole: 'employee',
-            updatedAt: new Date().toISOString(),
-          };
+    } else { // Partner is acting
+      if (contactToDelete.contactStatus === 'pending_deletion') {
           const currentContacts = getData<Contact[]>(DataItemType.Contacts) || [];
           const contactIndex = currentContacts.findIndex(c => c.id === contactId);
           if (contactIndex > -1) {
-              currentContacts[contactIndex] = updatedContact;
+              currentContacts[contactIndex] = {
+                  ...contactToDelete,
+                  contactStatus: 'approved',
+                  updatedAt: new Date().toISOString(),
+                  lastModifiedByRole: 'partner',
+                  changeProposal: undefined
+              };
               saveData<Contact[]>(DataItemType.Contacts, currentContacts);
-          }
-
-          const partners = currentAllUsers.filter(u => u.role === 'partner');
-          if (partners.length > 0) {
-              partners.forEach(partner => {
-                  createNotification({
-                      recipientUserId: partner.id,
-                      type: 'approval_request',
-                      title: `Contact Deletion Request: ${contactToDelete.firstName} ${contactToDelete.lastName}`,
-                      message: `Employee ${currentUser.name} has requested to delete contact: ${contactToDelete.firstName} ${contactToDelete.lastName}.`,
-                      relatedItemId: contactId,
-                      relatedItemType: DataItemType.Contacts,
-                      payload: { contactId: contactToDelete.id, contactName: `${contactToDelete.firstName} ${contactToDelete.lastName}` }
-                  });
-              });
               toast({
-                  title: 'Deletion Requested',
-                  description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
-              });
-          } else {
-              toast({
-                  title: 'Deletion Requested (No Partners Notified)',
-                  description: `${contactToDelete.firstName} ${contactToDelete.lastName} marked for deletion. No partners found to notify.`,
-                  variant: 'default'
+                  title: 'Deletion Cancelled',
+                  description: `Deletion request for ${contactToDelete.firstName} ${contactToDelete.lastName} has been cancelled.`,
               });
           }
-        } else { // Partner is acting
-          if (contactToDelete.contactStatus === 'pending_deletion') {
-              const currentContacts = getData<Contact[]>(DataItemType.Contacts) || [];
-              const contactIndex = currentContacts.findIndex(c => c.id === contactId);
-              if (contactIndex > -1) {
-                  currentContacts[contactIndex] = {
-                      ...contactToDelete,
-                      contactStatus: 'approved',
-                      updatedAt: new Date().toISOString(),
-                      lastModifiedByRole: 'partner',
-                      changeProposal: undefined
-                  };
-                  saveData<Contact[]>(DataItemType.Contacts, currentContacts);
-                  toast({
-                      title: 'Deletion Cancelled',
-                      description: `Deletion request for ${contactToDelete.firstName} ${contactToDelete.lastName} has been cancelled.`,
-                  });
-              }
-          } else {
-              deleteItemById<Contact>(DataItemType.Contacts, contactId);
-              toast({
-                  title: 'Customer Deleted',
-                  description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
-              });
-          }
-        }
       } else {
-        console.log('[CustomersPage] User cancelled deletion for contact ID:', contactId);
-        toast({ title: "Deletion Cancelled", description: "No action was taken.", variant: "default"});
+          deleteItemById<Contact>(DataItemType.Contacts, contactId);
+          toast({
+              title: 'Customer Deleted',
+              description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
+          });
       }
-    }, 0); 
+    }
+    setIsDeleteConfirmOpen(false);
+    setContactToDelete(null);
+    // loadContacts(); // dataChanged event will handle this
   };
+
 
   const handleViewDetails = (contact: Contact) => {
     setSelectedContact(contact);
@@ -281,7 +278,7 @@ export default function CustomersPage() {
       <CustomerTable
         contacts={contacts}
         onEdit={handleEdit}
-        onDelete={handleDelete}
+        onDelete={handleDeleteRequest} // Changed to handleDeleteRequest
         onViewDetails={handleViewDetails}
         onAddAppointment={handleOpenAppointmentModal}
         onAddReminder={handleOpenReminderModal}
@@ -333,7 +330,7 @@ export default function CustomersPage() {
                   {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
-                  initialData={undefined} // Ensure no prior appointment data is passed for a new one
+                  initialData={undefined}
                   initialSelectedContactId={contactForNewActivity?.id}
                   onSave={handleSaveAppointment}
                   onCancel={() => {setIsAppointmentFormOpen(false); setContactForNewActivity(null);}}
@@ -348,7 +345,7 @@ export default function CustomersPage() {
                     {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
-                    initialReminder={undefined} // Ensure no prior reminder data is passed for a new one
+                    initialReminder={undefined} 
                     initialSelectedContactId={contactForNewActivity?.id}
                     onSave={handleSaveReminder}
                     onCancel={() => { setIsReminderFormOpen(false); setContactForNewActivity(null);}}
@@ -356,7 +353,42 @@ export default function CustomersPage() {
             </DialogContent>
       </Dialog>
 
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent className="glass-effect bg-card/80 dark:bg-card/70">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading tracking-wide">Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {contactToDelete && currentUser?.role === 'partner' && contactToDelete.contactStatus === 'pending_deletion' ?
+                `Are you sure you want to cancel the pending deletion for ${contactToDelete?.firstName} ${contactToDelete?.lastName}?` :
+              contactToDelete && currentUser?.role === 'partner' ?
+                `Are you sure you want to permanently delete ${contactToDelete?.firstName} ${contactToDelete?.lastName}? This action cannot be undone.` :
+              contactToDelete && currentUser?.role === 'employee' ?
+                `Are you sure you want to request deletion for ${contactToDelete?.firstName} ${contactToDelete?.lastName}? This will be sent for partner approval.` :
+                "Are you sure?"
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setIsDeleteConfirmOpen(false); setContactToDelete(null); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDelete}
+              className={
+                contactToDelete && currentUser?.role === 'partner' && contactToDelete.contactStatus === 'pending_deletion'
+                  ? "" // Standard action color for "Cancel Deletion"
+                  : "bg-destructive text-destructive-foreground hover:bg-destructive/90" // Destructive color for "Delete" or "Request Deletion"
+              }
+            >
+              {contactToDelete && currentUser?.role === 'partner' && contactToDelete.contactStatus === 'pending_deletion'
+                ? 'Cancel Deletion Request'
+                : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+    
+
     
