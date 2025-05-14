@@ -55,12 +55,12 @@ const Logo = () => (
   // If your logo is in public/your-logo.png, use src="/your-logo.png"
   // Ensure width and height match your logo's aspect ratio or desired display size.
   <Image
-    src="https://placehold.co/64x64.png" // Placeholder image for PNG logo
-    alt="Finsculpt CRM Logo"
+    src="https://placehold.co/64x64.png" // Placeholder for user's logo
+    alt="Finsculpt CRM F Logo" // Updated Alt Text
     width={24} // Desired display width
     height={24} // Desired display height
-    className="h-6 w-6" // Tailwind classes to control displayed size if needed
-    data-ai-hint="company logo" 
+    className="h-6 w-6" // Tailwind classes to control displayed size
+    data-ai-hint="stylized f logo" // Updated hint
   />
 );
 
