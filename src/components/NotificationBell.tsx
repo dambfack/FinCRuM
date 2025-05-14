@@ -80,24 +80,32 @@ const NotificationBell: React.FC = () => {
 
       if (contactIndex === -1) {
         toast({ title: "Error", description: "Related contact not found.", variant: "destructive" });
+        markAsRead(notification.id); // Mark as read even if item is gone
         return;
       }
       const originalContact = contacts[contactIndex];
+      let contactName = `${originalContact.firstName || (originalContact.changeProposal?.firstName)} ${originalContact.lastName || (originalContact.changeProposal?.lastName)}`;
+      if (!contactName.trim() && originalContact.changeProposal) {
+        contactName = `${originalContact.changeProposal.firstName} ${originalContact.changeProposal.lastName}`;
+      }
+
 
       if (action === 'approve') {
         if (originalContact.contactStatus === 'pending_approval' && originalContact.changeProposal) {
           contacts[contactIndex] = {
-            ...originalContact,
+            ...originalContact, // Keep original ID, createdAt, attachments etc.
             ...originalContact.changeProposal, // Apply proposed changes
+            id: originalContact.id, // Ensure ID is not overwritten by proposal
+            createdAt: originalContact.createdAt, // Ensure createdAt is not overwritten
             contactStatus: 'approved',
             changeProposal: undefined, // Clear proposal
             updatedAt: new Date().toISOString(),
             lastModifiedByRole: 'partner', // Partner approved
           };
-          toast({ title: "Contact Approved", description: `Changes for ${originalContact.firstName} ${originalContact.lastName} approved.` });
+          toast({ title: "Contact Approved", description: `Changes for ${contactName} approved.` });
         } else if (originalContact.contactStatus === 'pending_deletion') {
           contacts.splice(contactIndex, 1); // Delete the contact
-          toast({ title: "Contact Deletion Approved", description: `${originalContact.firstName} ${originalContact.lastName} deleted.` });
+          toast({ title: "Contact Deletion Approved", description: `${contactName} deleted.` });
         }
       } else if (action === 'reject') {
         if (originalContact.contactStatus === 'pending_approval') {
@@ -108,7 +116,7 @@ const NotificationBell: React.FC = () => {
             updatedAt: new Date().toISOString(),
             lastModifiedByRole: 'partner',
           };
-          toast({ title: "Contact Changes Rejected", description: `Proposed changes for ${originalContact.firstName} ${originalContact.lastName} rejected.` });
+          toast({ title: "Contact Changes Rejected", description: `Proposed changes for ${contactName} rejected.` });
         } else if (originalContact.contactStatus === 'pending_deletion') {
           contacts[contactIndex] = {
             ...originalContact,
@@ -116,27 +124,29 @@ const NotificationBell: React.FC = () => {
             updatedAt: new Date().toISOString(),
             lastModifiedByRole: 'partner',
           };
-           toast({ title: "Contact Deletion Rejected", description: `Deletion request for ${originalContact.firstName} ${originalContact.lastName} rejected.` });
+           toast({ title: "Contact Deletion Rejected", description: `Deletion request for ${contactName} rejected.` });
         }
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
     }
     // Extend for other DataItemTypes (Tasks, etc.) if approval flows are added for them
 
-    markAsRead(notification.id);
-    loadNotifications(); // Refresh notifications and potentially other data if needed
+    markAsRead(notification.id); // Mark notification as read after processing
+    loadNotifications(); // Refresh notifications
+    // Potentially trigger a global state update or event if other components need to refresh their data
+    window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Contacts } }));
   };
 
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'assignment':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />;
       case 'approval_request':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />;
       case 'info':
       default:
-        return <Bell className="h-4 w-4 text-blue-500" />;
+        return <Bell className="h-4 w-4 text-blue-500 flex-shrink-0" />;
     }
   };
 
@@ -164,8 +174,11 @@ const NotificationBell: React.FC = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 sm:w-96 p-0 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
-        <div className="p-4 border-b border-border/20">
+        <div className="p-4 border-b border-border/20 flex justify-between items-center">
           <h4 className="font-medium text-sm font-heading tracking-wide">Notifications</h4>
+           {notifications.length > 0 && unreadCount > 0 && (
+             <Button variant="link" size="sm" onClick={markAllAsRead} className="h-auto p-0 text-xs">Mark All as Read</Button>
+           )}
         </div>
         <ScrollArea className="h-[300px] sm:h-[400px]">
           {notifications.length === 0 ? (
@@ -182,7 +195,7 @@ const NotificationBell: React.FC = () => {
                 >
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5">{getNotificationIcon(notification.type)}</span>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium leading-tight">{notification.title}</p>
                       <p className="text-xs text-muted-foreground">{notification.message}</p>
                     </div>
@@ -190,7 +203,7 @@ const NotificationBell: React.FC = () => {
                   <p className="text-xs text-muted-foreground/70 pl-6">
                     {formatDateTime(notification.createdAt)}
                   </p>
-                  {!notification.read && (
+                  {!notification.read && notification.type !== 'approval_request' && ( // Don't show if approval buttons are present
                      <Button
                         variant="link"
                         size="sm"
@@ -201,7 +214,7 @@ const NotificationBell: React.FC = () => {
                       </Button>
                   )}
                   {currentUser?.role === 'partner' && notification.type === 'approval_request' && !notification.read && (
-                    <div className="flex gap-2 mt-1 pl-6">
+                    <div className="flex gap-2 mt-1.5 pl-6">
                       <Button size="xs" variant="default" onClick={() => handleApprovalAction(notification, 'approve')} className="h-7 px-2 py-1 text-xs">
                         Approve
                       </Button>
@@ -215,16 +228,11 @@ const NotificationBell: React.FC = () => {
             </div>
           )}
         </ScrollArea>
-        {notifications.length > 0 && unreadCount > 0 && (
-            <div className="p-2 border-t border-border/20 flex justify-end">
-                <Button variant="outline" size="sm" onClick={markAllAsRead}>
-                    Mark All as Read
-                </Button>
-            </div>
-        )}
+        
       </PopoverContent>
     </Popover>
   );
 };
 
 export default NotificationBell;
+

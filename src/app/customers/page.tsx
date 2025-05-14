@@ -34,11 +34,6 @@ export default function CustomersPage() {
   const { currentUser } = useAuth(); 
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  useEffect(() => {
-    const loadedUsers = getData<User[]>(DataItemType.Users) || [];
-    setAllUsers(loadedUsers);
-  }, []);
-
   const loadContacts = useCallback(() => {
     setLoading(true);
     const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
@@ -47,7 +42,7 @@ export default function CustomersPage() {
     if (currentUser?.role === 'employee') {
       visibleContacts = storedContacts.filter(c => 
         c.contactStatus === 'approved' || 
-        ( (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && c.lastModifiedByRole === 'employee' ) // Basic check, ideally check against current user ID
+        ( (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && c.lastModifiedByRole === 'employee' && c.id ) // Employees see their own pending changes
       );
     }
     // For partners, all contacts are visible, including pending ones. CustomerTable can highlight them.
@@ -58,9 +53,32 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadContacts();
+    const loadedUsers = getData<User[]>(DataItemType.Users) || []; // Also load users for notifications
+    setAllUsers(loadedUsers);
+
+    const handleDataChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.type === DataItemType.Contacts) {
+        loadContacts();
+      }
+    };
+    window.addEventListener('dataChanged', handleDataChange);
+    return () => window.removeEventListener('dataChanged', handleDataChange);
+
   }, [loadContacts]);
 
+
   const handleEdit = (contact: Contact) => {
+    // For employees, if the contact is pending deletion, they shouldn't edit.
+    // Partners can edit anything.
+    if (currentUser?.role === 'employee' && contact.contactStatus === 'pending_deletion') {
+        toast({
+            title: "Action Not Allowed",
+            description: "This contact is pending deletion and cannot be edited by employees.",
+            variant: "destructive"
+        });
+        return;
+    }
     setSelectedContact(contact);
     setIsEditModalOpen(true);
   };
@@ -69,8 +87,12 @@ export default function CustomersPage() {
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) return;
 
-    if (confirm(`Are you sure you want to delete ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
+    if (confirm(`Are you sure you want to ${contactToDelete.contactStatus === 'pending_deletion' && currentUser.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
       if (currentUser.role === 'employee') {
+        if (contactToDelete.contactStatus === 'pending_deletion') {
+            toast({title: "Action Not Allowed", description: "This contact is already pending deletion.", variant: "default"});
+            return;
+        }
         const updatedContact: Contact = { 
           ...contactToDelete, 
           contactStatus: 'pending_deletion',
@@ -100,12 +122,32 @@ export default function CustomersPage() {
             title: 'Deletion Requested',
             description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been marked for deletion pending partner approval.`,
         });
-      } else { 
-        deleteItemById<Contact>(DataItemType.Contacts, contactId);
-        toast({
-            title: 'Customer Deleted',
-            description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
-        });
+      } else { // Partner is acting
+        if (contactToDelete.contactStatus === 'pending_deletion') {
+            // Partner is cancelling a pending deletion
+            const currentContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+            const contactIndex = currentContacts.findIndex(c => c.id === contactId);
+            if (contactIndex > -1) {
+                currentContacts[contactIndex] = {
+                    ...contactToDelete,
+                    contactStatus: 'approved', // Revert to approved
+                    updatedAt: new Date().toISOString(),
+                    lastModifiedByRole: 'partner'
+                };
+                saveData<Contact[]>(DataItemType.Contacts, currentContacts);
+                toast({
+                    title: 'Deletion Cancelled',
+                    description: `Deletion request for ${contactToDelete.firstName} ${contactToDelete.lastName} has been cancelled.`,
+                });
+            }
+        } else {
+            // Partner is deleting directly
+            deleteItemById<Contact>(DataItemType.Contacts, contactId);
+            toast({
+                title: 'Customer Deleted',
+                description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
+            });
+        }
       }
       loadContacts(); 
     }
@@ -159,7 +201,7 @@ export default function CustomersPage() {
     if (selectedContact && selectedContact.id === updatedContact.id) {
       setSelectedContact(updatedContact);
     }
-    loadContacts(); 
+    loadContacts(); // Reload to ensure filters and sorting are reapplied correctly
   };
   
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
@@ -275,3 +317,4 @@ export default function CustomersPage() {
     </div>
   );
 }
+

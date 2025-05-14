@@ -2,10 +2,10 @@
 // src/components/CustomerTable.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react'; // Added useState, useEffect
-import type { Contact, User } from '@/lib/types'; // Added User
-import { DataItemType } from '@/lib/types'; // Added DataItemType
-import { getData } from '@/lib/utils'; // Added getData
+import React, { useState, useEffect } from 'react';
+import type { Contact, User } from '@/lib/types';
+import { DataItemType } from '@/lib/types';
+import { getData } from '@/lib/utils';
 import {
   Table,
   TableHeader,
@@ -17,8 +17,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus, User as UserIcon } from 'lucide-react'; // Added UserIcon
+import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus, User as UserIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { formatDateTime, cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CustomerTableProps {
   contacts: Contact[];
@@ -45,8 +46,23 @@ const getStatusBadgeVariant = (status?: Contact['status']) => {
   }
 };
 
+const getContactStatusDisplay = (status?: Contact['contactStatus']): { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline', Icon?: React.ElementType } => {
+  switch (status) {
+    case 'pending_approval':
+      return { text: 'Pending Approval', variant: 'secondary', Icon: AlertCircle };
+    case 'pending_deletion':
+      return { text: 'Pending Deletion', variant: 'destructive', Icon: AlertCircle };
+    case 'approved':
+      return { text: 'Approved', variant: 'default', Icon: CheckCircle };
+    default:
+      return { text: status || 'N/A', variant: 'outline' };
+  }
+};
+
+
 const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelete, onViewDetails, onAddAppointment, onAddReminder }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -73,27 +89,49 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
         <TableHeader>
           <TableRow className="hover:bg-transparent dark:hover:bg-transparent border-b border-white/10 dark:border-white/5">
             <TableHead className="text-foreground/80 dark:text-foreground/70">Name</TableHead>
+            {currentUser?.role === 'partner' && <TableHead className="text-foreground/80 dark:text-foreground/70">Record Status</TableHead>}
             <TableHead className="text-foreground/80 dark:text-foreground/70">Email</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Phone</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Company</TableHead>
-            <TableHead className="text-foreground/80 dark:text-foreground/70">Status</TableHead>
-            <TableHead className="text-foreground/80 dark:text-foreground/70">Assigned To</TableHead> {/* New Column */}
+            <TableHead className="text-foreground/80 dark:text-foreground/70">Deal Status</TableHead>
+            <TableHead className="text-foreground/80 dark:text-foreground/70">Assigned To</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Last Updated</TableHead>
             <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead> 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {contacts.map((contact) => (
-            <TableRow key={contact.id} className="hover:bg-white/5 dark:hover:bg-white/5 border-b border-white/10 dark:border-white/5 last:border-b-0">
+          {contacts.map((contact) => {
+            const contactStatusInfo = getContactStatusDisplay(contact.contactStatus);
+            return (
+            <TableRow 
+              key={contact.id} 
+              className={cn(
+                "hover:bg-white/5 dark:hover:bg-white/5 border-b border-white/10 dark:border-white/5 last:border-b-0",
+                contact.contactStatus === 'pending_approval' && currentUser?.role === 'partner' && "bg-orange-500/10 dark:bg-orange-500/20",
+                contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner' && "bg-red-500/10 dark:bg-red-500/20"
+              )}
+            >
               <TableCell className="font-medium text-foreground">
                 {contact.firstName} {contact.lastName}
               </TableCell>
+              {currentUser?.role === 'partner' && (
+                <TableCell>
+                  <Badge variant={contactStatusInfo.variant} className={cn("capitalize text-xs",
+                     contactStatusInfo.variant === 'default' && 'bg-green-500/80 hover:bg-green-500/70 text-white',
+                     contactStatusInfo.variant === 'secondary' && 'bg-orange-500/80 hover:bg-orange-500/70 text-white',
+                     contactStatusInfo.variant === 'destructive' && 'bg-red-600/80 hover:bg-red-600/70 text-white'
+                  )}>
+                    {contactStatusInfo.Icon && <contactStatusInfo.Icon className="mr-1 h-3 w-3" />}
+                    {contactStatusInfo.text}
+                  </Badge>
+                </TableCell>
+              )}
               <TableCell className="text-foreground/90">{contact.email}</TableCell>
               <TableCell className="text-foreground/90">{contact.phone || '-'}</TableCell>
               <TableCell className="text-foreground/90">{contact.company || '-'}</TableCell>
               <TableCell>
                 {contact.status ? (
-                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize", 
+                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize text-xs", 
                     contact.status === 'open' && 'bg-sky-500/80 hover:bg-sky-500/70 text-white',
                     contact.status === 'closed' && 'bg-green-500/80 hover:bg-green-500/70 text-white',
                     contact.status === 'missed' && 'bg-red-500/80 hover:bg-red-500/70 text-white',
@@ -103,9 +141,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                   </Badge>
                 ) : <span className="text-foreground/90">-</span>}
               </TableCell>
-              <TableCell className="text-foreground/90"> {/* Assigned To Cell */}
+              <TableCell className="text-foreground/90">
                 {contact.assignedToUserId ? (
-                  <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate">
+                  <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate text-xs">
                     <UserIcon className="h-3 w-3 flex-shrink-0" /> 
                     <span className="truncate" title={getUserName(contact.assignedToUserId)}>
                         {getUserName(contact.assignedToUserId)}
@@ -126,7 +164,9 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2">
                       <Eye className="h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2">
+                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2" 
+                      disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
+                    >
                       <Edit className="h-4 w-4" /> Edit
                     </DropdownMenuItem>
                      <DropdownMenuItem onClick={() => onAddAppointment(contact)} className="gap-2">
@@ -135,14 +175,19 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     <DropdownMenuItem onClick={() => onAddReminder(contact)} className="gap-2">
                       <BellPlus className="h-4 w-4" /> Add Reminder
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDelete(contact.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2">
-                      <Trash2 className="h-4 w-4" /> Delete
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(contact.id)} 
+                      className={cn("gap-2", (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" : "text-destructive focus:text-destructive focus:bg-destructive/10")}
+                      disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
+                    >
+                      <Trash2 className="h-4 w-4" /> 
+                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+          )})}
         </TableBody>
       </Table>
     </div>
@@ -150,3 +195,4 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
 };
 
 export default CustomerTable;
+
