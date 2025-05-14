@@ -84,6 +84,16 @@ export interface Reminder {
 }
 
 /**
+ * Represents an attendee for an appointment.
+ */
+export interface AppointmentAttendee {
+  email: string;
+  displayName?: string; // Optional, could be contact's name or the typed email/name
+  contactId?: string; // If this attendee is an existing contact
+}
+
+
+/**
  * Represents an appointment.
  */
 export interface Appointment {
@@ -95,8 +105,8 @@ export interface Appointment {
   start?: Date | string; // Combined datetime, can be derived or primary
   end?: Date | string;   // Combined datetime, can be derived or primary
   location?: string; // Optional
-  invitedContacts?: string[]; // Array of contact IDs
-  attendees?: Contact[]; // Optional - link to contacts
+  invitedContacts?: string[]; // Array of contact IDs (can be derived from attendeesList or kept for legacy)
+  attendeesList?: AppointmentAttendee[]; // New field to store detailed attendees
   createdAt: Date | string;
   updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar

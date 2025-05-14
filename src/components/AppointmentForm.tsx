@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Appointment, Contact, DataItemType } from '../lib/types';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Appointment, Contact, DataItemType, AppointmentAttendee } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar'; // Corrected import
+import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar';
 import { getData, saveData, parseDate } from '../lib/utils';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
-import DatePicker from 'react-datepicker'; // Using react-datepicker
+import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { X, UserPlus } from 'lucide-react';
+import { Badge } from './ui/badge';
 
 
 interface AppointmentFormProps {
@@ -22,13 +27,15 @@ interface AppointmentFormProps {
 const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, onCancel }) => {
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
-  
-  // For DatePicker, we need Date objects
   const [appointmentDate, setAppointmentDate] = useState<Date | null>(initialData?.date ? parseDate(initialData.date as string) : null);
-  const [time, setTime] = useState(initialData?.time || ''); // Keep time as string e.g., "10:00"
-
+  const [time, setTime] = useState(initialData?.time || '');
   const [location, setLocation] = useState(initialData?.location || '');
-  const [invitedContactIds, setInvitedContactIds] = useState<string[]>(initialData?.invitedContacts || []);
+  
+  const [currentAttendees, setCurrentAttendees] = useState<AppointmentAttendee[]>([]);
+  const [attendeeInput, setAttendeeInput] = useState('');
+  const [contactSuggestions, setContactSuggestions] = useState<Contact[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
   const { syncCalendar } = useDataSync();
@@ -36,7 +43,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || getData<Contact[]>(DataItemType.CustomerData) || [];
+    const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
     setAllContacts(loadedContacts);
 
     if (initialData) {
@@ -45,10 +52,105 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
         setAppointmentDate(initialData.date ? parseDate(initialData.date as string) : null);
         setTime(initialData.time || '');
         setLocation(initialData.location || '');
-        setInvitedContactIds(initialData.invitedContacts || []);
-    }
 
+        if (initialData.attendeesList) {
+            setCurrentAttendees(initialData.attendeesList);
+        } else if (initialData.invitedContacts && initialData.invitedContacts.length > 0) {
+            // Convert old invitedContacts (IDs) to attendeesList structure
+            const mappedAttendees = initialData.invitedContacts
+                .map(contactId => {
+                    const contact = loadedContacts.find(c => c.id === contactId);
+                    if (contact) {
+                        return {
+                            email: contact.email,
+                            displayName: `${contact.firstName} ${contact.lastName}`,
+                            contactId: contact.id
+                        };
+                    }
+                    return null;
+                })
+                .filter(Boolean) as AppointmentAttendee[];
+            setCurrentAttendees(mappedAttendees);
+        } else {
+            setCurrentAttendees([]);
+        }
+    } else {
+      // Reset for new form
+      setTitle('');
+      setDescription('');
+      setAppointmentDate(null);
+      setTime('');
+      setLocation('');
+      setCurrentAttendees([]);
+    }
   }, [initialData]);
+
+  const handleAttendeeInputChange = (value: string) => {
+    setAttendeeInput(value);
+    if (value.trim().length > 1) {
+        const suggestions = allContacts.filter(contact =>
+            `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
+            contact.email.toLowerCase().includes(value.toLowerCase())
+        ).slice(0, 5); // Limit suggestions
+        setContactSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+    } else {
+        setContactSuggestions([]);
+        setShowSuggestions(false);
+    }
+  };
+
+  const addExistingContactAsAttendee = (contact: Contact) => {
+    if (!currentAttendees.find(a => a.contactId === contact.id)) {
+        setCurrentAttendees(prev => [...prev, {
+            email: contact.email,
+            displayName: `${contact.firstName} ${contact.lastName}`,
+            contactId: contact.id
+        }]);
+    }
+    setAttendeeInput('');
+    setContactSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const addManualAttendee = () => {
+    const input = attendeeInput.trim();
+    if (input) {
+        // Basic email validation
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        let email = '';
+        let displayName = input;
+
+        if (emailPattern.test(input)) {
+            email = input;
+        } else {
+            // If not an email, treat it as a name. We might need a way to prompt for email or handle name-only.
+            // For now, we'll add with an empty email if it's not an email, which Google Calendar might ignore.
+            // A better approach would be to validate or prompt for email.
+            toast({ title: "Manual Attendee", description: "Please enter a valid email for manual attendees.", variant: "default" });
+            // return; // Or handle differently
+        }
+        
+        if (email && !currentAttendees.find(a => a.email.toLowerCase() === email.toLowerCase())) {
+             setCurrentAttendees(prev => [...prev, { email, displayName }]);
+        } else if (!email && !currentAttendees.find(a => a.displayName?.toLowerCase() === displayName.toLowerCase())) {
+            // Allowing adding by name only, but email is preferred for calendar invites
+            setCurrentAttendees(prev => [...prev, { email: '', displayName }]);
+             toast({ title: "Attendee Added by Name", description: "Note: Email is needed for calendar invitations.", variant: "default" });
+        } else if (email) {
+            toast({ title: "Attendee Exists", description: "This email is already in the attendee list.", variant: "default" });
+        } else {
+            toast({ title: "Attendee Exists", description: "This name is already in the attendee list.", variant: "default" });
+        }
+        setAttendeeInput('');
+        setContactSuggestions([]);
+        setShowSuggestions(false);
+    }
+  };
+  
+  const removeAttendee = (emailToRemove: string) => {
+    setCurrentAttendees(prev => prev.filter(attendee => attendee.email !== emailToRemove));
+  };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -79,12 +181,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       id: initialData?.id || Date.now().toString(),
       title,
       description,
-      date: appointmentDate.toISOString(), // Store as ISO string
-      time, // Store time string
-      start: appointmentDateTime.toISOString(), // Store combined start
-      end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), // Default 1 hour duration for end
+      date: appointmentDate.toISOString(),
+      time,
+      start: appointmentDateTime.toISOString(),
+      end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), // Default 1 hour
       location,
-      invitedContacts: invitedContactIds,
+      attendeesList: currentAttendees, // Use the new detailed attendee list
+      invitedContacts: currentAttendees.filter(a => a.contactId).map(a => a.contactId!), // Still populate for potential CRM filtering
       googleCalendarEventId: initialData?.googleCalendarEventId,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -111,29 +214,22 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
         console.warn("No Google tokens found, skipping calendar sync for appointment.");
         toast({ title: "Google Calendar Sync Skipped", description: "Not authenticated with Google. Please link Google Calendar.", variant: "default"});
       } else {
-        if (!newOrUpdatedAppointment.googleCalendarEventId){
-          const result = await createCalendarEvent(newOrUpdatedAppointment, 'appointment', googleTokens); // Corrected function call
+        let result;
+        if (newOrUpdatedAppointment.googleCalendarEventId){
+          result = await updateCalendarEvent(newOrUpdatedAppointment.googleCalendarEventId, newOrUpdatedAppointment, 'appointment', googleTokens);
+        } else {
+          result = await createCalendarEvent(newOrUpdatedAppointment, 'appointment', googleTokens);
           if (result.event && result.event.id) {
               newOrUpdatedAppointment.googleCalendarEventId = result.event.id;
+              // Save the appointment again with the event ID
               const updatedAppointmentsWithEventId = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
               saveData<Appointment[]>(DataItemType.Appointments, updatedAppointmentsWithEventId);
           }
-          if (result.newTokens) {
-             if (typeof window !== 'undefined') {
-                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
-                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
-                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
-             }
-          }
-        } else {
-          const result = await updateCalendarEvent(newOrUpdatedAppointment.googleCalendarEventId, newOrUpdatedAppointment, 'appointment', googleTokens); // Corrected function call
-          if (result.newTokens) {
-             if (typeof window !== 'undefined') {
-                if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
-                if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
-                if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
-             }
-          }
+        }
+        if (result.newTokens && typeof window !== 'undefined') {
+           if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
+           if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
+           if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
         }
         await syncCalendar();
       }
@@ -150,7 +246,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
     "bg-neutral-100 dark:bg-neutral-900",
     "border-neutral-300 dark:border-neutral-700",
     "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
-    "mt-1", // Specific margin for this form
+    "mt-1",
     errors.date ? 'border-destructive' : ''
   );
 
@@ -184,7 +280,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
             className={datePickerInputClassName}
             wrapperClassName="w-full"
             dateFormat="MM/dd/yyyy"
-            popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
+            popperClassName="react-datepicker-popper"
           />
           {errors.date && <p className="text-sm text-destructive mt-1">{errors.date}</p>}
         </div>
@@ -208,29 +304,60 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
           onChange={(e) => setLocation(e.target.value)}
         />
       </div>
-      <div>
-        <Label htmlFor="invitedContacts">Invited Contacts</Label>
-        <select
-            id="invitedContacts"
-            multiple
-            value={invitedContactIds}
-            onChange={(e) => setInvitedContactIds(Array.from(e.target.selectedOptions, option => option.value))}
-            className={cn(
-                "mt-1 block w-full rounded-md border px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                "bg-neutral-100 dark:bg-neutral-900",
-                "border-neutral-300 dark:border-neutral-700",
-                "text-foreground"
-            )}
-            size={5}
-        >
-            {allContacts.map(contact => (
-                <option key={contact.id} value={contact.id} className="dark:bg-neutral-800 dark:text-neutral-100">
-                    {contact.firstName} {contact.lastName} ({contact.email})
-                </option>
-            ))}
-        </select>
-        <p className="text-xs text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple contacts.</p>
+      
+      {/* New Attendee Input Section */}
+      <div className="space-y-2">
+        <Label htmlFor="attendeeInput">Attendees</Label>
+        <div className="flex items-center gap-2">
+            <Command className="relative rounded-md border">
+                <CommandInput
+                    id="attendeeInput"
+                    value={attendeeInput}
+                    onValueChange={handleAttendeeInputChange}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} // Delay to allow click on suggestion
+                    onFocus={() => attendeeInput && contactSuggestions.length > 0 && setShowSuggestions(true)}
+                    placeholder="Type name or email..."
+                    className="h-10"
+                />
+                {showSuggestions && contactSuggestions.length > 0 && (
+                    <div className="absolute z-10 top-full mt-1 w-full rounded-md border bg-popover shadow-md">
+                        <CommandList>
+                            <CommandEmpty>No contacts found.</CommandEmpty>
+                            {contactSuggestions.map(contact => (
+                                <CommandItem
+                                    key={contact.id}
+                                    value={`${contact.firstName} ${contact.lastName} (${contact.email})`}
+                                    onSelect={() => addExistingContactAsAttendee(contact)}
+                                    className="cursor-pointer"
+                                >
+                                    {contact.firstName} {contact.lastName} ({contact.email})
+                                </CommandItem>
+                            ))}
+                        </CommandList>
+                    </div>
+                )}
+            </Command>
+            <Button type="button" onClick={addManualAttendee} variant="outline" size="icon" title="Add manual attendee" disabled={!attendeeInput.trim()}>
+                <UserPlus className="h-4 w-4"/>
+            </Button>
+        </div>
+        {currentAttendees.length > 0 && (
+            <div className="space-y-1 pt-2">
+                <p className="text-xs text-muted-foreground">Added Attendees:</p>
+                <div className="flex flex-wrap gap-2">
+                    {currentAttendees.map((attendee, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                            {attendee.displayName || attendee.email}
+                            <button type="button" onClick={() => removeAttendee(attendee.email)} className="ml-1 rounded-full hover:bg-destructive/20 p-0.5">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
+
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
