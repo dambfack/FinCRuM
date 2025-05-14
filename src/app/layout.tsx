@@ -33,8 +33,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import React, { useRef, useState } from 'react'; // Added useState
-import ImageCropperModal from '@/components/ImageCropperModal'; // Import the cropper modal
+import React, { useRef, useState } from 'react'; 
+import ImageCropperModal from '@/components/ImageCropperModal'; 
 
 const anton = Anton({
   subsets: ['latin'],
@@ -320,3 +320,4 @@ export default function RootLayout({
     </html>
   );
 }
+

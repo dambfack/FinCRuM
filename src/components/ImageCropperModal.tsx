@@ -26,7 +26,8 @@ function canvasToDataURL(canvas: HTMLCanvasElement, mimeType = 'image/png', qual
 async function getCroppedImg(
   imageSrc: string,
   pixelCrop: Crop,
-  rotation = 0
+  rotation = 0,
+  scale = 1 // Add scale parameter
 ): Promise<string | null> {
   const image = new Image();
   image.src = imageSrc;
@@ -44,25 +45,37 @@ async function getCroppedImg(
     return null;
   }
 
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
-  
-  ctx.save();
-  ctx.translate(pixelCrop.width / 2, pixelCrop.height / 2);
-  ctx.rotate(rotation * Math.PI / 180);
-  ctx.scale(1, 1); // Assuming no scaling for simplicity, zoom handled by crop dimensions
-  ctx.translate(-image.width / 2, -image.height / 2);
+  // Calculate source coordinates and dimensions considering the scale
+  const sourceX = pixelCrop.x / scale;
+  const sourceY = pixelCrop.y / scale;
+  const sourceWidth = pixelCrop.width / scale;
+  const sourceHeight = pixelCrop.height / scale;
 
+  // Ensure source dimensions don't exceed natural image dimensions
+  const clampedSourceX = Math.max(0, sourceX);
+  const clampedSourceY = Math.max(0, sourceY);
+  const clampedSourceWidth = Math.min(image.naturalWidth - clampedSourceX, sourceWidth);
+  const clampedSourceHeight = Math.min(image.naturalHeight - clampedSourceY, sourceHeight);
+
+
+  ctx.save();
+  // Translate and rotate around the center of the destination canvas
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(rotation * Math.PI / 180);
+  
+  // Draw the scaled and cropped image
+  // The source rectangle is in the original image's coordinate system (scaled back)
+  // The destination rectangle is the canvas itself
   ctx.drawImage(
     image,
-    pixelCrop.x * scaleX,
-    pixelCrop.y * scaleY,
-    pixelCrop.width * scaleX,
-    pixelCrop.height * scaleY,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
+    clampedSourceX,
+    clampedSourceY,
+    clampedSourceWidth,
+    clampedSourceHeight,
+    -canvas.width / 2, // Center the image before drawing
+    -canvas.height / 2,
+    canvas.width,
+    canvas.height
   );
   
   ctx.restore();
@@ -83,10 +96,9 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop | null>(null);
   const [scale, setScale] = useState(1);
-  const [rotate, setRotate] = useState(0); // Rotation not yet implemented in UI
+  const [rotate, setRotate] = useState(0); 
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null); // For previewing, not strictly needed for save
-
+  
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
     const { width, height } = e.currentTarget;
@@ -94,7 +106,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       makeAspectCrop(
         {
           unit: '%',
-          width: 90, // Initial crop selection width
+          width: 90, 
         },
         aspectRatio,
         width,
@@ -104,7 +116,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       height
     );
     setCrop(newCrop);
-    setCompletedCrop(convertToPixelCrop(newCrop, width, height));
+    // No need to set completedCrop here yet, it's set onCropComplete
   };
 
   const handleCropImage = useCallback(async () => {
@@ -114,102 +126,67 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     }
 
     try {
-      const croppedImageUrl = await getCroppedImg(imageSrc, completedCrop, rotate);
+      const croppedImageUrl = await getCroppedImg(imageSrc, completedCrop, rotate, scale);
       if (croppedImageUrl) {
         onCropSave(croppedImageUrl);
-        onClose();
+        onClose(); // Close modal after saving
       } else {
         console.error('Failed to crop image.');
       }
     } catch (e) {
       console.error('Error cropping image:', e);
     }
-  }, [completedCrop, imageSrc, rotate, onCropSave, onClose]);
-
-  // Effect to draw preview (optional, but good for UX)
-  useEffect(() => {
-    if (!completedCrop || !previewCanvasRef.current || !imgRef.current || !imageSrc) {
-      return;
-    }
-    const image = imgRef.current;
-    const canvas = previewCanvasRef.current;
-    const crop = completedCrop;
-
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      throw new Error('No 2d context');
-    }
-
-    const pixelRatio = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(crop.width * scaleX * pixelRatio);
-    canvas.height = Math.floor(crop.height * scaleY * pixelRatio);
-    ctx.scale(pixelRatio, pixelRatio);
-    
-    const currentScale = scale; // Use the scale from state
-
-    ctx.imageSmoothingQuality = 'high';
-
-    ctx.save();
-    ctx.translate(crop.width / 2, crop.height / 2);
-    ctx.rotate(rotate * Math.PI / 180);
-    ctx.scale(currentScale, currentScale);
-    ctx.translate(-crop.width / 2, -crop.height / 2); // Adjusted translate after scale
-    
-    ctx.drawImage(
-      image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
-      0,
-      0,
-      crop.width,
-      crop.height
-    );
-    ctx.restore();
-
-  }, [completedCrop, imageSrc, scale, rotate]);
+  }, [completedCrop, imageSrc, rotate, scale, onCropSave, onClose]);
 
 
   const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/90 dark:bg-card/80";
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+            onClose();
+            // Reset states when closing
+            setCrop(undefined);
+            setCompletedCrop(null);
+            setScale(1);
+            setRotate(0);
+        }
+    }}>
       <DialogContent className={dialogContentClassName}>
         <DialogHeader>
           <DialogTitle className="font-heading tracking-wide">Crop Image</DialogTitle>
-          <DialogDescription>Adjust the selection to crop your image. Current aspect ratio: {aspectRatio === 1 ? '1:1 (Square)' : aspectRatio.toFixed(2)}.</DialogDescription>
+          <DialogDescription>Adjust the selection to crop your image. Aspect ratio: {aspectRatio === 1 ? '1:1 (Square)' : aspectRatio.toFixed(2)}.</DialogDescription>
         </DialogHeader>
         
         {imageSrc && (
           <div className="my-4 space-y-4">
-            <div className="flex justify-center items-center max-h-[50vh] overflow-hidden rounded-md border">
+            <div className="flex justify-center items-center max-h-[50vh] overflow-hidden rounded-md border bg-black/10">
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
                 onComplete={(c) => {
-                    if (imgRef.current) {
-                        setCompletedCrop(convertToPixelCrop(c, imgRef.current.width, imgRef.current.height));
-                    }
+                  if (imgRef.current) {
+                      const pixelCrop = convertToPixelCrop(c, imgRef.current.naturalWidth, imgRef.current.naturalHeight);
+                      setCompletedCrop(pixelCrop);
+                  }
                 }}
                 aspect={aspectRatio}
                 className="max-w-full max-h-full"
+                minWidth={50} // Minimum crop size in pixels
+                minHeight={50}
               >
                 <img
                   ref={imgRef}
                   alt="Crop me"
                   src={imageSrc}
-                  style={{ transform: `scale(${scale}) rotate(${rotate}deg)` }}
+                  style={{ transform: `scale(${scale}) rotate(${rotate}deg)`, transformOrigin: 'center center' }}
                   onLoad={onImageLoad}
                   className="object-contain"
                 />
               </ReactCrop>
             </div>
             <div>
-              <Label htmlFor="zoom-slider">Zoom</Label>
+              <Label htmlFor="zoom-slider" className="text-sm">Zoom</Label>
               <Slider
                 id="zoom-slider"
                 min={0.5}
@@ -220,21 +197,7 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 className="mt-2"
               />
             </div>
-            {/* Optional Preview - can be complex to get perfect */}
-            {/* {completedCrop && (
-              <div className="mt-4">
-                <p className="text-sm font-medium">Preview:</p>
-                <canvas
-                  ref={previewCanvasRef}
-                  className="mt-2 border rounded-md"
-                  style={{
-                    objectFit: 'contain',
-                    width: completedCrop.width,
-                    height: completedCrop.height,
-                  }}
-                />
-              </div>
-            )} */}
+            {/* Rotation slider could be added here if needed */}
           </div>
         )}
 
@@ -254,3 +217,4 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 };
 
 export default ImageCropperModal;
+
