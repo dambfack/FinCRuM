@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
@@ -20,7 +20,11 @@ const userFormSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
   role: userRoleSchema,
-  // password: z.string().min(6, { message: "Password must be at least 6 characters" }).optional(), // For future auth
+  pin: z.string()
+    .optional()
+    .refine(val => !val || (/^\d{4}$/.test(val)), {
+      message: "PIN must be 4 digits, or leave blank for no PIN.",
+    }),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -34,18 +38,21 @@ interface UserFormProps {
 const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) => {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: initialData || {
-      name: '',
-      email: '',
-      role: 'employee', // Default to employee
-    },
+    defaultValues: initialData ? 
+      { ...initialData, pin: initialData.pin || '' } 
+      : {
+        name: '',
+        email: '',
+        role: 'employee',
+        pin: '',
+      },
   });
 
   useEffect(() => {
     if (initialData) {
-      form.reset(initialData);
+      form.reset({ ...initialData, pin: initialData.pin || '' });
     } else {
-      form.reset({ name: '', email: '', role: 'employee' });
+      form.reset({ name: '', email: '', role: 'employee', pin: '' });
     }
   }, [initialData, form]);
 
@@ -53,15 +60,16 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
     const userData: User = {
       ...data,
       id: initialData?.id || `user-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+      pin: data.pin || undefined, // Store as undefined if empty
     };
 
     const users = getData<User[]>(DataItemType.Users) || [];
     const existingUserIndex = users.findIndex(u => u.id === userData.id);
 
     if (existingUserIndex > -1) {
-      users[existingUserIndex] = userData; // Update existing
+      users[existingUserIndex] = userData; 
     } else {
-      users.push(userData); // Add new
+      users.push(userData); 
     }
     saveData<User[]>(DataItemType.Users, users);
     onSave(userData);
@@ -117,21 +125,32 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
             </FormItem>
           )}
         />
-        {/* Password field for future use
         <FormField
           control={form.control}
-          name="password"
+          name="pin"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password {initialData ? '(Leave blank to keep unchanged)' : ''}</FormLabel>
+              <FormLabel>4-Digit PIN (Optional)</FormLabel>
               <FormControl>
-                <Input type="password" {...field} value={field.value ?? ''} />
+                <Input 
+                  type="password" // Use password type to mask input
+                  placeholder="Enter 4-digit PIN" 
+                  {...field} 
+                  maxLength={4}
+                  pattern="\d*" // Allows only digits, but Zod handles full validation
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/\D/g, '');
+                    field.onChange(numericValue);
+                  }}
+                />
               </FormControl>
+              <FormDescription>
+                Leave blank if no PIN is desired for this user.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        */}
         <div className="flex justify-end space-x-3 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

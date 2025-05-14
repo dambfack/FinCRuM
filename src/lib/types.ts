@@ -43,7 +43,6 @@ export interface FileAttachmentMeta {
   contactId: string; // ID of the contact this file is attached to
   createdAt: string; // ISO date string of when it was attached
   encrypted: boolean; // Flag indicating if the file is (intended to be) encrypted
-  // ivHex and saltHex removed as encryption is deferred
 }
 
 /**
@@ -54,7 +53,7 @@ export interface User {
   name: string;
   email: string;
   role: 'partner' | 'employee';
-  // passwordHash?: string; // For future full authentication
+  pin?: string; // Optional 4-digit PIN, stored as string
 }
 
   /**
@@ -188,7 +187,7 @@ export enum DataItemType {
   OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
-  Users = 'users', // New data type for users
+  Users = 'users', 
 }
 
 /**
