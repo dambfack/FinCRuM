@@ -33,7 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
 import Image from 'next/image';
 
@@ -49,42 +49,86 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-const Logo = ({ appLogoUrl, defaultAppLogoUrl }: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
+const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
   console.log("--- [Logo Component] RENDERING ---");
-  console.log("  [Logo Component] PROPS - appLogoUrl:", appLogoUrl ? `Data URI (len: ${appLogoUrl.length})` : 'null');
-  console.log("  [Logo Component] PROPS - defaultAppLogoUrl:", defaultAppLogoUrl ? `Data URI (len: ${defaultAppLogoUrl.length})` : 'null');
+  console.log("  [Logo Component] PROPS - appLogoUrl:", props.appLogoUrl ? `Data URI (len: ${props.appLogoUrl.length})` : 'null');
+  console.log("  [Logo Component] PROPS - defaultAppLogoUrl:", props.defaultAppLogoUrl ? `Data URI (len: ${props.defaultAppLogoUrl.length})` : 'null');
 
-  const fallbackPngLogo = "/f_logo.png"; // Assuming f_logo.png is in public
-  const ultimateFallbackPlaceholder = "https://placehold.co/64x64.png?text=LOGO";
+  const ultimateFallbackPngLogo = "/f_logo.png";
+  const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-  const logoToDisplay = appLogoUrl || defaultAppLogoUrl || fallbackPngLogo;
-  // Further fallback if even fallbackPngLogo is not intended to be a real file or might fail
-  // const finalLogoSrc = logoToDisplay === fallbackPngLogo ? (check if fallbackPngLogo is valid or use ultimateFallbackPlaceholder) : logoToDisplay;
-  // For now, let's assume fallbackPngLogo is a valid path if used.
+  const [currentSrc, setCurrentSrc] = useState(ultimateFallbackPngLogo);
+  const [triedPrimary, setTriedPrimary] = useState(false);
+  const [triedDefault, setTriedDefault] = useState(false);
+  const [imageLoadKey, setImageLoadKey] = useState(Date.now()); // Key to force re-render
 
-  const isDataUri = typeof logoToDisplay === 'string' && logoToDisplay.startsWith("data:");
-  const isPlaceholder = typeof logoToDisplay === 'string' && logoToDisplay.startsWith("https://placehold.co");
+  useEffect(() => {
+    setTriedPrimary(false);
+    setTriedDefault(false);
+    setImageLoadKey(Date.now()); // Change key to force re-render on prop change
+
+    if (props.appLogoUrl) {
+      console.log("  [Logo Component] Attempting to display: Custom App Logo (appLogoUrl)");
+      setCurrentSrc(props.appLogoUrl);
+    } else if (props.defaultAppLogoUrl) {
+      console.log("  [Logo Component] Attempting to display: Default App Logo (defaultAppLogoUrl)");
+      setCurrentSrc(props.defaultAppLogoUrl);
+    } else {
+      console.log("  [Logo Component] Attempting to display: Fallback PNG Logo (/f_logo.png)");
+      setCurrentSrc(ultimateFallbackPngLogo);
+    }
+  }, [props.appLogoUrl, props.defaultAppLogoUrl]);
+
+  const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith("data:");
   
-  console.log("  [Logo Component] CHOSEN LOGIC - logoToDisplay (intended for Image src):", logoToDisplay);
-  console.log("  [Logo Component] FLAGS - isDataUri:", isDataUri, ", isPlaceholder:", isPlaceholder);
-  console.log("  [Logo Component] IMAGE PROPS - unoptimized:", isDataUri || isPlaceholder);
+  console.log("  [Logo Component] CURRENT SRC for Image:", currentSrc ? `Type: ${typeof currentSrc}, StartsWithData: ${isDataUri}, Value: ${currentSrc.substring(0, 70)}...` : 'null/empty');
+  console.log("  [Logo Component] IMAGE PROPS - unoptimized:", isDataUri);
   console.log("--- [Logo Component] FINISHED LOGIC ---");
+
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error("[Logo Component] Image error for SRC:", currentSrc, "CurrentTarget src:", e.currentTarget.src);
+    if (!triedPrimary && props.appLogoUrl && currentSrc === props.appLogoUrl) {
+        setTriedPrimary(true);
+        if (props.defaultAppLogoUrl) {
+            console.log("  [Logo Component] ERROR HANDLER: Falling back to defaultAppLogoUrl");
+            setCurrentSrc(props.defaultAppLogoUrl);
+        } else {
+            console.log("  [Logo Component] ERROR HANDLER: Falling back to ultimateFallbackPngLogo (no defaultAppLogoUrl)");
+            setCurrentSrc(ultimateFallbackPngLogo);
+        }
+    } else if (!triedDefault && props.defaultAppLogoUrl && currentSrc === props.defaultAppLogoUrl) {
+        setTriedDefault(true);
+        console.log("  [Logo Component] ERROR HANDLER: Falling back to ultimateFallbackPngLogo");
+        setCurrentSrc(ultimateFallbackPngLogo);
+    } else if (currentSrc !== absoluteUltimatePlaceholder) {
+        console.log("  [Logo Component] ERROR HANDLER: Falling back to absoluteUltimatePlaceholder");
+        setCurrentSrc(absoluteUltimatePlaceholder);
+    }
+  };
+
+  const isFinalSrcPlaceholder = typeof currentSrc === 'string' && currentSrc.startsWith("https://placehold.co");
 
   return (
     <Image
-      src={logoToDisplay}
-      alt="Finsculpt CRM Logo"
+      key={imageLoadKey + currentSrc} // Add currentSrc to key for more robust re-rendering
+      src={currentSrc}
+      alt={
+        props.appLogoUrl && currentSrc === props.appLogoUrl ? "Custom App Logo"
+        : props.defaultAppLogoUrl && currentSrc === props.defaultAppLogoUrl ? "Default App Logo"
+        : currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo"
+        : "App Logo Placeholder"
+      }
       width={24}
       height={24}
       className="h-6 w-6 object-contain"
-      data-ai-hint={appLogoUrl ? "custom company logo" : defaultAppLogoUrl ? "default company logo" : "fallback f logo"}
-      unoptimized={isDataUri || isPlaceholder}
-      // Add onError to see if the image fails to load, especially the /f_logo.png fallback
-      onError={(e) => {
-        console.error("[Logo Component] Image failed to load. SRC used:", logoToDisplay, e);
-        // Optional: Attempt to set to ultimate fallback if primary fails
-        // e.currentTarget.src = ultimateFallbackPlaceholder; 
-      }}
+      data-ai-hint={
+        props.appLogoUrl && currentSrc === props.appLogoUrl ? "custom company logo"
+        : props.defaultAppLogoUrl && currentSrc === props.defaultAppLogoUrl ? "default company logo"
+        : currentSrc === ultimateFallbackPngLogo ? "fallback f logo"
+        : "logo placeholder"
+      }
+      unoptimized={isDataUri || isFinalSrcPlaceholder}
+      onError={handleError}
     />
   );
 };
@@ -97,8 +141,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     currentUser,
     logout,
     pinSetupRequiredForUser,
-    appLogoUrl, // This comes from AuthContext
-    defaultAppLogoUrl, // This also comes from AuthContext
+    appLogoUrl,
+    defaultAppLogoUrl,
     updateAppLogo,
     setDefaultAppLogo,
     updateUserProfilePicture,
@@ -113,7 +157,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
 
-  console.log("[AppContent] Rendering. Current appLogoUrl from context:", appLogoUrl ? `len: ${appLogoUrl.length}` : null);
+  console.log("[AppContent] Rendering. Current appLogoUrl from context:", appLogoUrl ? `len: ${appLogoUrl.length}` : 'null', "defaultAppLogoUrl from context:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null');
 
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,13 +203,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
         return;
       }
-      if (file.size > 1 * 1024 * 1024) {
+      if (file.size > 1 * 1024 * 1024) { // 1MB limit for app logo
         toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 1MB.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log("[AppContent] App logo file read as data URI. Opening cropper.");
         setAppLogoImageToCropSrc(reader.result as string);
         setIsAppLogoCropperOpen(true);
       };
@@ -184,6 +229,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleSetCurrentLogoAsDefault = () => {
     if (appLogoUrl && currentUser?.role === 'partner') {
+      console.log("[AppContent] Calling setDefaultAppLogo from AuthContext with current appLogoUrl.");
       setDefaultAppLogo(appLogoUrl);
     } else {
       toast({ title: "Action Not Available", description: "No custom logo is currently set, or you don't have permission.", variant: "default"});
@@ -349,7 +395,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         type="file"
                         ref={appLogoInputRef}
                         onChange={handleAppLogoFileChange}
-                        accept="image/png"
+                        accept="image/png" // Only PNG for app logo
                         className="hidden"
                       />
                     <Button
@@ -366,7 +412,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                       size="sm"
                       className="w-full mb-3"
                       onClick={handleSetCurrentLogoAsDefault}
-                      disabled={!appLogoUrl}
+                      disabled={!appLogoUrl} // Only enable if a custom logo is set
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
                        Set Current as Default
@@ -393,7 +439,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </header>
         <main className={cn(
           "flex-1 overflow-y-auto p-4 md:p-6",
-          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5"
+          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5" // glass-effect-main-content like styling
         )}>
           {children}
         </main>
@@ -409,7 +455,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={userImageToCropSrc}
           onCropSave={handleUserCropSave}
-          aspectRatio={1 / 1}
+          aspectRatio={1 / 1} // Square crop for user profile
         />
       )}
       {appLogoImageToCropSrc && (
@@ -421,7 +467,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={appLogoImageToCropSrc}
           onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1}
+          aspectRatio={1 / 1} // Square crop for app logo
         />
       )}
     </>

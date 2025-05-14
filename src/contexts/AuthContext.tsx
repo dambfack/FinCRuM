@@ -12,14 +12,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   pinSetupRequiredForUser: User | null;
-  appLogoUrl: string | null; // Current admin-set custom logo override
-  defaultAppLogoUrl: string | null; // User-set default application logo
+  appLogoUrl: string | null;
+  defaultAppLogoUrl: string | null;
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
-  updateAppLogo: (dataUri: string | null) => void; // Can be null to clear override
-  setDefaultAppLogo: (dataUri: string) => void; // Sets the new default logo
+  updateAppLogo: (dataUri: string | null) => void;
+  setDefaultAppLogo: (dataUri: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,24 +30,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
   const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
-  const [defaultAppLogoUrl, setDefaultAppLogoUrl] = useState<string | null>(null);
+  const [_defaultAppLogoUrl, _setDefaultAppLogoUrl] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const setDefaultAppLogoUrl_internal = (value: string | null) => {
+    console.log('[AuthContext] DEBUG: setDefaultAppLogoUrl_internal (state setter) CALLED. Value length:', value?.length);
+    _setDefaultAppLogoUrl(value);
+  };
+  const defaultAppLogoUrl = _defaultAppLogoUrl;
+
 
   useEffect(() => {
     setIsLoadingAuth(true);
+    console.log('[AuthContext] Initial useEffect running...');
 
     const storedAppLogo = getData<string>(DataItemType.AppLogo);
+    console.log('[AuthContext] Initial storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
-    console.log('[AuthContext] Initial storedAppLogo:', storedAppLogo ? `Length: ${storedAppLogo.length}` : 'null');
 
     const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
-    if (storedDefaultAppLogo) {
-      setDefaultAppLogoUrl(storedDefaultAppLogo);
-    }
     console.log('[AuthContext] Initial storedDefaultAppLogo:', storedDefaultAppLogo ? `Length: ${storedDefaultAppLogo.length}` : 'null');
-
+    if (storedDefaultAppLogo) {
+      setDefaultAppLogoUrl_internal(storedDefaultAppLogo);
+    }
 
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
@@ -60,6 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profilePictureUrl: `https://placehold.co/128x128.png?text=A`,
       };
       users = [defaultAdmin];
+      console.log('[AuthContext] No users found. Creating default Admin user. Saving to localStorage:', DataItemType.Users);
       saveData<User[]>(DataItemType.Users, users);
       toast({
         title: "Default Admin Created",
@@ -135,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     users[userIndex] = { ...users[userIndex], pin: newPin };
+    console.log('[AuthContext] completePinSetupAndLogin: Saving updated users to localStorage:', DataItemType.Users);
     saveData<User[]>(DataItemType.Users, users);
 
     setCurrentUser(users[userIndex]);
@@ -163,6 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
     users[userIndex] = updatedUser;
+    console.log('[AuthContext] updateUserProfilePicture: Saving updated users to localStorage:', DataItemType.Users);
     saveData<User[]>(DataItemType.Users, users);
     setCurrentUser(updatedUser);
 
@@ -172,22 +182,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateAppLogo = (dataUri: string | null) => {
-    console.log('[AuthContext] updateAppLogo - dataUri length:', dataUri?.length, 'Saving to localStorage.');
+    console.log('[AuthContext] updateAppLogo CALLED. Data URI length:', dataUri?.length);
     setAppLogoUrl(dataUri);
     if (dataUri) {
+      console.log('[AuthContext] Saving AppLogo to localStorage:', DataItemType.AppLogo);
       saveData<string>(DataItemType.AppLogo, dataUri);
       toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
     } else {
+      console.log('[AuthContext] Removing AppLogo from localStorage:', DataItemType.AppLogo);
       localStorage.removeItem(DataItemType.AppLogo);
       toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
     }
   };
 
   const setDefaultAppLogo = (dataUri: string) => {
-    console.log('[AuthContext] setDefaultAppLogo - dataUri length:', dataUri?.length);
-    setDefaultAppLogoUrl(dataUri);
+    console.log('[AuthContext] setDefaultAppLogo FUNCTION CALLED. Data URI length:', dataUri.length);
+    setDefaultAppLogoUrl_internal(dataUri); // Use internal setter for logging
+    console.log('[AuthContext] Saving DefaultAppLogo to localStorage:', DataItemType.DefaultAppLogo);
     saveData<string>(DataItemType.DefaultAppLogo, dataUri);
-    updateAppLogo(null);
+    updateAppLogo(null); // Clear the current override
     toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   };
 
