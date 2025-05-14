@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { fontFamily } from "tailwindcss/defaultTheme"; // Import defaultTheme
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
     darkMode: ["class"],
@@ -11,8 +11,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans], // Keep Geist Sans as base
-        heading: ["var(--font-anton)", ...fontFamily.sans], // Add Anton for headings
+        sans: ["var(--font-montserrat)", "var(--font-geist-sans)", ...fontFamily.sans], // Montserrat as default, Geist as fallback
+        heading: ["var(--font-anton)", ...fontFamily.sans],
       },
   		colors: {
   			background: 'hsl(var(--background))',

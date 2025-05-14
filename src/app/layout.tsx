@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Anton } from 'next/font/google'; // Import Anton font
+import { Anton, Montserrat } from 'next/font/google'; // Import Montserrat font
 import './globals.css';
 import { cn } from '@/lib/utils';
 import {
@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Table, Upload, UserPlusIcon, Settings } from 'lucide-react';
+import { LayoutDashboard, Table, Upload, UserPlus as UserPlusIcon, Settings } from 'lucide-react'; // Renamed UserPlus to UserPlusIcon
 import SyncManager from "@/components/SyncManager";
 import { Toaster } from "@/components/ui/toaster";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -25,8 +25,15 @@ import { Button } from '@/components/ui/button';
 // Configure Anton font
 const anton = Anton({
   subsets: ['latin'],
-  weight: ['400'], // Anton typically only has a 400 weight
-  variable: '--font-anton', // Create a CSS variable
+  weight: ['400'],
+  variable: '--font-anton',
+});
+
+// Configure Montserrat font
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'], // Include various weights
+  variable: '--font-montserrat', // Create a CSS variable
 });
 
 export const metadata: Metadata = {
@@ -50,9 +57,10 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body
         className={cn(
-          GeistSans.variable,
-          anton.variable, // Add Anton font variable
-          'antialiased font-sans flex min-h-screen flex-col'
+          GeistSans.variable, // Keep Geist Sans as a fallback or for specific utility
+          anton.variable,
+          montserrat.variable, // Add Montserrat font variable
+          'antialiased font-sans flex min-h-screen flex-col' // font-sans will now default to Montserrat via Tailwind config
         )}
       >
         <SidebarProvider>

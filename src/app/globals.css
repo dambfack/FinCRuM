@@ -3,14 +3,14 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background-image: url('https://picsum.photos/1920/1080?grayscale&blur=2'); /* Default background */
+/* body {
+  font-family: Arial, Helvetica, sans-serif; Removed to allow Tailwind and Next/Font to control
+  background-image: url('https://picsum.photos/1920/1080?grayscale&blur=2'); 
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
   data-ai-hint: "abstract gradient";
-}
+} */
 
 @layer base {
   :root {
@@ -91,8 +91,9 @@ body {
     @apply border-border; /* Default border color */
   }
   body {
-    @apply text-foreground;
-    /* Background image is set directly on body tag already */
+    @apply text-foreground bg-cover bg-center bg-fixed; /* Moved background properties here */
+    background-image: url('https://placehold.co/1920x1080.png'); /* Default background - using placeholder */
+    data-ai-hint: "abstract gradient";
   }
 }
 
