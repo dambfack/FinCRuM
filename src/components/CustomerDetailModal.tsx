@@ -6,13 +6,15 @@ import type { Contact } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, cn } from '@/lib/utils';
-import { User, Mail, Phone, Building, FileText, Tag, CalendarDays, Edit } from 'lucide-react';
+import { User, Mail, Phone, Building, FileText, Tag, CalendarDays, Edit, CalendarPlus, BellPlus } from 'lucide-react';
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
   isOpen: boolean;
   onClose: () => void;
-  onEditRequest?: (contact: Contact) => void; // New prop for edit request
+  onEditRequest?: (contact: Contact) => void; 
+  onAddAppointmentRequest?: (contact: Contact) => void; // New prop
+  onAddReminderRequest?: (contact: Contact) => void; // New prop
 }
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date; className?: string }> = ({ icon: Icon, label, value, className }) => {
@@ -36,7 +38,14 @@ const statusDisplay: Record<Exclude<Contact['status'], undefined>, string> = {
     other: "Other"
 };
 
-const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ contact, isOpen, onClose, onEditRequest }) => {
+const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ 
+    contact, 
+    isOpen, 
+    onClose, 
+    onEditRequest, 
+    onAddAppointmentRequest, 
+    onAddReminderRequest 
+}) => {
   if (!contact) return null;
 
   const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
@@ -46,6 +55,21 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ contact, isOp
       onEditRequest(contact);
     }
   };
+
+  const handleAddAppointmentClick = () => {
+    if (contact && onAddAppointmentRequest) {
+        onAddAppointmentRequest(contact);
+        onClose(); // Close detail modal after triggering appointment form
+    }
+  };
+
+  const handleAddReminderClick = () => {
+    if (contact && onAddReminderRequest) {
+        onAddReminderRequest(contact);
+        onClose(); // Close detail modal after triggering reminder form
+    }
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -69,7 +93,19 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ contact, isOp
           <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
         </div>
 
-        <div className="mt-6 flex justify-end space-x-2">
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {onAddAppointmentRequest && (
+            <Button type="button" variant="outline" onClick={handleAddAppointmentClick} className="h-11 px-4 py-3">
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              Add Appointment
+            </Button>
+          )}
+          {onAddReminderRequest && (
+            <Button type="button" variant="outline" onClick={handleAddReminderClick} className="h-11 px-4 py-3">
+              <BellPlus className="mr-2 h-4 w-4" />
+              Add Reminder
+            </Button>
+          )}
           {onEditRequest && (
             <Button type="button" variant="default" onClick={handleEditClick} className="h-11 px-4 py-3">
               <Edit className="mr-2 h-4 w-4" />

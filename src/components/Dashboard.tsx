@@ -5,7 +5,7 @@
 import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon } from 'lucide-react';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, MoreVertical, Eye, Edit, CalendarPlus, BellPlus } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Pie, PieChart as RechartsPieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -27,6 +27,7 @@ import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'd
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -34,9 +35,9 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 interface DashboardStats {
   totalCustomers: number;
-  newCustomersTodayCount: number; // Renamed for clarity
+  newCustomersTodayCount: number; 
   tasksPending: number;
-  appointmentsTodayCount: number; // Renamed for clarity
+  appointmentsTodayCount: number; 
 }
 
 const initialStats: DashboardStats = {
@@ -57,11 +58,11 @@ const mockContacts: Contact[] = [
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
 const PIE_CHART_CSS_VARS = [
-  'hsl(var(--chart-pie-1))', // Teal for 'Open'
-  'hsl(var(--chart-pie-2))', // Blue for 'Closed'
-  'hsl(var(--chart-pie-3))', // Yellow/Orange for 'Missed'
-  'hsl(var(--chart-pie-4))', // Gray for 'Other'
-  'hsl(var(--chart-5))',     // Fallback
+  'hsl(var(--chart-pie-1))', 
+  'hsl(var(--chart-pie-2))', 
+  'hsl(var(--chart-pie-3))', 
+  'hsl(var(--chart-pie-4))', 
+  'hsl(var(--chart-5))',     
 ];
 
 
@@ -92,9 +93,10 @@ const Dashboard: FC = () => {
     const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
     const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
 
+    const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null); // For pre-filling forms
+
     const isGoogleCalendarLinked = isGoogleDriveConnected;
 
-    // State for new modals
     const [isNewCustomersModalOpen, setNewCustomersModalOpen] = useState(false);
     const [newCustomersTodayList, setNewCustomersTodayList] = useState<Contact[]>([]);
     const [isTodaysTasksModalOpen, setTodaysTasksModalOpen] = useState(false);
@@ -212,7 +214,7 @@ const Dashboard: FC = () => {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-      loadDashboardData(); // Refresh data to update connection status
+      loadDashboardData(); 
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
@@ -221,8 +223,8 @@ const Dashboard: FC = () => {
     }, [loadDashboardData, toast]);
 
     const handleSaveTask = () => { setIsTaskFormOpen(false); setEditingTask(undefined); refreshData(); };
-    const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); refreshData(); };
-    const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); refreshData(); };
+    const handleSaveReminder = () => { setIsReminderFormOpen(false); setEditingReminder(undefined); setContactForNewActivity(null); refreshData(); };
+    const handleSaveAppointment = () => { setIsAppointmentFormOpen(false); setEditingAppointment(undefined); setContactForNewActivity(null); refreshData(); };
     
     const handleSaveCustomerEdit = () => {
       setIsEditCustomerDialogOpen(false);
@@ -239,6 +241,20 @@ const Dashboard: FC = () => {
       setIsCustomerDetailModalOpen(false); 
       setCustomerToEdit(contact);          
       setIsEditCustomerDialogOpen(true);   
+    };
+
+    const handleAddAppointmentRequestFromDetail = (contact: Contact) => {
+        setIsCustomerDetailModalOpen(false);
+        setContactForNewActivity(contact);
+        setEditingAppointment(undefined); // Clear any existing edit data
+        setIsAppointmentFormOpen(true);
+    };
+    
+    const handleAddReminderRequestFromDetail = (contact: Contact) => {
+        setIsCustomerDetailModalOpen(false);
+        setContactForNewActivity(contact);
+        setEditingReminder(undefined); // Clear any existing edit data
+        setIsReminderFormOpen(true);
     };
     
     const dialogContentClassName = "sm:max-w-[425px] glass-effect bg-card/80 dark:bg-card/70";
@@ -433,7 +449,7 @@ const Dashboard: FC = () => {
             >
               {stat.link ? (
                 <Link href={stat.link} passHref legacyBehavior>
-                  <a className="block h-full"> {/* Anchor tag for link behavior */}
+                  <a className="block h-full"> 
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
                       <stat.icon className="h-4 w-4 text-muted-foreground" />
@@ -544,12 +560,11 @@ const Dashboard: FC = () => {
                 {recentContacts.map((contact) => (
                 <li 
                     key={contact.id} 
-                    className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200 cursor-pointer"
-                    onClick={() => handleViewContactDetails(contact)}
+                    className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md transition-colors duration-200"
                 >
-                    <div>
-                    <span className="font-medium">{contact.firstName} {contact.lastName}</span>
-                    <p className="text-sm text-muted-foreground">{contact.email}</p>
+                    <div className="cursor-pointer" onClick={() => handleViewContactDetails(contact)}>
+                      <span className="font-medium">{contact.firstName} {contact.lastName}</span>
+                      <p className="text-sm text-muted-foreground">{contact.email}</p>
                     </div>
                      <p className="text-xs text-muted-foreground">{formatDateTime(contact.createdAt as string).split(',')[0]}</p>
                 </li>
@@ -591,12 +606,12 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <Button variant="default" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+            <Button variant="default" onClick={() => { setEditingReminder(undefined); setContactForNewActivity(null); setIsReminderFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
                 <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
             </Button>
         </CardHeader>
         <CardContent>
-            <ReminderList onEdit={(reminder) => { setEditingReminder(reminder); setIsReminderFormOpen(true); }} />
+            <ReminderList onEdit={(reminder) => { setEditingReminder(reminder); setContactForNewActivity(null); setIsReminderFormOpen(true); }} />
         </CardContent>
       </Card>
 
@@ -606,17 +621,16 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <Button variant="default" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+          <Button variant="default" onClick={() => {setEditingAppointment(undefined); setContactForNewActivity(null); setIsAppointmentFormOpen(true);}} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
             <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
           </Button>
         </CardHeader>
         <CardContent>
-            <AppointmentList onEditAppointment={(appointment) => {setEditingAppointment(appointment); setIsAppointmentFormOpen(true);}} />
+            <AppointmentList onEditAppointment={(appointment) => {setEditingAppointment(appointment); setContactForNewActivity(null); setIsAppointmentFormOpen(true);}} />
         </CardContent>
       </Card>
     </div>
 
-    {/* Modals for Dashboard cards */}
     <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
@@ -670,7 +684,7 @@ const Dashboard: FC = () => {
                         <li key={appt.id} className="p-2 border-b text-sm">
                             <p className="font-medium">{appt.title}</p>
                             <p className="text-xs text-muted-foreground">
-                                {formatDateTime(appt.date).split(',')[1]} {/* Show time */}
+                                {formatDateTime(appt.date).split(',')[1]} 
                                 {appt.location && ` - ${appt.location}`}
                             </p>
                             {appt.description && <p className="text-xs text-muted-foreground mt-1">{appt.description}</p>}
@@ -681,7 +695,6 @@ const Dashboard: FC = () => {
         </DialogContent>
     </Dialog>
 
-    {/* Task, Reminder, Appointment Forms in Dialogs */}
     <Dialog open={isTaskFormOpen} onOpenChange={setIsTaskFormOpen}>
         <DialogContent className={dialogContentClassName}>
             <DialogHeader>
@@ -698,11 +711,13 @@ const Dashboard: FC = () => {
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
                     <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                    {contactForNewActivity && !editingReminder && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
                     initialReminder={editingReminder}
+                    initialSelectedContactId={contactForNewActivity?.id}
                     onSave={handleSaveReminder}
-                    onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined);}}
+                    onCancel={() => { setIsReminderFormOpen(false); setEditingReminder(undefined); setContactForNewActivity(null);}}
                 />
             </DialogContent>
       </Dialog>
@@ -710,16 +725,17 @@ const Dashboard: FC = () => {
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
                   <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
+                  {contactForNewActivity && !editingAppointment && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
                   initialData={editingAppointment}
+                  initialSelectedContactId={contactForNewActivity?.id}
                   onSave={handleSaveAppointment}
-                  onCancel={() => {setIsAppointmentFormOpen(false); setEditingAppointment(undefined);}}
+                  onCancel={() => {setIsAppointmentFormOpen(false); setEditingAppointment(undefined); setContactForNewActivity(null);}}
               />
           </DialogContent>
       </Dialog>
 
-    {/* Customer Detail Modal */}
     <CustomerDetailModal
         contact={selectedContactForModal}
         isOpen={isCustomerDetailModalOpen}
@@ -728,9 +744,10 @@ const Dashboard: FC = () => {
             setSelectedContactForModal(null);
         }}
         onEditRequest={handleEditRequestFromDetail} 
+        onAddAppointmentRequest={handleAddAppointmentRequestFromDetail}
+        onAddReminderRequest={handleAddReminderRequestFromDetail}
       />
 
-    {/* Customer Edit Dialog for Dashboard */}
     <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {
         if (!open) setCustomerToEdit(null);
         setIsEditCustomerDialogOpen(open);
@@ -754,4 +771,3 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
-

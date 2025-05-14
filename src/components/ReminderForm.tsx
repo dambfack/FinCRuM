@@ -15,13 +15,14 @@ import { cn } from '@/lib/utils';
 
 interface ReminderFormProps {
   initialReminder?: Reminder;
+  initialSelectedContactId?: string; // New prop
   onSave: (reminder: Reminder) => void;
   onCancel: () => void;
 }
 
 const NO_ASSOCIATED_CONTACT_VALUE = "__NO_ASSOCIATED_CONTACT__";
 
-const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, onCancel }) => {
+const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSelectedContactId, onSave, onCancel }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reminderDateTime, setReminderDateTime] = useState<Date | null>(null);
@@ -40,13 +41,19 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
       setDescription(initialReminder.description || '');
       setReminderDateTime(initialReminder.dateTime ? parseDate(initialReminder.dateTime as string) : null);
       setAssociatedContactId(initialReminder.associatedContactId || NO_ASSOCIATED_CONTACT_VALUE);
-    } else {
+    } else if (initialSelectedContactId) {
+      setTitle('');
+      setDescription('');
+      setReminderDateTime(null);
+      setAssociatedContactId(initialSelectedContactId);
+    }
+    else {
       setTitle('');
       setDescription('');
       setReminderDateTime(null);
       setAssociatedContactId(NO_ASSOCIATED_CONTACT_VALUE); 
     }
-  }, [initialReminder]);
+  }, [initialReminder, initialSelectedContactId]);
 
 
   const validateForm = () => {
@@ -85,8 +92,6 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
     saveData<Reminder[]>(DataItemType.Reminders, currentReminders);
 
     try {
-      // Retrieve tokens from localStorage within the async function if needed by the calendar service
-      // Note: services/google-calendar.ts functions already expect tokens to be passed.
       const googleTokens = typeof window !== 'undefined' ? {
         access_token: localStorage.getItem(DataItemType.GoogleDriveAccessToken),
         refresh_token: localStorage.getItem(DataItemType.GoogleDriveRefreshToken),
@@ -127,7 +132,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
     "bg-neutral-100 dark:bg-neutral-900",
     "border-neutral-300 dark:border-neutral-700",
     "text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/50",
-    "mt-1", // Specific margin for this form
+    "mt-1", 
     errors.dateTime ? 'border-destructive' : ''
   );
 
@@ -161,7 +166,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
             dateFormat="MM/dd/yyyy h:mm aa"
             className={datePickerInputClassName}
             wrapperClassName="w-full"
-            popperClassName="react-datepicker-popper" // Apply custom popper class for z-index
+            popperClassName="react-datepicker-popper" 
         />
         {errors.dateTime && <p className="text-sm text-destructive mt-1">{errors.dateTime}</p>}
       </div>
@@ -186,7 +191,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, onSave, on
           Cancel
         </Button>
         <Button type="submit">
-          {initialReminder ? 'Update Reminder' : 'Add Reminder'}
+          {initialReminder || initialSelectedContactId ? 'Update Reminder' : 'Add Reminder'}
         </Button>
       </div>
     </form>

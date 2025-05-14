@@ -20,11 +20,12 @@ import { Badge } from './ui/badge';
 
 interface AppointmentFormProps {
   initialData?: Appointment;
+  initialSelectedContactId?: string; // New prop
   onSave: (appointment: Appointment) => void;
   onCancel: () => void;
 }
 
-const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, onCancel }) => {
+const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialSelectedContactId, onSave, onCancel }) => {
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [appointmentDate, setAppointmentDate] = useState<Date | null>(initialData?.date ? parseDate(initialData.date as string) : null);
@@ -48,7 +49,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
     setAllContacts(loadedContacts);
   }, []);
 
-  // Effect for handling initialData and resetting form
+  // Effect for handling initialData, initialSelectedContactId and resetting form
   useEffect(() => {
     if (initialData) {
         setTitle(initialData.title);
@@ -74,11 +75,28 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
                 })
                 .filter(Boolean) as AppointmentAttendee[];
             setCurrentAttendees(mappedAttendees);
-        } else if (!initialData.attendeesList) { 
-             setCurrentAttendees([]);
+        } else {
+             setCurrentAttendees([]); // Ensure it's an empty array if no initial attendees
         }
+    } else if (initialSelectedContactId && allContacts.length > 0) {
+      // If creating new with a pre-selected contact
+      setTitle('');
+      setDescription('');
+      setAppointmentDate(null);
+      setTime('');
+      setLocation('');
+      const contact = allContacts.find(c => c.id === initialSelectedContactId);
+      if (contact) {
+        setCurrentAttendees([{
+          email: contact.email,
+          displayName: `${contact.firstName} ${contact.lastName}`,
+          contactId: contact.id
+        }]);
+      } else {
+        setCurrentAttendees([]);
+      }
     } else {
-      // Reset for new form
+      // Reset for new form without pre-selection
       setTitle('');
       setDescription('');
       setAppointmentDate(null);
@@ -86,25 +104,25 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       setLocation('');
       setCurrentAttendees([]);
     }
-  }, [initialData, allContacts]); // Depend on allContacts to ensure mapping uses fresh data
+  }, [initialData, initialSelectedContactId, allContacts]);
 
   const handleAttendeeInputChange = (value: string) => {
     setAttendeeInput(value);
     if (value.trim().length > 0) { 
+        setShowSuggestions(true); 
         const suggestions = allContacts.filter(contact =>
             `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(value.toLowerCase()) ||
             contact.email.toLowerCase().includes(value.toLowerCase())
         ).slice(0, 5); 
         setContactSuggestions(suggestions);
-        setShowSuggestions(true); 
     } else {
-        setContactSuggestions([]);
         setShowSuggestions(true); 
+        setContactSuggestions([]);
     }
   };
 
   const addExistingContactAsAttendee = (contact: Contact) => {
-    if (!currentAttendees.find(a => a.contactId === contact.id)) {
+    if (!currentAttendees.find(a => a.contactId === contact.id || a.email.toLowerCase() === contact.email.toLowerCase())) {
         setCurrentAttendees(prev => [...prev, {
             email: contact.email,
             displayName: `${contact.firstName} ${contact.lastName}`,
@@ -130,7 +148,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
         if (email && !currentAttendees.find(a => a.email.toLowerCase() === email.toLowerCase())) {
              setCurrentAttendees(prev => [...prev, { email, displayName }]);
         } else if (!email && displayName && !currentAttendees.find(a => a.displayName?.toLowerCase() === displayName.toLowerCase())) {
-            setCurrentAttendees(prev => [...prev, { email: '', displayName }]);
+            setCurrentAttendees(prev => [...prev, { email: '', displayName }]); // Email can be empty if only name provided
              toast({ title: "Attendee Added by Name", description: "Note: Email is needed for calendar invitations.", variant: "default" });
         } else if (email) {
             toast({ title: "Attendee Exists", description: "This email is already in the attendee list.", variant: "default" });
@@ -145,9 +163,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
   
   const removeAttendee = (emailToRemove: string, displayNameToRemove?: string) => {
     setCurrentAttendees(prev => prev.filter(attendee => {
-        if (emailToRemove) return attendee.email !== emailToRemove;
-        if (displayNameToRemove) return attendee.displayName !== displayNameToRemove;
-        return false; 
+        if (emailToRemove && attendee.email) return attendee.email.toLowerCase() !== emailToRemove.toLowerCase();
+        if (displayNameToRemove && attendee.displayName) return attendee.displayName.toLowerCase() !== displayNameToRemove.toLowerCase();
+        if (emailToRemove && !attendee.email && attendee.displayName) return attendee.displayName.toLowerCase() !== emailToRemove.toLowerCase(); // Case where input was name, stored as displayName
+        return true; // Keep if no match
     }));
   };
 
@@ -365,7 +384,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
           Cancel
         </Button>
         <Button type="submit">
-          {initialData ? 'Update Appointment' : 'Save Appointment'}
+          {initialData || initialSelectedContactId ? 'Update Appointment' : 'Save Appointment'}
         </Button>
       </div>
     </form>

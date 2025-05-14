@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, Eye } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Edit, Trash2, Eye, MoreVertical, CalendarPlus, BellPlus } from 'lucide-react';
 import { formatDateTime, cn } from '@/lib/utils';
 
 interface CustomerTableProps {
@@ -21,6 +22,8 @@ interface CustomerTableProps {
   onEdit: (contact: Contact) => void;
   onDelete: (contactId: string) => void;
   onViewDetails: (contact: Contact) => void;
+  onAddAppointment: (contact: Contact) => void; // New prop
+  onAddReminder: (contact: Contact) => void; // New prop
 }
 
 const statusDisplayMap: Record<Exclude<Contact['status'], undefined>, string> = {
@@ -32,23 +35,23 @@ const statusDisplayMap: Record<Exclude<Contact['status'], undefined>, string> = 
 
 const getStatusBadgeVariant = (status?: Contact['status']) => {
   switch (status) {
-    case 'open': return 'default'; // Or a specific "info" variant if you add one
-    case 'closed': return 'secondary'; // Green if you have success/secondary set to green
+    case 'open': return 'default'; 
+    case 'closed': return 'secondary'; 
     case 'missed': return 'destructive';
     default: return 'outline';
   }
 };
 
-const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelete, onViewDetails }) => {
+const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelete, onViewDetails, onAddAppointment, onAddReminder }) => {
   if (contacts.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No customers found. Add one to get started!</p>;
   }
 
   return (
     <div className={cn(
-      "overflow-x-auto rounded-xl border shadow-xl", // Existing styles + increased rounding
-      "bg-card/60 dark:bg-card/40 backdrop-blur-lg", // Translucent background with blur
-      "border-white/20 dark:border-white/10" // Glass-like border
+      "overflow-x-auto rounded-xl border shadow-xl", 
+      "bg-card/60 dark:bg-card/40 backdrop-blur-lg", 
+      "border-white/20 dark:border-white/10" 
     )}>
       <Table>
         <TableHeader>
@@ -59,7 +62,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
             <TableHead className="text-foreground/80 dark:text-foreground/70">Company</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Status</TableHead>
             <TableHead className="text-foreground/80 dark:text-foreground/70">Last Updated</TableHead>
-            <TableHead className="text-right w-[150px] text-foreground/80 dark:text-foreground/70">Actions</TableHead>
+            <TableHead className="text-right w-[60px] text-foreground/80 dark:text-foreground/70">Actions</TableHead> 
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -85,20 +88,31 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               </TableCell>
               <TableCell className="text-foreground/90">{formatDateTime(contact.updatedAt as string)}</TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end items-center space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => onViewDetails(contact)} className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10">
-                    <Eye className="h-4 w-4" />
-                    <span className="sr-only">View Details</span>
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(contact)} className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10">
-                    <Edit className="h-4 w-4" />
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(contact.id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10">
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
+                    <DropdownMenuItem onClick={() => onViewDetails(contact)} className="gap-2">
+                      <Eye className="h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2">
+                      <Edit className="h-4 w-4" /> Edit
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => onAddAppointment(contact)} className="gap-2">
+                      <CalendarPlus className="h-4 w-4" /> Add Appointment
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onAddReminder(contact)} className="gap-2">
+                      <BellPlus className="h-4 w-4" /> Add Reminder
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDelete(contact.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2">
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}
