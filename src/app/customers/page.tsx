@@ -86,21 +86,17 @@ export default function CustomersPage() {
     // Use setTimeout to ensure the confirm dialog is not suppressed
     setTimeout(() => {
       console.log('[CustomersPage] Inside setTimeout for delete. About to call window.confirm for contact ID:', contactId);
-      const contactToDeleteFromTimeout = contacts.find(c => c.id === contactId); // Find inside timeout for freshest data
+      const contactToDeleteFromTimeout = contacts.find(c => c.id === contactId);
       const confirmMessage = contactToDeleteFromTimeout
         ? `Are you sure you want to ${contactToDeleteFromTimeout.contactStatus === 'pending_deletion' && currentUser?.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDeleteFromTimeout.firstName} ${contactToDeleteFromTimeout.lastName}?`
         : 'Are you sure you want to delete this contact?';
 
       const userConfirmed = window.confirm(confirmMessage);
       console.log('[CustomersPage] window.confirm result:', userConfirmed, 'for contact ID:', contactId);
-      alert(`[CustomersPage] Confirm result for contact ${contactId}: ${userConfirmed}`);
+      // alert(`[CustomersPage] Confirm result for contact ${contactId}: ${userConfirmed}`); // Removed debugging alert
 
       if (userConfirmed) {
         console.log('[CustomersPage] User confirmed deletion for contact ID:', contactId);
-        // Re-fetch contactToDelete within this scope after confirmation to ensure it's still valid
-        // and we have the latest version of 'contacts' state if other operations occurred.
-        // However, for simplicity in this debugging step, we rely on the 'contacts' state from when handleDelete was called.
-        // In a real scenario, you might refetch or ensure state is consistent.
         const contactToDelete = contacts.find(c => c.id === contactId);
 
 
@@ -325,6 +321,7 @@ export default function CustomersPage() {
                   {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
+                  initialData={undefined} // Ensure no prior appointment data is passed for a new one
                   initialSelectedContactId={contactForNewActivity?.id}
                   onSave={handleSaveAppointment}
                   onCancel={() => {setIsAppointmentFormOpen(false); setContactForNewActivity(null);}}
@@ -339,6 +336,7 @@ export default function CustomersPage() {
                     {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
+                    initialReminder={undefined} // Ensure no prior reminder data is passed for a new one
                     initialSelectedContactId={contactForNewActivity?.id}
                     onSave={handleSaveReminder}
                     onCancel={() => { setIsReminderFormOpen(false); setContactForNewActivity(null);}}
