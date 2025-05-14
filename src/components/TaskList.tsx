@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import type { Task, DataItemType, Contact } from '../lib/types';
+import { type Task, DataItemType, type Contact } from '../lib/types'; // Changed import for DataItemType
 import { useDataSync } from '../hooks/use-data-sync';
 import { getData, saveData, deleteItemById, formatDateTime } from '../lib/utils';
 import { Button } from './ui/button';
