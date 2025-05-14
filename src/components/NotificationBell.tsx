@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Bell, CheckCircle2, AlertTriangle, EyeOff, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -53,16 +53,18 @@ const NotificationBell: React.FC = () => {
     );
     saveData<Notification[]>(DataItemType.Notifications, updatedNotifications);
     loadNotifications(); // Refresh the list
+    // toast({ title: "Notification Dismissed" });
   };
 
   const markAllAsRead = () => {
     if (!currentUser) return;
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
     const updatedNotifications = allNotifications.map(n =>
-      n.recipientUserId === currentUser.id ? { ...n, read: true } : n
+      (n.recipientUserId === currentUser.id && !n.read) ? { ...n, read: true } : n
     );
     saveData<Notification[]>(DataItemType.Notifications, updatedNotifications);
     loadNotifications();
+    toast({ title: "All Unread Notifications Cleared" });
   };
 
   const handleApprovalAction = (notification: Notification, action: 'approve' | 'reject') => {
@@ -80,7 +82,7 @@ const NotificationBell: React.FC = () => {
 
       if (contactIndex === -1) {
         toast({ title: "Error", description: "Related contact not found.", variant: "destructive" });
-        markAsRead(notification.id); // Mark as read even if item is gone
+        markAsRead(notification.id); 
         return;
       }
       const originalContact = contacts[contactIndex];
@@ -93,25 +95,25 @@ const NotificationBell: React.FC = () => {
       if (action === 'approve') {
         if (originalContact.contactStatus === 'pending_approval' && originalContact.changeProposal) {
           contacts[contactIndex] = {
-            ...originalContact, // Keep original ID, createdAt, attachments etc.
-            ...originalContact.changeProposal, // Apply proposed changes
-            id: originalContact.id, // Ensure ID is not overwritten by proposal
-            createdAt: originalContact.createdAt, // Ensure createdAt is not overwritten
+            ...originalContact, 
+            ...originalContact.changeProposal, 
+            id: originalContact.id, 
+            createdAt: originalContact.createdAt, 
             contactStatus: 'approved',
-            changeProposal: undefined, // Clear proposal
+            changeProposal: undefined, 
             updatedAt: new Date().toISOString(),
-            lastModifiedByRole: 'partner', // Partner approved
+            lastModifiedByRole: 'partner', 
           };
           toast({ title: "Contact Approved", description: `Changes for ${contactName} approved.` });
         } else if (originalContact.contactStatus === 'pending_deletion') {
-          contacts.splice(contactIndex, 1); // Delete the contact
+          contacts.splice(contactIndex, 1); 
           toast({ title: "Contact Deletion Approved", description: `${contactName} deleted.` });
         }
       } else if (action === 'reject') {
         if (originalContact.contactStatus === 'pending_approval') {
           contacts[contactIndex] = {
             ...originalContact,
-            contactStatus: 'approved', // Revert to approved (changes rejected)
+            contactStatus: 'approved', 
             changeProposal: undefined,
             updatedAt: new Date().toISOString(),
             lastModifiedByRole: 'partner',
@@ -120,7 +122,7 @@ const NotificationBell: React.FC = () => {
         } else if (originalContact.contactStatus === 'pending_deletion') {
           contacts[contactIndex] = {
             ...originalContact,
-            contactStatus: 'approved', // Revert to approved (deletion rejected)
+            contactStatus: 'approved', 
             updatedAt: new Date().toISOString(),
             lastModifiedByRole: 'partner',
           };
@@ -129,11 +131,10 @@ const NotificationBell: React.FC = () => {
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
     }
-    // Extend for other DataItemTypes (Tasks, etc.) if approval flows are added for them
+    
 
-    markAsRead(notification.id); // Mark notification as read after processing
-    loadNotifications(); // Refresh notifications
-    // Potentially trigger a global state update or event if other components need to refresh their data
+    markAsRead(notification.id); 
+    loadNotifications(); 
     window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Contacts } }));
   };
 
@@ -153,7 +154,7 @@ const NotificationBell: React.FC = () => {
   return (
     <Popover open={isPopoverOpen} onOpenChange={(open) => {
       setIsPopoverOpen(open);
-      if (open) loadNotifications(); // Refresh when opened
+      if (open) loadNotifications(); 
     }}>
       <PopoverTrigger asChild>
         <Button
@@ -177,7 +178,9 @@ const NotificationBell: React.FC = () => {
         <div className="p-4 border-b border-border/20 flex justify-between items-center">
           <h4 className="font-medium text-sm font-heading tracking-wide">Notifications</h4>
            {notifications.length > 0 && unreadCount > 0 && (
-             <Button variant="link" size="sm" onClick={markAllAsRead} className="h-auto p-0 text-xs">Mark All as Read</Button>
+             <Button variant="link" size="sm" onClick={markAllAsRead} className="h-auto p-0 text-xs flex items-center gap-1 text-accent hover:text-accent/80">
+                <History className="h-3 w-3" /> Clear All Unread
+             </Button>
            )}
         </div>
         <ScrollArea className="h-[300px] sm:h-[400px]">
@@ -189,30 +192,34 @@ const NotificationBell: React.FC = () => {
                 <div
                   key={notification.id}
                   className={cn(
-                    "p-3 space-y-1",
-                    !notification.read && "bg-primary/5 dark:bg-primary/10"
+                    "p-3 space-y-1 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors",
+                    !notification.read && "bg-primary/10 dark:bg-primary/15"
                   )}
                 >
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5">{getNotificationIcon(notification.type)}</span>
                     <div className="flex-1">
-                      <p className="text-sm font-medium leading-tight">{notification.title}</p>
+                      <p className={cn("text-sm leading-tight", !notification.read ? "font-semibold text-foreground" : "font-medium text-foreground/80")}>{notification.title}</p>
                       <p className="text-xs text-muted-foreground">{notification.message}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground/70 pl-6">
-                    {formatDateTime(notification.createdAt)}
-                  </p>
-                  {!notification.read && notification.type !== 'approval_request' && ( // Don't show if approval buttons are present
-                     <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => markAsRead(notification.id)}
-                        className="h-auto p-0 text-xs text-accent hover:text-accent/80 ml-6"
-                      >
-                        Mark as Read
-                      </Button>
-                  )}
+                  <div className="pl-6 flex justify-between items-center">
+                    <p className="text-xs text-muted-foreground/70">
+                        {formatDateTime(notification.createdAt)}
+                    </p>
+                    {!notification.read && notification.type !== 'approval_request' && (
+                        <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => markAsRead(notification.id)}
+                            className="h-auto p-1 text-xs text-accent hover:text-accent-foreground hover:bg-accent/20 flex items-center gap-1"
+                            title="Dismiss notification"
+                        >
+                            <EyeOff className="h-3 w-3" />
+                            Dismiss
+                        </Button>
+                    )}
+                  </div>
                   {currentUser?.role === 'partner' && notification.type === 'approval_request' && !notification.read && (
                     <div className="flex gap-2 mt-1.5 pl-6">
                       <Button size="xs" variant="default" onClick={() => handleApprovalAction(notification, 'approve')} className="h-7 px-2 py-1 text-xs">
@@ -228,7 +235,6 @@ const NotificationBell: React.FC = () => {
             </div>
           )}
         </ScrollArea>
-        
       </PopoverContent>
     </Popover>
   );
@@ -236,3 +242,4 @@ const NotificationBell: React.FC = () => {
 
 export default NotificationBell;
 
+    
