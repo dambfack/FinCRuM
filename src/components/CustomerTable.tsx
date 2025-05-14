@@ -1,3 +1,4 @@
+
 // src/components/CustomerTable.tsx
 'use client';
 
@@ -64,7 +65,8 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
 
-  console.log('[CustomerTable] Rendering table, contacts count:', contacts.length, 'Current User:', currentUser);
+  console.log('[CustomerTable] Rendering. onDelete prop type:', typeof onDelete, 'onDelete prop itself:', onDelete);
+
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -114,7 +116,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               )}
             >
               <TableCell
-                className="font-medium text-foreground hover:text-accent hover:underline cursor-pointer"
+                className="font-medium text-foreground hover:text-accent hover:underline cursor-pointer select-none"
                 onClick={() => onViewDetails(contact)}
                 title={`View details for ${contact.firstName} ${contact.lastName}`}
               >
@@ -122,7 +124,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               </TableCell>
               {currentUser?.role === 'partner' && (
                 <TableCell>
-                  <Badge variant={contactStatusInfo.variant} className={cn("capitalize text-xs",
+                  <Badge variant={contactStatusInfo.variant} className={cn("capitalize text-xs select-none",
                      contactStatusInfo.variant === 'default' && 'bg-green-500/80 hover:bg-green-500/70 text-white',
                      contactStatusInfo.variant === 'secondary' && 'bg-orange-500/80 hover:bg-orange-500/70 text-white',
                      contactStatusInfo.variant === 'destructive' && 'bg-red-600/80 hover:bg-red-600/70 text-white'
@@ -132,12 +134,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                   </Badge>
                 </TableCell>
               )}
-              <TableCell className="text-foreground/90">{contact.email}</TableCell>
-              <TableCell className="text-foreground/90">{contact.phone || '-'}</TableCell>
-              <TableCell className="text-foreground/90">{contact.company || '-'}</TableCell>
+              <TableCell className="text-foreground/90 select-none">{contact.email}</TableCell>
+              <TableCell className="text-foreground/90 select-none">{contact.phone || '-'}</TableCell>
+              <TableCell className="text-foreground/90 select-none">{contact.company || '-'}</TableCell>
               <TableCell>
                 {contact.status ? (
-                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize text-xs",
+                  <Badge variant={getStatusBadgeVariant(contact.status)} className={cn("capitalize text-xs select-none",
                     contact.status === 'open' && 'bg-sky-500/80 hover:bg-sky-500/70 text-white',
                     contact.status === 'closed' && 'bg-green-500/80 hover:bg-green-500/70 text-white',
                     contact.status === 'missed' && 'bg-red-500/80 hover:bg-red-500/70 text-white',
@@ -145,11 +147,11 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                   )}>
                     {statusDisplayMap[contact.status] || contact.status}
                   </Badge>
-                ) : <span className="text-foreground/90">-</span>}
+                ) : <span className="text-foreground/90 select-none">-</span>}
               </TableCell>
-              <TableCell className="text-foreground/90">
+              <TableCell className="text-foreground/90 select-none">
                 {contact.assignedToUserId ? (
-                  <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate text-xs">
+                  <Badge variant="outline" className="flex items-center gap-1 max-w-[150px] truncate text-xs select-none">
                     <UserIcon className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate" title={getUserName(contact.assignedToUserId)}>
                         {getUserName(contact.assignedToUserId)}
@@ -157,17 +159,19 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                   </Badge>
                 ) : '-'}
               </TableCell>
-              <TableCell className="text-foreground/90">{formatDateTime(contact.updatedAt as string)}</TableCell>
+              <TableCell className="text-foreground/90 select-none">{formatDateTime(contact.updatedAt as string)}</TableCell>
               <TableCell className="text-right">
-                <DropdownMenu 
+                <DropdownMenu
                   onOpenChange={(open) => console.log('[CustomerTable] Dropdown open state changed:', open, 'for contact:', contact.id)}
                 >
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10"
-                      onClick={() => console.log('[CustomerTable] DropdownMenuTrigger clicked for contact:', contact.id)}
+                      onClick={(e) => {
+                        console.log('[CustomerTable] DropdownMenuTrigger clicked for contact:', contact.id);
+                      }}
                     >
                       <MoreVertical className="h-4 w-4" />
                       <span className="sr-only">Actions</span>
@@ -188,18 +192,17 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        alert('Delete clicked for ' + contact.id); // Kept for immediate UI feedback
-                        console.log('[CustomerTable] INSIDE DropdownMenuItem onClick for Delete. Contact ID:', contact.id);
-                        onDelete(contact.id); // Re-enabled this call
+                        console.log('[CustomerTable] Delete DropdownMenuItem clicked for contact ID:', contact.id, 'Calling onDelete prop.');
+                        onDelete(contact.id);
                       }}
                       className={cn(
-                        "gap-2 select-none", 
+                        "gap-2 select-none",
                         (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner')
                           ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10"
                           : "text-destructive focus:text-destructive focus:bg-destructive/10"
                       )}
                     >
-                      <Trash2 className="h-4 w-4" /> 
+                      <Trash2 className="h-4 w-4" />
                       {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete Contact'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>

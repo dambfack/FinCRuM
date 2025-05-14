@@ -92,7 +92,11 @@ export default function CustomersPage() {
   };
 
   const handleDelete = (contactId: string) => {
-    console.log('[CustomersPage] handleDelete called with contact ID:', contactId); // DEBUG LINE
+    console.log(`[CustomersPage] handleDelete HAS BEEN CALLED WITH: ${contactId}`);
+    alert(`[CustomersPage] handleDelete CALLED FOR: ${contactId}`); // For aggressive debugging
+
+    // Original logic starts here, will be uncommented once the call is confirmed
+    
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) {
         console.error("Delete aborted: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
@@ -100,7 +104,6 @@ export default function CustomersPage() {
         return;
     }
 
-    // Fetch the latest list of users directly from localStorage to ensure we have up-to-date partner information
     const currentAllUsers = getData<User[]>(DataItemType.Users) || [];
 
     if (confirm(`Are you sure you want to ${contactToDelete.contactStatus === 'pending_deletion' && currentUser.role === 'partner' ? 'cancel deletion for' : 'delete'} ${contactToDelete.firstName} ${contactToDelete.lastName}?`)) {
@@ -119,7 +122,7 @@ export default function CustomersPage() {
         const contactIndex = currentContacts.findIndex(c => c.id === contactId);
         if (contactIndex > -1) {
             currentContacts[contactIndex] = updatedContact;
-            saveData<Contact[]>(DataItemType.Contacts, currentContacts); // saveData will dispatch dataChanged
+            saveData<Contact[]>(DataItemType.Contacts, currentContacts);
         }
 
         const partners = currentAllUsers.filter(u => u.role === 'partner');
@@ -148,16 +151,15 @@ export default function CustomersPage() {
         }
       } else { // Partner is acting
         if (contactToDelete.contactStatus === 'pending_deletion') {
-            // Partner is cancelling a pending deletion
             const currentContacts = getData<Contact[]>(DataItemType.Contacts) || [];
             const contactIndex = currentContacts.findIndex(c => c.id === contactId);
             if (contactIndex > -1) {
                 currentContacts[contactIndex] = {
                     ...contactToDelete,
-                    contactStatus: 'approved', // Revert to approved
+                    contactStatus: 'approved', 
                     updatedAt: new Date().toISOString(),
                     lastModifiedByRole: 'partner',
-                    changeProposal: undefined // Clear any pending proposal
+                    changeProposal: undefined 
                 };
                 saveData<Contact[]>(DataItemType.Contacts, currentContacts);
                 toast({
@@ -166,16 +168,15 @@ export default function CustomersPage() {
                 });
             }
         } else {
-            // Partner is deleting directly
-            deleteItemById<Contact>(DataItemType.Contacts, contactId); // deleteItemById also uses saveData, so it will dispatch dataChanged
+            deleteItemById<Contact>(DataItemType.Contacts, contactId); 
             toast({
                 title: 'Customer Deleted',
                 description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
             });
         }
       }
-      // loadContacts(); // This will be handled by the dataChanged event listener
     }
+    
   };
 
   const handleViewDetails = (contact: Contact) => {
@@ -186,7 +187,6 @@ export default function CustomersPage() {
   const handleSaveCustomer = () => {
     setIsEditModalOpen(false);
     setSelectedContact(null);
-    // loadContacts(); // Handled by dataChanged event
   };
 
   const handleEditRequestFromDetail = (contact: Contact) => {
@@ -219,13 +219,12 @@ export default function CustomersPage() {
   };
 
   const handleContactUpdatedFromModal = (updatedContact: Contact) => {
-    setContacts(prevContacts => 
+    setContacts(prevContacts =>
         prevContacts.map(c => c.id === updatedContact.id ? updatedContact : c)
     );
     if (selectedContact && selectedContact.id === updatedContact.id) {
-      setSelectedContact(updatedContact); 
+      setSelectedContact(updatedContact);
     }
-    // The 'dataChanged' event dispatched by saveData will trigger loadContacts for full refresh if needed elsewhere
   };
 
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
