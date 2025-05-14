@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Task, DataItemType, Contact, ChecklistItem } from '../lib/types';
+import { type Task, DataItemType, type Contact, type ChecklistItem } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
 import { getData, saveData, parseDate } from '../lib/utils';
 import DatePicker from 'react-datepicker';
