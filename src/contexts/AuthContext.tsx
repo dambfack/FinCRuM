@@ -12,12 +12,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoadingAuth: boolean;
   pinSetupRequiredForUser: User | null;
-  appLogoUrl: string | null; // New: For custom app logo
+  appLogoUrl: string | null; // Current admin-set custom logo override
+  defaultAppLogoUrl: string | null; // User-set default application logo
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
-  updateAppLogo: (dataUri: string) => void; // New: Function to update app logo
+  updateAppLogo: (dataUri: string | null) => void; // Can be null to clear override
+  setDefaultAppLogo: (dataUri: string) => void; // Sets the new default logo
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,19 +29,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [pinSetupRequiredForUser, setPinSetupRequiredForUser] = useState<User | null>(null);
-  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null); // New state for app logo
+  const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null);
+  const [defaultAppLogoUrl, setDefaultAppLogoUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     setIsLoadingAuth(true);
 
-    // Load custom app logo
     const storedAppLogo = getData<string>(DataItemType.AppLogo);
     if (storedAppLogo) {
       setAppLogoUrl(storedAppLogo);
     }
+    const storedDefaultAppLogo = getData<string>(DataItemType.DefaultAppLogo);
+    if (storedDefaultAppLogo) {
+      setDefaultAppLogoUrl(storedDefaultAppLogo);
+    }
 
-    // Check for users and create default admin if none exist
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
       const defaultAdmin: User = {
@@ -62,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      const currentUsers = getData<User[]>(DataItemType.Users) || []; // Re-fetch in case default admin was just created
+      const currentUsers = getData<User[]>(DataItemType.Users) || [];
       const user = currentUsers.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
@@ -162,10 +167,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  const updateAppLogo = (dataUri: string) => {
+  const updateAppLogo = (dataUri: string | null) => {
     setAppLogoUrl(dataUri);
-    saveData<string>(DataItemType.AppLogo, dataUri);
-    toast({ title: "App Logo Updated", description: "The application logo has been changed." });
+    if (dataUri) {
+      saveData<string>(DataItemType.AppLogo, dataUri);
+      toast({ title: "App Logo Updated", description: "The application logo override has been changed." });
+    } else {
+      localStorage.removeItem(DataItemType.AppLogo);
+      toast({ title: "App Logo Override Cleared", description: "The custom app logo override has been removed." });
+    }
+  };
+
+  const setDefaultAppLogo = (dataUri: string) => {
+    setDefaultAppLogoUrl(dataUri);
+    saveData<string>(DataItemType.DefaultAppLogo, dataUri);
+    updateAppLogo(null); // Clear the current override so the new default takes effect
+    toast({ title: "Default App Logo Set", description: "The new default application logo has been set." });
   };
 
   const logout = () => {
@@ -177,7 +194,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser, appLogoUrl, login, logout, completePinSetupAndLogin, updateUserProfilePicture, updateAppLogo }}>
+    <AuthContext.Provider value={{ 
+        currentUser, 
+        isAuthenticated, 
+        isLoadingAuth, 
+        pinSetupRequiredForUser, 
+        appLogoUrl, 
+        defaultAppLogoUrl, 
+        login, 
+        logout, 
+        completePinSetupAndLogin, 
+        updateUserProfilePicture, 
+        updateAppLogo,
+        setDefaultAppLogo
+      }}>
       {children}
     </AuthContext.Provider>
   );

@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -49,37 +49,37 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-// Logo component now prioritizes custom uploaded PNG, then a default PNG placeholder
-const Logo = ({ appLogoUrl }: { appLogoUrl: string | null }) => {
-  if (appLogoUrl) {
-    return (
-      <Image
-        src={appLogoUrl}
-        alt="Finsculpt CRM Custom Logo"
-        width={24}
-        height={24}
-        className="h-6 w-6 object-contain" // Added object-contain for better scaling
-        data-ai-hint="custom company logo"
-      />
-    );
-  }
+const Logo = ({ appLogoUrl, defaultAppLogoUrl }: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
+  const logoToDisplay = appLogoUrl || defaultAppLogoUrl || "https://placehold.co/64x64.png?text=LOGO";
+  const isPlaceholder = logoToDisplay.startsWith("https://placehold.co");
 
-  // Fallback to a default PNG logo (placeholder for now)
   return (
     <Image
-      src="https://placehold.co/64x64.png?text=LOGO" // Replace with your actual default PNG path, e.g., "/default_logo.png"
-      alt="Finsculpt CRM Default Logo"
-      width={24}
-      height={24}
-      className="h-6 w-6 object-contain" // Added object-contain
-      data-ai-hint="default company logo placeholder"
+      src={logoToDisplay}
+      alt="Finsculpt CRM Logo"
+      width={isPlaceholder ? 64 : 24} // Adjust width if it's the text placeholder
+      height={isPlaceholder ? 64 : 24} // Adjust height
+      className="h-6 w-6 object-contain"
+      data-ai-hint={appLogoUrl ? "custom company logo" : defaultAppLogoUrl ? "default company logo" : "placeholder logo"}
+      unoptimized={logoToDisplay.startsWith("data:")} // Important for data URIs
     />
   );
 };
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoadingAuth, currentUser, logout, pinSetupRequiredForUser, updateUserProfilePicture, appLogoUrl, updateAppLogo } = useAuth();
+  const { 
+    isAuthenticated, 
+    isLoadingAuth, 
+    currentUser, 
+    logout, 
+    pinSetupRequiredForUser, 
+    updateUserProfilePicture, 
+    appLogoUrl, // current override
+    defaultAppLogoUrl, // user-set default
+    updateAppLogo, // updates the override
+    setDefaultAppLogo // sets the new default
+  } = useAuth();
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   const appLogoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -149,9 +149,17 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoCropSave = (croppedDataUri: string) => {
-    updateAppLogo(croppedDataUri);
+    updateAppLogo(croppedDataUri); // This sets the current override
     setIsAppLogoCropperOpen(false);
     setAppLogoImageToCropSrc(null);
+  };
+
+  const handleSetCurrentLogoAsDefault = () => {
+    if (appLogoUrl && currentUser?.role === 'partner') {
+      setDefaultAppLogo(appLogoUrl); // This sets the new default AND clears the current override
+    } else {
+      toast({ title: "Action Not Available", description: "No custom logo is currently set, or you don't have permission.", variant: "default"});
+    }
   };
 
 
@@ -182,7 +190,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         <SidebarHeader>
         <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-              <Logo appLogoUrl={appLogoUrl} />
+              <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
             </Link>
           </div>
         </SidebarHeader>
@@ -257,7 +265,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger />
             <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-              <Logo appLogoUrl={appLogoUrl} />
+              <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
               <span className="font-heading tracking-wide">Finsculpt CRM</span>
             </Link>
           </div>
@@ -319,11 +327,21 @@ function AppContent({ children }: { children: React.ReactNode }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full mb-3"
+                      className="w-full mb-1"
                       onClick={() => appLogoInputRef.current?.click()}
                     >
                       <ImageIcon className="mr-2 h-4 w-4" />
                        Change App Logo (PNG)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mb-3"
+                      onClick={handleSetCurrentLogoAsDefault}
+                      disabled={!appLogoUrl} // Enabled only if a custom logo is set
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                       Set Current as Default
                     </Button>
                   </div>
                 )}
