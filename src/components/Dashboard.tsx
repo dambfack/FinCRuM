@@ -50,11 +50,11 @@ const mockContacts: Contact[] = [
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
 const PIE_CHART_COLORS = [
-  'hsl(var(--chart-pie-1))', // Teal for 'Open'
-  'hsl(var(--chart-pie-2))', // Blue for 'Closed'
-  'hsl(var(--chart-pie-3))', // Yellow/Orange for 'Missed'
-  'hsl(var(--chart-pie-4))', // Gray for 'Other'
-  'hsl(var(--chart-5))', // Fallback
+  'hsla(var(--chart-pie-1), 0.8)', // Teal for 'Open'
+  'hsla(var(--chart-pie-2), 0.8)', // Blue for 'Closed'
+  'hsla(var(--chart-pie-3), 0.8)', // Yellow/Orange for 'Missed'
+  'hsla(var(--chart-pie-4), 0.8)', // Gray for 'Other'
+  'hsla(var(--chart-5), 0.8)', // Fallback
 ];
 
 
