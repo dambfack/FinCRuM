@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UploadCloud, FileText, ShieldCheck, Download, Trash2 } from 'lucide-react';
+import { UploadCloud, FileText, ShieldCheck, Download, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, cn } from '@/lib/utils';
 import { storeFile, getFile, deleteFile } from '@/lib/indexeddb'; // Import IndexedDB helpers
 
 interface FileAttachmentManagerProps {
@@ -38,7 +38,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       return;
     }
     // Password requirement for encryption is deferred
-    // if (!password.trim() && false) { 
+    // if (!password.trim() && false) {
     //   toast({ title: 'Password Required', description: 'Please enter a password for encryption.', variant: 'destructive' });
     //   return;
     // }
@@ -53,8 +53,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       contactId: contact.id,
       createdAt: new Date().toISOString(),
       encrypted: false, // Set to false as encryption is not implemented yet
-      // ivHex: 'dummyIVhex', // Placeholder, remove if not encrypting
-      // saltHex: 'dummySALTHex', // Placeholder, remove if not encrypting
     };
 
     try {
@@ -141,6 +139,39 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
     }
   };
 
+  const handleViewAttachment = async (attachment: FileAttachmentMeta) => {
+    try {
+      const fileBlob = await getFile(attachment.id);
+      if (!fileBlob) {
+        toast({
+          title: 'File Not Found',
+          description: `File content for '${attachment.name}' not found locally.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const fileType = attachment.type.toLowerCase();
+      const viewableTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'application/pdf', 'text/plain'];
+
+      if (viewableTypes.some(type => fileType.startsWith(type.split('/')[0] + '/') || fileType === type)) {
+        const url = URL.createObjectURL(fileBlob);
+        window.open(url, '_blank');
+        // No need to revokeObjectURL immediately for window.open, browser handles it.
+      } else {
+        // For non-directly viewable types, trigger download
+        handleDownloadAttachment(attachment);
+      }
+    } catch (error) {
+      console.error("Error viewing/opening attachment:", error);
+      toast({
+        title: 'Open Error',
+        description: `Could not open file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -165,21 +196,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
           </div>
-          {/* Password input can be re-enabled when encryption is implemented
-          <div>
-            <Label htmlFor="file-password">Encryption Password (Mock)</Label>
-            <Input
-              id="file-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password (mock)"
-              className="mt-1"
-              disabled // Disabled as actual encryption is not implemented
-            />
-             <p className="text-xs text-muted-foreground mt-1">Note: Actual file encryption is not implemented in this prototype.</p>
-          </div>
-          */}
           <Button onClick={handleAttachFile} disabled={isUploading || !selectedFile} className="w-full md:w-auto h-11 px-4 py-3">
             {isUploading ? 'Attaching...' : 'Attach File'}
           </Button>
@@ -203,22 +219,24 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                     <TableHead>Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Attached On</TableHead>
-                    {/* <TableHead className="text-center">Encrypted</TableHead> */}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium truncate max-w-xs" title={att.name}>{att.name}</TableCell>
+                      <TableCell className="font-medium truncate max-w-xs">
+                        <button
+                          onClick={() => handleViewAttachment(att)}
+                          className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
+                          title={`Open ${att.name}`}
+                        >
+                          {att.name}
+                        </button>
+                      </TableCell>
                       <TableCell className="truncate max-w-xs" title={att.type}>{att.type || 'N/A'}</TableCell>
                       <TableCell>{formatFileSize(att.size)}</TableCell>
                       <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
-                      {/* 
-                      <TableCell className="text-center">
-                        {att.encrypted ? <ShieldCheck className="h-5 w-5 text-green-500 mx-auto" /> : '-'}
-                      </TableCell>
-                      */}
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File">
                           <Download className="h-4 w-4" />
@@ -240,3 +258,4 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
+
