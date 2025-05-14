@@ -93,10 +93,8 @@ export default function CustomersPage() {
 
   const handleDelete = (contactId: string) => {
     console.log(`[CustomersPage] handleDelete HAS BEEN CALLED WITH: ${contactId}`);
-    alert(`[CustomersPage] handleDelete CALLED FOR: ${contactId}`); // For aggressive debugging
+    // alert(`[CustomersPage] handleDelete CALLED FOR: ${contactId}`); // REMOVED aggressive debugging
 
-    // Original logic starts here, will be uncommented once the call is confirmed
-    
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (!contactToDelete || !currentUser) {
         console.error("Delete aborted: Contact not found or user not authenticated.", { contactId, contactToDeleteExists: !!contactToDelete, currentUserExists: !!currentUser });
@@ -156,10 +154,10 @@ export default function CustomersPage() {
             if (contactIndex > -1) {
                 currentContacts[contactIndex] = {
                     ...contactToDelete,
-                    contactStatus: 'approved', 
+                    contactStatus: 'approved',
                     updatedAt: new Date().toISOString(),
                     lastModifiedByRole: 'partner',
-                    changeProposal: undefined 
+                    changeProposal: undefined
                 };
                 saveData<Contact[]>(DataItemType.Contacts, currentContacts);
                 toast({
@@ -168,7 +166,7 @@ export default function CustomersPage() {
                 });
             }
         } else {
-            deleteItemById<Contact>(DataItemType.Contacts, contactId); 
+            deleteItemById<Contact>(DataItemType.Contacts, contactId);
             toast({
                 title: 'Customer Deleted',
                 description: `${contactToDelete.firstName} ${contactToDelete.lastName} has been removed.`,
@@ -176,7 +174,6 @@ export default function CustomersPage() {
         }
       }
     }
-    
   };
 
   const handleViewDetails = (contact: Contact) => {
@@ -340,4 +337,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-
