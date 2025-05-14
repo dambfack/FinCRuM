@@ -35,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Renamed to avoid conflict
+import NextImage from 'next/image';
 
 const anton = Anton({
   subsets: ['latin'],
@@ -49,14 +49,13 @@ const montserrat = Montserrat({
   variable: '--font-montserrat',
 });
 
-// Logo Component with Fallback Logic
 const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const ultimateFallbackPngLogo = "/f_logo.png"; 
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-  const [currentSrc, setCurrentSrc] = useState<string>('');
+  const [currentSrc, setCurrentSrc] = useState<string>(props.appLogoUrl || props.defaultAppLogoUrl || ultimateFallbackPngLogo);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); 
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
   useEffect(() => {
     let newSrc: string | null = null;
@@ -69,33 +68,48 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
     }
     // console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists (len ' + props.appLogoUrl.length +')' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists (len ' + props.defaultAppLogoUrl.length +')' : 'null'}. Attempting to set src to: ${newSrc ? newSrc.substring(0,70) : 'null'}...`, 'Attempt:', attemptCounter);
     setCurrentSrc(newSrc || ultimateFallbackPngLogo);
-    setImgError(false); 
-    setAttemptCounter(prev => prev + 1); 
+    setImgError(false);
   }, [props.appLogoUrl, props.defaultAppLogoUrl]);
+
 
   const handleError = useCallback(() => {
     // console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
-    setImgError(true); 
+    setImgError(true);
 
+    let nextSrc = '';
     if (currentSrc === props.appLogoUrl && props.defaultAppLogoUrl) {
       // console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
-      setCurrentSrc(props.defaultAppLogoUrl);
-    } else if (currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) {
+      nextSrc = props.defaultAppLogoUrl;
+    } else if ((currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) && currentSrc !== ultimateFallbackPngLogo) {
       // console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo (/f_logo.png)");
-      setCurrentSrc(ultimateFallbackPngLogo);
-    } else if (currentSrc === ultimateFallbackPngLogo) {
+      nextSrc = ultimateFallbackPngLogo;
+    } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       // console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder (placehold.co)");
-      setCurrentSrc(absoluteUltimatePlaceholder);
+      nextSrc = absoluteUltimatePlaceholder;
     } else {
-      // console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored.");
-      return; 
+      // console.error("[Logo Component] All fallbacks exhausted or absolute placeholder also errored. Current src:", currentSrc);
+      // If even absoluteUltimatePlaceholder fails, we might be in a loop or it's truly broken.
+      // To prevent infinite loops, if currentSrc is already the last resort, don't try to set it again.
+      if (currentSrc === absoluteUltimatePlaceholder) return;
+      nextSrc = absoluteUltimatePlaceholder; // Ensure we try it at least once
     }
-    setAttemptCounter(prev => prev + 1); 
-    setImgError(false); 
-  }, [currentSrc, props.appLogoUrl, props.defaultAppLogoUrl, attemptCounter]);
+
+    if (nextSrc && currentSrc !== nextSrc) {
+        setCurrentSrc(nextSrc);
+        setImgError(false); // Reset error for the new attempt
+        setAttemptCounter(prev => prev + 1); // Force re-render with new key
+    } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+        // This case should ideally not be reached if logic is correct
+        // but as a safety, try the absolute placeholder if nextSrc is empty.
+        setCurrentSrc(absoluteUltimatePlaceholder);
+        setImgError(false);
+        setAttemptCounter(prev => prev + 1);
+    }
+
+  }, [currentSrc, props.appLogoUrl, props.defaultAppLogoUrl, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
 
-  if (!currentSrc || (currentSrc === absoluteUltimatePlaceholder && imgError)) {
+  if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
     // console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed or currentSrc is empty. Rendering minimal error indicator.`);
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
@@ -103,8 +117,8 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
-  
-  const dataAiHint = 
+
+  const dataAiHint =
     currentSrc === props.appLogoUrl ? "custom app logo" :
     currentSrc === props.defaultAppLogoUrl ? "default app logo" :
     currentSrc === ultimateFallbackPngLogo ? "fallback f logo" : "placeholder";
@@ -113,7 +127,7 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
 
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`} 
+      key={`${currentSrc}-${attemptCounter}`}
       src={currentSrc}
       alt={
         currentSrc === props.appLogoUrl ? "App Logo" :
@@ -123,9 +137,9 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
       }
       width={24}
       height={24}
-      className="h-6 w-6 object-contain" 
+      className="h-6 w-6 object-contain"
       data-ai-hint={dataAiHint}
-      unoptimized={unoptimized} 
+      unoptimized={unoptimized}
       onError={handleError}
     />
   );
@@ -133,7 +147,7 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const auth = useAuth(); 
+  const auth = useAuth();
   const {
     isAuthenticated,
     isLoadingAuth,
@@ -142,15 +156,15 @@ function AppContent({ children }: { children: React.ReactNode }) {
     pinSetupRequiredForUser,
     appLogoUrl,
     defaultAppLogoUrl,
-    headerLogoUrl, 
+    headerLogoUrl,
     updateAppLogo,
     setDefaultAppLogo,
     updateUserProfilePicture,
-    updateHeaderLogo, 
+    updateHeaderLogo,
   } = auth;
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   const appLogoInputRef = useRef<HTMLInputElement>(null);
-  const headerLogoInputRef = useRef<HTMLInputElement>(null); 
+  const headerLogoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const [isUserProfileCropperOpen, setIsUserProfileCropperOpen] = useState(false);
@@ -159,11 +173,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
 
-  const [isHeaderLogoCropperOpen, setIsHeaderLogoCropperOpen] = useState(false); 
-  const [headerLogoImageToCropSrc, setHeaderLogoImageToCropSrc] = useState<string | null>(null); 
+  const [isHeaderLogoCropperOpen, setIsHeaderLogoCropperOpen] = useState(false);
+  const [headerLogoImageToCropSrc, setHeaderLogoImageToCropSrc] = useState<string | null>(null);
 
 
-  // if (typeof window !== 'undefined') { 
+  // if (typeof window !== 'undefined') {
   //   console.log('[AppContent] Rendering. Context values - appLogoUrl:', appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null', "headerLogoUrl:", headerLogoUrl ? `len: ${headerLogoUrl.length}`: 'null');
   // }
 
@@ -176,7 +190,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           description: "Please select an image smaller than 2MB.",
           variant: "destructive",
         });
-         if (userProfilePicInputRef.current) { 
+         if (userProfilePicInputRef.current) {
           userProfilePicInputRef.current.value = '';
         }
         return;
@@ -188,7 +202,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         setIsUserProfileCropperOpen(true);
       };
       reader.readAsDataURL(file);
-      if (userProfilePicInputRef.current) { 
+      if (userProfilePicInputRef.current) {
         userProfilePicInputRef.current.value = '';
       }
     }
@@ -325,7 +339,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
             <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
                <Logo appLogoUrl={appLogoUrl} defaultAppLogoUrl={defaultAppLogoUrl} />
-               {/* Removed "Finsculpt CRM" text from sidebar header */}
             </Link>
           </div>
         </SidebarHeader>
@@ -388,13 +401,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className={cn(
-        "flex flex-col",
-        "bg-background/10 dark:bg-background/5 backdrop-blur-sm" 
+        "flex flex-col"
+        // Removed bg-background/10 dark:bg-background/5 backdrop-blur-sm for cleaner look
       )}>
         <header className={cn(
           "sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg",
-          "glass-effect", 
-          "bg-background/50 dark:bg-background/40", 
+          "glass-effect",
+          "bg-background/50 dark:bg-background/40",
           "hover:shadow-2xl transition-shadow duration-300"
         )}>
           <div className="flex items-center gap-2 md:hidden">
@@ -529,8 +542,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className={cn(
-          "flex-1 overflow-y-auto p-4 md:p-6",
-          "bg-background/5 dark:bg-background/2 backdrop-blur-xs rounded-lg m-1 border border-white/5" 
+          "flex-1 overflow-y-auto p-4 md:p-6 rounded-lg"
+          // Removed bg-background/5 dark:bg-background/2 backdrop-blur-xs, m-1, border border-white/5
         )}>
           {children}
         </main>
@@ -546,7 +559,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={userImageToCropSrc}
           onCropSave={handleUserCropSave}
-          aspectRatio={1 / 1} 
+          aspectRatio={1 / 1}
         />
       )}
       {appLogoImageToCropSrc && (
@@ -558,7 +571,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={appLogoImageToCropSrc}
           onCropSave={handleAppLogoCropSave}
-          aspectRatio={1 / 1} 
+          aspectRatio={1 / 1}
         />
       )}
       {headerLogoImageToCropSrc && (
@@ -570,7 +583,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           }}
           imageSrc={headerLogoImageToCropSrc}
           onCropSave={handleHeaderLogoCropSave}
-          aspectRatio={16 / 9} 
+          aspectRatio={16 / 9}
         />
       )}
     </>
@@ -610,4 +623,3 @@ export default function RootLayout({
     </html>
   );
 }
-

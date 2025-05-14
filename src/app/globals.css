@@ -112,18 +112,12 @@
   border-color: hsla(var(--glass-border) / 0.1); /* Translucent white border */
 }
 
-/* .glass-effect-sidebar removed as component will handle floating variant styling */
-
 .glass-effect-header {
   @apply backdrop-blur-lg shadow-lg border-b;
   border-color: hsla(var(--glass-border) / 0.05);
 }
 
-.glass-effect-main-content {
-    @apply backdrop-blur-md shadow-lg border rounded-xl m-2;
-    background-color: hsla(var(--background) / 0.1); /* Very subtle background for main content area */
-    border-color: hsla(var(--glass-border) / 0.05);
-}
+/* .glass-effect-main-content removed as main content area is now transparent */
 
 /* Custom styles for react-datepicker */
 .react-datepicker-popper {
@@ -361,7 +355,3 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
-
-    
-
