@@ -40,10 +40,14 @@ export default function CustomersPage() {
     
     let visibleContacts = storedContacts;
     if (currentUser?.role === 'employee') {
-      visibleContacts = storedContacts.filter(c => 
-        c.contactStatus === 'approved' || 
-        ( (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && c.lastModifiedByRole === 'employee' && c.id ) // Employees see their own pending changes
-      );
+      visibleContacts = storedContacts.filter(c => {
+        const isExplicitlyApproved = c.contactStatus === 'approved';
+        const isLegacyApproved = typeof c.contactStatus === 'undefined'; // Treat undefined as approved
+        const isOwnPendingChange = 
+          (c.contactStatus === 'pending_approval' || c.contactStatus === 'pending_deletion') && 
+          c.lastModifiedByRole === 'employee';
+        return isExplicitlyApproved || isLegacyApproved || isOwnPendingChange;
+      });
     }
     // For partners, all contacts are visible, including pending ones. CustomerTable can highlight them.
 
