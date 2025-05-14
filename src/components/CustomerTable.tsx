@@ -1,4 +1,3 @@
-
 // src/components/CustomerTable.tsx
 'use client';
 
@@ -64,7 +63,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
 
-  console.log('[CustomerTable] currentUser:', currentUser);
+  console.log('[CustomerTable] currentUser:', currentUser); // For debugging
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -183,8 +182,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => alert('Delete clicked for ' + contact.id)}
-                      className={cn("gap-2", (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" : "text-destructive focus:text-destructive focus:bg-destructive/10")}
-                      // Removed disabled attribute for debugging
+                      className={cn(
+                        "gap-2 select-none", // Added select-none here
+                        (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') 
+                          ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" 
+                          : "text-destructive focus:text-destructive focus:bg-destructive/10"
+                      )}
                     >
                       <Trash2 className="h-4 w-4" />
                       {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete'}
