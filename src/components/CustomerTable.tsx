@@ -55,7 +55,9 @@ const getContactStatusDisplay = (status?: Contact['contactStatus']): { text: str
     case 'approved':
       return { text: 'Approved', variant: 'default', Icon: CheckCircle };
     default:
-      return { text: status || 'N/A', variant: 'outline' };
+      // For undefined or legacy contacts, treat as 'Approved' but maybe with a less prominent style
+      // Or, if you want to explicitly show 'N/A' or similar:
+      return { text: status || 'Approved (Legacy)', variant: 'outline' };
   }
 };
 
@@ -63,6 +65,8 @@ const getContactStatusDisplay = (status?: Contact['contactStatus']): { text: str
 const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelete, onViewDetails, onAddAppointment, onAddReminder }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
+
+  console.log('[CustomerTable] currentUser:', currentUser); // DEBUG LINE to check AuthContext
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -180,10 +184,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                       <BellPlus className="h-4 w-4" /> Add Reminder
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => {
-                        console.log('[CustomerTable] Delete action clicked for contact ID:', contact.id);
-                        onDelete(contact.id);
-                      }}
+                      onClick={() => alert('Delete clicked for ' + contact.id)} // SIMPLIFIED FOR DEBUGGING
                       className={cn("gap-2", (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10" : "text-destructive focus:text-destructive focus:bg-destructive/10")}
                       disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
                     >
