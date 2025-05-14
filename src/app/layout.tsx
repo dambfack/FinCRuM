@@ -50,61 +50,52 @@ const montserrat = Montserrat({
 });
 
 const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | null }) => {
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming you have this in public/
+  const ultimateFallbackPngLogo = "/f_logo.png"; 
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   const [currentSrc, setCurrentSrc] = useState<string>(ultimateFallbackPngLogo);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Key to force re-render for img
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
   useEffect(() => {
     let newSrc: string | null = null;
     if (props.appLogoUrl) {
       newSrc = props.appLogoUrl;
-      // console.log(`[Logo Component] useEffect update. Prioritizing appLogoUrl. Length: ${newSrc?.length}`);
     } else if (props.defaultAppLogoUrl) {
       newSrc = props.defaultAppLogoUrl;
-      // console.log(`[Logo Component] useEffect update. Using defaultAppLogoUrl. Length: ${newSrc?.length}`);
     } else {
       newSrc = ultimateFallbackPngLogo;
-      // console.log(`[Logo Component] useEffect update. Using ultimateFallbackPngLogo: ${newSrc}`);
     }
     
-    setCurrentSrc(newSrc || ultimateFallbackPngLogo); // Ensure currentSrc is never null
-    setImgError(false); // Reset error state when props change
-    setAttemptCounter(prev => prev + 1);
+    // console.log(`[Logo Component] useEffect update. appLogoUrl: ${props.appLogoUrl ? 'Exists' : 'null'}, defaultAppLogoUrl: ${props.defaultAppLogoUrl ? 'Exists' : 'null'}. Chosen src: ${newSrc ? newSrc.substring(0,70) : 'null'}...`);
+    setCurrentSrc(newSrc || ultimateFallbackPngLogo);
+    setImgError(false);
+    setAttemptCounter(prev => prev + 1); 
   }, [props.appLogoUrl, props.defaultAppLogoUrl]);
 
   const handleError = () => {
-    console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
-    setImgError(true); // Signal an error occurred
+    // console.error(`[Logo Component] Next/Image onError for src: ${currentSrc}. Attempt: ${attemptCounter}`);
+    setImgError(true);
 
-    // Determine next fallback based on currentSrc and props
     if (currentSrc === props.appLogoUrl && props.defaultAppLogoUrl) {
-      console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
+      // console.log("[Logo Component] Fallback 1: Trying defaultAppLogoUrl");
       setCurrentSrc(props.defaultAppLogoUrl);
     } else if (currentSrc === props.appLogoUrl || currentSrc === props.defaultAppLogoUrl) {
-      // If appLogoUrl failed (and no defaultAppLogoUrl was available for fallback 1)
-      // OR if defaultAppLogoUrl failed
-      console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo");
+      // console.log("[Logo Component] Fallback 2: Trying ultimateFallbackPngLogo");
       setCurrentSrc(ultimateFallbackPngLogo);
     } else if (currentSrc === ultimateFallbackPngLogo) {
-      console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder");
+      // console.log("[Logo Component] Fallback 3: Trying absoluteUltimatePlaceholder");
       setCurrentSrc(absoluteUltimatePlaceholder);
     } else {
-      // All fallbacks attempted or currentSrc is already the absolute placeholder and it also failed
-      console.error("[Logo Component] All fallbacks failed or absolute placeholder error.");
-      // To prevent infinite loop if absoluteUltimatePlaceholder also errors, don't reset currentSrc here.
-      // The UI will show the minimal error div below.
-      return; // Exit early, minimal error div will be shown by render logic
+      // console.error("[Logo Component] All fallbacks failed or absolute placeholder error.");
+      return; 
     }
-    setAttemptCounter(prev => prev + 1); // Increment attempt counter for new src
-    setImgError(false); // Reset error flag for the new attempt
+    setAttemptCounter(prev => prev + 1); 
+    setImgError(false); 
   };
   
-  // If currentSrc is the placeholder and imgError is true for it, render minimal error
   if (currentSrc === absoluteUltimatePlaceholder && imgError) {
-    console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed. Rendering minimal error.`);
+    // console.log(`[Logo Component] Absolute placeholder (${absoluteUltimatePlaceholder}) also failed. Rendering minimal error.`);
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -113,10 +104,10 @@ const Logo = (props: { appLogoUrl: string | null; defaultAppLogoUrl: string | nu
   const unoptimized = isDataUri || isPlaceholderCo;
 
   // console.log(`[Logo Component] Rendering NextImage. Source: ${currentSrc.substring(0,70)}... (isDataUri: ${isDataUri}, unoptimized: ${unoptimized}, attempt: ${attemptCounter})`);
-
+  
   return (
     <NextImage 
-      key={`${currentSrc}-${attemptCounter}`} // Key to help React re-render if src changes
+      key={`${currentSrc}-${attemptCounter}`}
       src={currentSrc}
       alt={
         currentSrc === ultimateFallbackPngLogo ? "Finsculpt CRM F Logo (Default)" :
@@ -161,11 +152,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isAppLogoCropperOpen, setIsAppLogoCropperOpen] = useState(false);
   const [appLogoImageToCropSrc, setAppLogoImageToCropSrc] = useState<string | null>(null);
 
-
   // if (typeof window !== 'undefined') {
   //   console.log("[AppContent] Rendering. Context values - appLogoUrl:", appLogoUrl ? `len: ${appLogoUrl.length}`: 'null', "defaultAppLogoUrl:", defaultAppLogoUrl ? `len: ${defaultAppLogoUrl.length}`: 'null');
   // }
-
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -203,25 +192,54 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[AppContent] handleAppLogoFileChange triggered.');
     const file = event.target.files?.[0];
+    console.log('[AppContent] Selected file:', file);
+
     if (file) {
+      console.log('[AppContent] File type:', file.type, 'File size:', file.size);
       if (file.type !== 'image/png') {
+        console.log('[AppContent] Invalid file type. Toasting.');
         toast({ title: "Invalid File Type", description: "Please upload a PNG file for the app logo.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
+        console.log('[AppContent] File input reset due to invalid type.');
         return;
       }
       if (file.size > 1 * 1024 * 1024) { 
+        console.log('[AppContent] File too large. Toasting.');
         toast({ title: "Logo Too Large", description: "Please select a PNG logo smaller than 1MB.", variant: "destructive" });
         if (appLogoInputRef.current) appLogoInputRef.current.value = '';
+        console.log('[AppContent] File input reset due to size.');
         return;
       }
+      console.log('[AppContent] File validation passed. Creating FileReader.');
       const reader = new FileReader();
+      reader.onloadstart = () => {
+        console.log('[AppContent] FileReader onloadstart.');
+      };
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) {
+          console.log(`[AppContent] FileReader onprogress: ${e.loaded} / ${e.total}`);
+        }
+      };
       reader.onloadend = () => {
+        console.log('[AppContent] FileReader onloadend. Result length:', (reader.result as string)?.length);
         setAppLogoImageToCropSrc(reader.result as string);
+        console.log('[AppContent] Set appLogoImageToCropSrc. Now setting isAppLogoCropperOpen to true.');
         setIsAppLogoCropperOpen(true);
       };
+      reader.onerror = (e) => {
+        console.error('[AppContent] FileReader onerror:', e);
+        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
+      };
+      console.log('[AppContent] Calling reader.readAsDataURL(file).');
       reader.readAsDataURL(file);
-      if (appLogoInputRef.current) appLogoInputRef.current.value = '';
+      if (appLogoInputRef.current) {
+        console.log('[AppContent] Resetting file input after readAsDataURL call.');
+        appLogoInputRef.current.value = '';
+      }
+    } else {
+      console.log('[AppContent] No file selected or event.target.files is empty.');
     }
   };
 
@@ -513,3 +531,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
