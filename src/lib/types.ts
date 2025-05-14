@@ -198,6 +198,8 @@ export enum DataItemType {
   AppLogo = 'appLogo', // For storing custom app logo data URI (current override)
   DefaultAppLogo = 'defaultAppLogo', // For storing the user-set default app logo
   HeaderLogo = 'headerLogo', // For storing custom header text logo
+  BackgroundImage = 'backgroundImage', // For current custom background override
+  DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
 }
 
 /**
@@ -217,6 +219,8 @@ export interface LocalData {
   appLogo?: string; // Data URI for custom app logo (current override)
   defaultAppLogo?: string; // Data URI for the user-set default app logo
   headerLogo?: string; // Data URI for custom header text logo
+  backgroundImage?: string; // Data URI for current custom background
+  defaultBackgroundImage?: string; // Data URI for user-set default background
 }
 
 /**

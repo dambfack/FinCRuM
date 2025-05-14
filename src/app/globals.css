@@ -99,9 +99,8 @@
     @apply border-border; /* Default border color */
   }
   body {
-    @apply text-foreground bg-cover bg-center bg-fixed; /* Moved background properties here */
-    background-image: url('https://placehold.co/1920x1080.png'); /* Default background - using placeholder */
-    data-ai-hint: "abstract gradient";
+    @apply text-foreground bg-cover bg-center bg-fixed; /* Background properties */
+    /* background-image will be set dynamically by BackgroundImageSwitcher.tsx */
   }
 }
 
