@@ -57,7 +57,7 @@ export default function UsersPage() {
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl font-bold font-heading tracking-wide flex items-center">
+          <h1 className="text-3xl font-bold font-heading flex items-center"> {/* Removed tracking-wide */}
             <Users2 className="mr-3 h-8 w-8 text-accent" /> Team Management
           </h1>
           <Skeleton className="h-11 w-36 rounded-md" />
@@ -72,7 +72,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold font-heading tracking-wide flex items-center">
+        <h1 className="text-3xl font-bold font-heading flex items-center"> {/* Removed tracking-wide */}
           <Users2 className="mr-3 h-8 w-8 text-accent" /> Team Management
         </h1>
         <Button onClick={() => { setEditingUser(null); setIsFormModalOpen(true); }} className="h-11 px-4 py-3">
@@ -95,7 +95,7 @@ export default function UsersPage() {
       }}>
         <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="font-heading tracking-wide">{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+            <DialogTitle className="font-heading">{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle> {/* Removed tracking-wide */}
             <DialogDescription>{editingUser ? "Update the user's details." : "Fill in the details to add a new user."}</DialogDescription>
           </DialogHeader>
           <UserForm

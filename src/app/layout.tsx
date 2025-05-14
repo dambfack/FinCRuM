@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat } from 'next/font/google'; // Changed Anton to Inter
+import { Inter, Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn, getFirstInitial } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -35,14 +35,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Changed to NextImage to avoid conflict
 import { useTheme } from 'next-themes';
 
 
-const interBlack = Inter({ // Changed from anton
+const interBlack = Inter({
   subsets: ['latin'],
-  weight: ['900'], // 'Black' weight for Inter
-  variable: '--font-inter-black', // Updated variable name
+  weight: ['900'],
+  variable: '--font-inter-black',
 });
 
 const montserrat = Montserrat({
@@ -60,26 +60,23 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render on error/fallback
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming this is your ultimate PNG fallback in public/
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
-    // console.log(`[Logo Component] useEffect triggered. Theme: ${resolvedTheme}, Props:`, props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    } else { // light or system resolved to light
+    } else {
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
-    // console.log(`[Logo Component] Determined Src for ${resolvedTheme} theme: ${determinedSrc ? determinedSrc.substring(0,70) : 'null'}`);
-    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo); // Ensure currentSrc is never null if ultimate fallback is set
-    setImgError(false); // Reset error state when props change
-  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]); // Added attemptCounter
+    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
+    setImgError(false);
+  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
 
   const handleError = useCallback(() => {
-    // console.error(`[Logo Component] Error loading image: ${currentSrc ? currentSrc.substring(0,70) : 'null'}`);
     setImgError(true);
     let nextSrc = '';
 
@@ -90,7 +87,7 @@ const Logo: React.FC<{
         else if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = ultimateFallbackPngLogo;
         else nextSrc = ultimateFallbackPngLogo;
-      } else { // Light or system resolved to light
+      } else {
         if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
         else if (currentSrc === props.appLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
@@ -100,17 +97,14 @@ const Logo: React.FC<{
     } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       nextSrc = absoluteUltimatePlaceholder;
     } else {
-      // console.log("[Logo Component] All fallbacks exhausted or currentSrc is already the absolute placeholder.");
-      return; // All fallbacks exhausted or already at the absolute placeholder
+      return; 
     }
     
     if (nextSrc && currentSrc !== nextSrc) {
-      // console.log(`[Logo Component] Falling back to: ${nextSrc.substring(0,70)}`);
       setCurrentSrc(nextSrc);
-      setImgError(false); // Reset error for the new src
-      setAttemptCounter(prev => prev + 1); // Increment attempt counter to force re-render with new key
+      setImgError(false);
+      setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-        // console.log(`[Logo Component] Falling back to absolute placeholder.`);
         setCurrentSrc(absoluteUltimatePlaceholder);
         setImgError(false);
         setAttemptCounter(prev => prev + 1);
@@ -119,7 +113,6 @@ const Logo: React.FC<{
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    // console.log("[Logo Component] No valid src or error on absolute placeholder, rendering error indicator.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -127,16 +120,14 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  // console.log(`[Logo Component] Rendering Image. Src: ${currentSrc.substring(0,70)}, Unoptimized: ${unoptimized}, Key: ${currentSrc}-${attemptCounter}`);
-
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`} // Key to force re-render on src change or error fallback
+      key={`${currentSrc}-${attemptCounter}`}
       src={currentSrc}
       alt="App Logo"
       width={24}
       height={24}
-      className="h-6 w-6 object-contain" // object-contain ensures aspect ratio is maintained
+      className="h-6 w-6 object-contain"
       data-ai-hint="company app logo"
       unoptimized={unoptimized}
       onError={handleError}
@@ -181,10 +172,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
-    // console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      // console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
@@ -196,11 +185,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
          return;
       }
       const reader = new FileReader();
-      // reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
-      // reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress - loaded: ${e.loaded}, total: ${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        // console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri?.length}`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -210,8 +196,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
-    } else {
-      // console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null`);
     }
   };
 
@@ -241,7 +225,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
-    // console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
+    console.log("[AppContent] Rendering. Context values - appLogoLightUrl:", appLogoLightUrl ? `len: ${appLogoLightUrl.length}`: 'null', "appLogoDarkUrl:", appLogoDarkUrl ? `len: ${appLogoDarkUrl.length}`: 'null', "defaultAppLogoLightUrl:", defaultAppLogoLightUrl ? `len: ${defaultAppLogoLightUrl.length}`: 'null', "defaultAppLogoDarkUrl:", defaultAppLogoDarkUrl ? `len: ${defaultAppLogoDarkUrl.length}`: 'null', "headerLogoLightUrl:", headerLogoLightUrl ? `len: ${headerLogoLightUrl.length}`: 'null', "headerLogoDarkUrl:", headerLogoDarkUrl ? `len: ${headerLogoDarkUrl.length}`: 'null' );
   }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
 
 
@@ -353,7 +337,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 appLogoLightUrl={appLogoLightUrl} appLogoDarkUrl={appLogoDarkUrl}
                 defaultAppLogoLightUrl={defaultAppLogoLightUrl} defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
               />
-              <div className="flex items-center font-heading tracking-wide">
+              <div className="flex items-center font-heading"> {/* Removed tracking-wide */}
                 {currentHeaderLogo ? (
                   <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo mobile" />
                 ) : (
@@ -363,7 +347,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
           </div>
-          <div className="hidden md:flex items-center text-xl font-semibold font-heading tracking-wide">
+          <div className="hidden md:flex items-center text-xl font-semibold font-heading"> {/* Removed tracking-wide */}
             {currentHeaderLogo ? (
               <img src={currentHeaderLogo} alt="Header Logo" className="h-8 w-auto max-w-64 mr-1 object-contain" data-ai-hint="custom header logo" />
             ) : (
@@ -384,7 +368,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </PopoverTrigger>
               <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
                 <div className="p-1">
-                  <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">User</h4>
+                  <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4> {/* Removed tracking-wide */}
                   {currentUser && (
                     <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
                       <Avatar className="h-10 w-10">
@@ -403,7 +387,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
                 {currentUser?.role === 'partner' && (
                   <div className="p-1 mt-2 border-t border-border/20 pt-3">
-                    <h4 className="font-medium leading-none text-sm font-heading tracking-wide mb-2">App & Header Logos</h4>
+                    <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4> {/* Removed tracking-wide */}
                     
                     {/* App Logos */}
                     <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
@@ -471,7 +455,7 @@ export default function RootLayout({
       <body
         className={cn(
           GeistSans.variable,
-          interBlack.variable, // Updated from anton.variable
+          interBlack.variable,
           montserrat.variable,
           'antialiased font-sans flex min-h-screen flex-col'
         )}

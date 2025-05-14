@@ -184,7 +184,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
     <div className="space-y-6">
       <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center font-heading tracking-wide">
+          <CardTitle className="text-lg flex items-center font-heading"> {/* Removed tracking-wide */}
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
@@ -204,7 +204,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       {(contact.attachments && contact.attachments.length > 0) && (
         <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center font-heading tracking-wide">
+            <CardTitle className="text-lg flex items-center font-heading"> {/* Removed tracking-wide */}
               <FileText className="mr-2 h-5 w-5" />
               Attached Files
             </CardTitle>

@@ -351,9 +351,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: PIE_CHART_CSS_VARS, 
+      colors: PIE_CHART_CSS_VARS.map(color => `hsla(${color.replace('hsl(','').replace(')','').split(' ').join(', ')}, 0.8)`), // Apply opacity here
       fill: {
-        opacity: 0.8, 
+        opacity: 1, // Keep this 1, opacity is handled in colors
       },
       stroke: {
         show: true,
@@ -458,7 +458,7 @@ const Dashboard: FC = () => {
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading tracking-wide">Dashboard</h1>
+          <h1 className="text-3xl font-bold font-heading">Dashboard</h1> {/* Removed tracking-wide */}
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -485,7 +485,7 @@ const Dashboard: FC = () => {
                 <Link href={stat.link} passHref legacyBehavior>
                   <a className="block h-full"> 
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
+                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
                       <stat.icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -497,7 +497,7 @@ const Dashboard: FC = () => {
               ) : (
                 <>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium font-heading tracking-wide">{stat.title}</CardTitle>
+                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -514,7 +514,7 @@ const Dashboard: FC = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <CardTitle className="font-heading tracking-wide">Customer Growth</CardTitle>
+                <CardTitle className="font-heading">Customer Growth</CardTitle> {/* Removed tracking-wide */}
                 <Select value={barChartTimeRange} onValueChange={(value: BarChartTimeRange) => setBarChartTimeRange(value)}>
                     <SelectTrigger className="w-full sm:w-[180px] h-9">
                         <SelectValue placeholder="Select time range" />
@@ -557,7 +557,7 @@ const Dashboard: FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-heading tracking-wide">Client Deal Status</CardTitle>
+            <CardTitle className="font-heading">Client Deal Status</CardTitle> {/* Removed tracking-wide */}
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -579,7 +579,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
@@ -621,7 +621,7 @@ const Dashboard: FC = () => {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
@@ -636,7 +636,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
+            <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
@@ -651,7 +651,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading tracking-wide">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
@@ -668,7 +668,7 @@ const Dashboard: FC = () => {
     <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading tracking-wide">Customers Added Today</DialogTitle>
+                <DialogTitle className="font-heading">Customers Added Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {newCustomersTodayList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -686,7 +686,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysTasksModalOpen} onOpenChange={setTodaysTasksModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading tracking-wide">Tasks for Today</DialogTitle>
+                <DialogTitle className="font-heading">Tasks for Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {todaysTasksList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -733,7 +733,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysAppointmentsModalOpen} onOpenChange={setTodaysAppointmentsModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading tracking-wide">Appointments for Today</DialogTitle>
+                <DialogTitle className="font-heading">Appointments for Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {todaysAppointmentsList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -765,7 +765,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTaskFormOpen} onOpenChange={(open) => { if(!open) {setEditingTask(undefined); setContactForNewActivity(null);} setIsTaskFormOpen(open);}}>
         <DialogContent className={taskDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading tracking-wide">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle> {/* Removed tracking-wide */}
                 {contactForNewActivity && !editingTask && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
             </DialogHeader>
             <TaskForm
@@ -779,7 +779,7 @@ const Dashboard: FC = () => {
     <Dialog open={isReminderFormOpen} onOpenChange={(open) => { if(!open) {setEditingReminder(undefined); setContactForNewActivity(null);} setIsReminderFormOpen(open);}}>
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
-                    <DialogTitle className="font-heading tracking-wide">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle> {/* Removed tracking-wide */}
                     {contactForNewActivity && !editingReminder && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
@@ -793,7 +793,7 @@ const Dashboard: FC = () => {
     <Dialog open={isAppointmentFormOpen} onOpenChange={(open) => { if(!open) {setEditingAppointment(undefined); setContactForNewActivity(null);} setIsAppointmentFormOpen(open);}}>
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
-                  <DialogTitle className="font-heading tracking-wide">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
+                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle> {/* Removed tracking-wide */}
                   {contactForNewActivity && !editingAppointment && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
@@ -825,7 +825,7 @@ const Dashboard: FC = () => {
     }}>
         <DialogContent className={customerEditDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading tracking-wide">Edit Customer</DialogTitle>
+                <DialogTitle className="font-heading">Edit Customer</DialogTitle> {/* Removed tracking-wide */}
                 <DialogDescription>Update the customer's details below.</DialogDescription>
             </DialogHeader>
             {customerToEdit && (

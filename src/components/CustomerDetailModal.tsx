@@ -146,7 +146,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
           </Avatar>
           <div>
-            <DialogTitle className="text-2xl font-heading tracking-wide">
+            <DialogTitle className="text-2xl font-heading"> {/* Removed tracking-wide */}
               {contact.firstName} {contact.lastName}
             </DialogTitle>
             <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -222,4 +222,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-

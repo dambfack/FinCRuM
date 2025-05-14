@@ -64,7 +64,7 @@ const PinLoginScreen: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-background/80 to-background/60 p-4">
         <Card className="w-full max-w-md shadow-2xl glass-effect">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-heading tracking-wide">Loading...</CardTitle>
+            <CardTitle className="text-2xl font-heading">Loading...</CardTitle> {/* Removed tracking-wide */}
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground">Initializing application...</p>
@@ -81,7 +81,7 @@ const PinLoginScreen: React.FC = () => {
           <div className="mx-auto bg-primary/10 text-primary p-3 rounded-full w-fit mb-4">
             <LogIn className="h-10 w-10" />
           </div>
-          <CardTitle className="text-2xl font-heading tracking-wide">Welcome Back!</CardTitle>
+          <CardTitle className="text-2xl font-heading">Welcome Back!</CardTitle> {/* Removed tracking-wide */}
           <CardDescription>
             Select your name and enter your PIN to access Finsculpt CRM.
           </CardDescription>

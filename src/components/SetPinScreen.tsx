@@ -60,7 +60,7 @@ const SetPinScreen: React.FC<SetPinScreenProps> = ({ userToSetupPinFor }) => {
           <div className="mx-auto bg-primary/10 text-primary p-3 rounded-full w-fit mb-4">
             <LockKeyhole className="h-10 w-10" />
           </div>
-          <CardTitle className="text-2xl font-heading tracking-wide">Set Your Secure PIN</CardTitle>
+          <CardTitle className="text-2xl font-heading">Set Your Secure PIN</CardTitle> {/* Removed tracking-wide */}
           <CardDescription>
             Welcome, {userToSetupPinFor.name}! Please set a 4-digit PIN for your account.
           </CardDescription>

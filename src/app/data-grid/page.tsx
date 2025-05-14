@@ -39,7 +39,7 @@ export default function DataGridPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-heading tracking-wide">Contact Data</h1>
+      <h1 className="text-3xl font-bold font-heading">Contact Data</h1> {/* Removed tracking-wide */}
       <DataGrid data={contacts} columns={columns} />
     </div>
   );

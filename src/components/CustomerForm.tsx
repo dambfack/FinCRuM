@@ -306,7 +306,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading tracking-wide">{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle>
+          <CardTitle className="font-heading">{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle> {/* Removed tracking-wide */}
           {!initialData && <CardDescription>Fill in the details to add a new customer to your records.</CardDescription>}
         </CardHeader>
         <Form {...form}>

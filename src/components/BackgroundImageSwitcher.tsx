@@ -116,7 +116,7 @@ const BackgroundImageSwitcher: React.FC = () => {
 
   return (
     <div className="space-y-3 p-1">
-      <h4 className="font-medium leading-none text-sm font-heading tracking-wide">App Background</h4>
+      <h4 className="font-medium leading-none text-sm font-heading">App Background</h4> {/* Removed tracking-wide */}
       <input
         type="file"
         ref={fileInputRef}

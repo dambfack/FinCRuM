@@ -95,7 +95,6 @@ export default function CustomersPage() {
   };
 
   const handleDeleteRequest = (contactId: string) => {
-    console.log('[CustomersPage] handleDeleteRequest called with contact ID:', contactId);
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) {
         toast({ title: "Error", description: "Contact not found for deletion request.", variant: "destructive" });
@@ -255,7 +254,7 @@ export default function CustomersPage() {
     return (
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl font-bold font-heading tracking-wide flex items-center">
+          <h1 className="text-3xl font-bold font-heading flex items-center"> {/* Removed tracking-wide */}
             <Users className="mr-3 h-8 w-8 text-accent" /> All Customers
           </h1>
           <Skeleton className="h-11 w-48 rounded-md" />
@@ -270,7 +269,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold font-heading tracking-wide flex items-center">
+        <h1 className="text-3xl font-bold font-heading flex items-center"> {/* Removed tracking-wide */}
           <Users className="mr-3 h-8 w-8 text-accent" /> All Customers
         </h1>
         <Button asChild className="h-11 px-4 py-3">
@@ -298,7 +297,7 @@ export default function CustomersPage() {
       }}>
         <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="font-heading tracking-wide">Edit Customer</DialogTitle>
+            <DialogTitle className="font-heading">Edit Customer</DialogTitle> {/* Removed tracking-wide */}
             <DialogDescription>Update the customer's details below.</DialogDescription>
           </DialogHeader>
           {selectedContact && (
@@ -332,7 +331,7 @@ export default function CustomersPage() {
       <Dialog open={isAppointmentFormOpen} onOpenChange={setIsAppointmentFormOpen}>
           <DialogContent className={activityDialogContentClassName}>
               <DialogHeader>
-                  <DialogTitle className="font-heading tracking-wide">Add New Appointment</DialogTitle>
+                  <DialogTitle className="font-heading">Add New Appointment</DialogTitle> {/* Removed tracking-wide */}
                   {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
@@ -347,7 +346,7 @@ export default function CustomersPage() {
       <Dialog open={isReminderFormOpen} onOpenChange={setIsReminderFormOpen}>
             <DialogContent className={activityDialogContentClassName}>
                 <DialogHeader>
-                    <DialogTitle className="font-heading tracking-wide">Add New Reminder</DialogTitle>
+                    <DialogTitle className="font-heading">Add New Reminder</DialogTitle> {/* Removed tracking-wide */}
                     {contactForNewActivity && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
@@ -362,7 +361,7 @@ export default function CustomersPage() {
       <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
         <AlertDialogContent className="glass-effect bg-card/80 dark:bg-card/70">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-heading tracking-wide">Confirm Action</AlertDialogTitle>
+            <AlertDialogTitle className="font-heading">Confirm Action</AlertDialogTitle> {/* Removed tracking-wide */}
             <AlertDialogDescription>
               {contactToDelete && currentUser?.role === 'partner' && contactToDelete.contactStatus === 'pending_deletion'
                 ? `Do you want to cancel the pending deletion for ${contactToDelete?.firstName} ${contactToDelete?.lastName}? The contact will remain active.`

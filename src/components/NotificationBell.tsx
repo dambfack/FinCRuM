@@ -190,7 +190,7 @@ const NotificationBell: React.FC = () => {
       </PopoverTrigger>
       <PopoverContent className="w-80 sm:w-96 p-0 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
         <div className="p-4 border-b border-border/20 flex justify-between items-center">
-          <h4 className="font-medium text-sm font-heading tracking-wide">Notifications</h4>
+          <h4 className="font-medium text-sm font-heading">Notifications</h4> {/* Removed tracking-wide */}
            {hasReadNotifications && (
              <Button variant="link" size="sm" onClick={clearReadNotifications} className="h-auto p-0 text-xs flex items-center gap-1 text-accent hover:text-accent/80">
                 <History className="h-3 w-3" /> Clear Read
@@ -257,6 +257,4 @@ const NotificationBell: React.FC = () => {
 export default NotificationBell;
     
     
-    
-
     

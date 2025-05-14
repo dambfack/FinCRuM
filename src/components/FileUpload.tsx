@@ -217,7 +217,7 @@ const FileUpload = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload File</CardTitle>
+        <CardTitle className="font-heading">Upload File</CardTitle> {/* Removed tracking-wide */}
         <CardDescription>Select an Excel or CSV file. Data will be previewed below.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -232,7 +232,7 @@ const FileUpload = () => {
 
         {showPreview && previewData.length > 0 && (
           <div>
-            <h3 className="text-lg font-medium font-heading tracking-wide">Data Preview (First 5 Rows)</h3>
+            <h3 className="text-lg font-medium font-heading">Data Preview (First 5 Rows)</h3> {/* Removed tracking-wide */}
             <div className="rounded-md border mt-2 overflow-x-auto">
               <Table>
                 <TableHeader>
