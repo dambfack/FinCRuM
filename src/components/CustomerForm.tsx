@@ -79,7 +79,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         updatedAt: initialData.updatedAt instanceof Date ? initialData.updatedAt.toISOString() : initialData.updatedAt,
         status: initialData.status || undefined, // Deal status
         attachments: initialData.attachments || [],
-        assignedToUserId: initialData.assignedToUserId || undefined,
+        assignedToUserId: initialData.assignedToUserId || undefined, // Let placeholder show if undefined
         contactStatus: initialData.contactStatus || 'approved',
         changeProposal: initialData.changeProposal || undefined,
         lastModifiedByRole: initialData.lastModifiedByRole || undefined,
@@ -94,7 +94,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       notes: '',
       status: undefined, // Deal status
       attachments: [],
-      assignedToUserId: undefined,
+      assignedToUserId: undefined, // Default to undefined for placeholder
       contactStatus: 'approved',
       changeProposal: undefined,
       lastModifiedByRole: currentUser?.role,
@@ -144,6 +144,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     const isNewContact = !initialData?.id;
     const contactId = initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
 
+    const finalAssignedToUserId = data.assignedToUserId === "none" ? undefined : data.assignedToUserId;
+
     const formInputAsContactShape: Partial<Contact> = {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -153,7 +155,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         address: data.address,
         notes: data.notes,
         status: data.status, // Deal status
-        assignedToUserId: data.assignedToUserId,
+        assignedToUserId: finalAssignedToUserId,
         // attachments are handled by FileAttachmentManager
     };
 
@@ -365,14 +367,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign to User (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || "none"}> {/* Use value prop and handle undefined for placeholder */}
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select user to assign" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem> {/* Allow unassigning */}
+                      <SelectItem value="none">None</SelectItem> {/* Changed value from "" to "none" */}
                       {allUsers.map(user => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name} ({user.role})
