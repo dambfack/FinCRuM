@@ -21,7 +21,7 @@ import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
 import CustomerDetailModal from './CustomerDetailModal';
 import CustomerForm from './CustomerForm';
-import { getData, parseDate, formatDateTime, cn } from '@/lib/utils';
+import { getData, parseDate, formatDateTime, cn, saveData } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -262,6 +262,23 @@ const Dashboard: FC = () => {
         setEditingTask(undefined);
         setIsTaskFormOpen(true);
     }
+
+    const handleContactUpdatedFromDashboardModal = (updatedContact: Contact) => {
+      // Update the main allContactsState list
+      setAllContactsState(prevContacts =>
+        prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
+      );
+      // Update recent contacts if the updated contact is in that list
+      setRecentContacts(prevRecent =>
+        prevRecent.map(c => (c.id === updatedContact.id ? updatedContact : c))
+      );
+      // If this contact was the one being viewed in the detail modal, update that state too
+      if (selectedContactForModal && selectedContactForModal.id === updatedContact.id) {
+        setSelectedContactForModal(updatedContact);
+      }
+      // Refresh dashboard stats and charts that might depend on this contact
+      loadDashboardData(); // This might be slightly redundant if allContactsState is the source, but safe
+    };
     
     const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70"; // General purpose
     const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70"; // For TaskForm
@@ -329,9 +346,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: PIE_CHART_CSS_VARS,
+      colors: PIE_CHART_CSS_VARS, // Ensure these are full HSL strings, not just numbers
       fill: {
-        opacity: 0.8,
+        opacity: 0.8, // Apply opacity here for translucency
       },
       stroke: {
         show: true,
@@ -386,12 +403,12 @@ const Dashboard: FC = () => {
             hover: {
               filter: {
                 type: 'lighten',
-                value: 0.25, 
+                value: 0.25, // Increased from 0.1 for more pop
               }
             },
-            active: { 
+            active: { // Optional: if you want a different active state
               filter: {
-                type: 'none', 
+                type: 'none', // or 'darken', value: 0.1
               }
             }
           }
@@ -400,21 +417,22 @@ const Dashboard: FC = () => {
       dataLabels: {
         enabled: true,
         formatter: (val: number, opts: any) => {
+          // Handle case where total is 0 to avoid NaN%
           if (opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) === 0) return '0%';
           const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
           return `${percentage}%`;
         },
         style: {
           fontSize: '12px',
-          colors: ["hsl(var(--foreground))"]
+          colors: ["hsl(var(--foreground))"] // Ensure data labels are visible
         },
         dropShadow: {
-          enabled: false,
+          enabled: false, // Disable drop shadow for data labels for clarity
         }
       },
       tooltip: {
         theme: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-        fillSeriesColor: false,
+        fillSeriesColor: false, // Set to false so tooltip background is standard
         y: {
             formatter: (val: number) => `${val} client(s)`
         }
@@ -783,7 +801,8 @@ const Dashboard: FC = () => {
         onEditRequest={handleEditRequestFromDetail} 
         onAddAppointmentRequest={handleAddAppointmentRequestFromDetail}
         onAddReminderRequest={handleAddReminderRequestFromDetail}
-        onAddTaskRequest={handleAddTaskRequestFromDetail} // Added for tasks
+        onAddTaskRequest={handleAddTaskRequestFromDetail}
+        onContactUpdate={handleContactUpdatedFromDashboardModal} // Pass the new handler
       />
 
     <Dialog open={isEditCustomerDialogOpen} onOpenChange={(open) => {

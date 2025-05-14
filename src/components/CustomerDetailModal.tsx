@@ -26,7 +26,7 @@ interface CustomerDetailModalProps {
   onAddAppointmentRequest?: (contact: Contact) => void;
   onAddReminderRequest?: (contact: Contact) => void;
   onAddTaskRequest?: (contact: Contact) => void;
-  onContactUpdate?: () => void; // To refresh parent list if contact is updated (e.g. attachments)
+  onContactUpdate?: (updatedContact: Contact) => void; // Changed signature
 }
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date; className?: string }> = ({ icon: Icon, label, value, className }) => {
@@ -96,7 +96,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
-        onContactUpdate(); // Notify parent to refresh if needed
+        onContactUpdate(updatedContactWithNewAttachments); // Notify parent with the updated contact
       }
     }
   };
@@ -130,6 +130,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
           <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2">
+            {/* Ensure contact prop is passed, and it's non-null */}
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>

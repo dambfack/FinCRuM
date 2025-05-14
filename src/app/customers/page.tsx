@@ -1,10 +1,11 @@
+
 // src/app/customers/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Contact, Appointment, Reminder } from '@/lib/types'; // Added Appointment, Reminder
 import { DataItemType } from '@/lib/types';
-import { getData, deleteItemById } from '@/lib/utils';
+import { getData, deleteItemById, saveData } from '@/lib/utils';
 import CustomerTable from '@/components/CustomerTable';
 import CustomerForm from '@/components/CustomerForm';
 import CustomerDetailModal from '@/components/CustomerDetailModal';
@@ -28,9 +29,7 @@ export default function CustomersPage() {
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
   const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
   const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
-  // editingAppointment and editingReminder are not needed here as we always create new for a contact
-  // We'll use contactForNewActivity to pass the contact ID to the forms
-
+  
   const { toast } = useToast();
 
   const loadContacts = useCallback(() => {
@@ -80,27 +79,38 @@ export default function CustomersPage() {
   const handleOpenAppointmentModal = (contact: Contact) => {
     setContactForNewActivity(contact);
     setIsAppointmentFormOpen(true);
-    setIsDetailModalOpen(false); // Close detail modal if open
+    setIsDetailModalOpen(false); 
   };
 
   const handleOpenReminderModal = (contact: Contact) => {
     setContactForNewActivity(contact);
     setIsReminderFormOpen(true);
-    setIsDetailModalOpen(false); // Close detail modal if open
+    setIsDetailModalOpen(false); 
   };
   
   const handleSaveAppointment = () => {
     setIsAppointmentFormOpen(false);
     setContactForNewActivity(null);
-    // Potentially refresh other relevant data or show toast
     toast({title: "Appointment Saved", description: "The new appointment has been added."});
   };
 
   const handleSaveReminder = () => {
     setIsReminderFormOpen(false);
     setContactForNewActivity(null);
-    // Potentially refresh other relevant data or show toast
     toast({title: "Reminder Saved", description: "The new reminder has been added."});
+  };
+
+  const handleContactUpdatedFromModal = (updatedContact: Contact) => {
+    // Update the main contacts list
+    setContacts(prevContacts =>
+      prevContacts.map(c => (c.id === updatedContact.id ? updatedContact : c))
+                  .sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
+    );
+    // If this contact was the one being viewed in detail, update that state too
+    if (selectedContact && selectedContact.id === updatedContact.id) {
+      setSelectedContact(updatedContact);
+    }
+    // Note: localStorage is already updated by CustomerDetailModal's internal handler
   };
   
   const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
@@ -175,13 +185,14 @@ export default function CustomersPage() {
         }}
         onEditRequest={handleEditRequestFromDetail}
         onAddAppointmentRequest={(contact) => {
-            setIsDetailModalOpen(false); // Close detail modal first
+            setIsDetailModalOpen(false); 
             handleOpenAppointmentModal(contact);
         }}
         onAddReminderRequest={(contact) => {
-            setIsDetailModalOpen(false); // Close detail modal first
+            setIsDetailModalOpen(false); 
             handleOpenReminderModal(contact);
         }}
+        onContactUpdate={handleContactUpdatedFromModal} // Pass the new handler
       />
 
       {/* Appointment Form Dialog */}
