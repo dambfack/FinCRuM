@@ -559,7 +559,7 @@ const Dashboard: FC = () => {
             <p className="text-sm text-muted-foreground">No contacts found. <Link href="/import" className="text-accent underline hover:text-accent/80">Import data</Link> or <Link href="/add-customer" className="text-accent underline hover:text-accent/80">add a customer</Link>.</p>
           )}
            <div className="mt-6 pt-4 border-t border-border/20 flex justify-start">
-            <Button asChild variant="outline" className="h-11 px-4 py-3 whitespace-normal">
+            <Button asChild variant="default" className="h-11 px-4 py-3 whitespace-normal">
               <Link href="/add-customer">
                 <UserPlusIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                 <span>Add New Customer</span>
@@ -576,7 +576,7 @@ const Dashboard: FC = () => {
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
-           <Button variant="outline" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+           <Button variant="default" onClick={() => { setEditingTask(undefined); setIsTaskFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
               <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Task</span>
            </Button>
         </CardHeader>
@@ -591,7 +591,7 @@ const Dashboard: FC = () => {
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
-            <Button variant="outline" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+            <Button variant="default" onClick={() => { setEditingReminder(undefined); setIsReminderFormOpen(true); }} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
                 <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Reminder</span>
             </Button>
         </CardHeader>
@@ -606,7 +606,7 @@ const Dashboard: FC = () => {
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
-          <Button variant="outline" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
+          <Button variant="default" onClick={() => {setEditingAppointment(undefined); setIsAppointmentFormOpen(true);}} className="w-full h-11 px-4 py-3 whitespace-normal text-center mt-2">
             <PlusCircle className="mr-2 h-4 w-4 flex-shrink-0" /> <span className="flex-1">Add New Appointment</span>
           </Button>
         </CardHeader>
