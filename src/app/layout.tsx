@@ -51,7 +51,8 @@ const montserrat = Montserrat({
 
 const Logo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-accent">
-    <path d="M4 6h8v2H4zm0 5h12v2H4zm0 5h16v2H4z" />
+    <path d="M3,3 L21,3 L19,7 L7,7 L7,21 L3,21 Z" />
+    <path d="M7,10 L17,10 L19,12 L17,14 L7,14 Z" />
   </svg>
 );
 
@@ -72,6 +73,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
           description: "Please select an image smaller than 2MB.",
           variant: "destructive",
         });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''; 
+        }
         return;
       }
       const reader = new FileReader();
@@ -82,7 +86,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(file);
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // Reset file input
+        fileInputRef.current.value = ''; 
       }
     }
   };
