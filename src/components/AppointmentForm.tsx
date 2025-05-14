@@ -306,7 +306,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
       <div className="space-y-2">
         <Label htmlFor="attendeeInput">Attendees</Label>
         <div className="flex items-center gap-2">
-            <Command className="relative rounded-md border">
+            <Command shouldFilter={false} className="relative rounded-md border">
                 <CommandInput
                     id="attendeeInput"
                     value={attendeeInput}
@@ -375,3 +375,4 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, onSave, 
 };
 
 export default AppointmentForm;
+
