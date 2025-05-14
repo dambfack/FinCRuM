@@ -53,11 +53,11 @@ const NotificationBell: React.FC = () => {
     );
     saveData<Notification[]>(DataItemType.Notifications, updatedNotifications);
     loadNotifications(); // Refresh the list
-    // toast({ title: "Notification Dismissed" });
+    // toast({ title: "Notification Dismissed" }); // Toasting on dismiss might be too noisy
   };
 
   const markAllAsRead = () => {
-    if (!currentUser) return;
+    if (!currentUser || unreadCount === 0) return;
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
     const updatedNotifications = allNotifications.map(n =>
       (n.recipientUserId === currentUser.id && !n.read) ? { ...n, read: true } : n
@@ -75,6 +75,7 @@ const NotificationBell: React.FC = () => {
 
     const itemType = notification.relatedItemType;
     const itemId = notification.relatedItemId;
+    let itemUpdated = false;
 
     if (itemType === DataItemType.Contacts) {
       let contacts = getData<Contact[]>(DataItemType.Contacts) || [];
@@ -90,6 +91,7 @@ const NotificationBell: React.FC = () => {
       if (!contactName.trim() && originalContact.changeProposal) {
         contactName = `${originalContact.changeProposal.firstName} ${originalContact.changeProposal.lastName}`;
       }
+      contactName = contactName.trim() || "Unnamed Contact";
 
 
       if (action === 'approve') {
@@ -105,9 +107,11 @@ const NotificationBell: React.FC = () => {
             lastModifiedByRole: 'partner', 
           };
           toast({ title: "Contact Approved", description: `Changes for ${contactName} approved.` });
+          itemUpdated = true;
         } else if (originalContact.contactStatus === 'pending_deletion') {
           contacts.splice(contactIndex, 1); 
           toast({ title: "Contact Deletion Approved", description: `${contactName} deleted.` });
+          itemUpdated = true;
         }
       } else if (action === 'reject') {
         if (originalContact.contactStatus === 'pending_approval') {
@@ -119,6 +123,7 @@ const NotificationBell: React.FC = () => {
             lastModifiedByRole: 'partner',
           };
           toast({ title: "Contact Changes Rejected", description: `Proposed changes for ${contactName} rejected.` });
+          itemUpdated = true;
         } else if (originalContact.contactStatus === 'pending_deletion') {
           contacts[contactIndex] = {
             ...originalContact,
@@ -127,15 +132,20 @@ const NotificationBell: React.FC = () => {
             lastModifiedByRole: 'partner',
           };
            toast({ title: "Contact Deletion Rejected", description: `Deletion request for ${contactName} rejected.` });
+           itemUpdated = true;
         }
       }
-      saveData<Contact[]>(DataItemType.Contacts, contacts);
+      if (itemUpdated) {
+        saveData<Contact[]>(DataItemType.Contacts, contacts);
+      }
     }
-    
+    // Future: Add similar logic for other DataItemTypes if they have approval flows
 
     markAsRead(notification.id); 
     loadNotifications(); 
-    window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Contacts } }));
+    if (itemUpdated && itemType === DataItemType.Contacts) {
+      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Contacts } }));
+    }
   };
 
 
@@ -193,7 +203,7 @@ const NotificationBell: React.FC = () => {
                   key={notification.id}
                   className={cn(
                     "p-3 space-y-1 hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors",
-                    !notification.read && "bg-primary/10 dark:bg-primary/15"
+                    !notification.read && "bg-primary/10 dark:bg-primary/20" // More distinct background for unread
                   )}
                 >
                   <div className="flex items-start gap-2">
@@ -241,5 +251,5 @@ const NotificationBell: React.FC = () => {
 };
 
 export default NotificationBell;
-
+    
     
