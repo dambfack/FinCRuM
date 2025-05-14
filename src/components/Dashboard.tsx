@@ -42,7 +42,7 @@ const initialStats: DashboardStats = {
 const mockContacts: Contact[] = [
   { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
   { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString()  },
-  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'approached', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() },
+  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() }, // Was 'approached'
   { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString() },
   { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString() },
 ];
@@ -169,7 +169,7 @@ const Dashboard: FC = () => {
 
             // Calculate Deal Status Pie Chart Data
             const statusCounts: Record<string, number> = {
-                approached: 0, open: 0, closed: 0, missed: 0, other: 0,
+                open: 0, closed: 0, missed: 0, other: 0,
             };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';

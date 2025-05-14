@@ -18,7 +18,7 @@ import { DataItemType } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
 import { useRouter } from 'next/navigation'; // For redirecting
 
-const contactStatusSchema = z.enum(['approached', 'open', 'closed', 'missed', 'other']);
+const contactStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
 
 const customerFormSchema = z.object({
   id: z.string().optional(), // Optional for new customers
@@ -192,7 +192,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="approached">Approached</SelectItem>
                       <SelectItem value="open">Open (Deal in Progress)</SelectItem>
                       <SelectItem value="closed">Closed (Deal Won)</SelectItem>
                       <SelectItem value="missed">Missed (Deal Lost)</SelectItem>
