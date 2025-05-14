@@ -25,8 +25,10 @@ const SyncManager = () => {
   const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
   
   const isAnyProviderConfigured = useCallback(() => {
-    return isOneDriveConnected || isGoogleDriveConnected;
+    // Correctly use the state values which can be null initially
+    return isOneDriveConnected === true || isGoogleDriveConnected === true;
   }, [isOneDriveConnected, isGoogleDriveConnected]);
+
 
   const renderProviderStatusIcon = () => {
     if (isOneDriveConnected === null || isGoogleDriveConnected === null) {
@@ -68,7 +70,7 @@ const SyncManager = () => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 font-heading tracking-wide">
             {renderProviderStatusIcon()}
             Data Synchronization
           </CardTitle>
@@ -98,7 +100,7 @@ const SyncManager = () => {
                     onClick={() => performSync()} 
                     disabled={syncStatus === 'syncing' || (isOneDriveConnected === null || isGoogleDriveConnected === null) || !isAnyProviderConfigured()}
                     size="sm"
-                    className="flex-shrink-0 self-start sm:self-center whitespace-nowrap" 
+                    className="flex-shrink-0 self-start sm:self-center whitespace-nowrap h-11 px-4 py-3"
                  >
                     <RefreshCwIcon className={cn("mr-2 h-4 w-4", syncStatus === 'syncing' && "animate-spin")} />
                     {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
@@ -108,17 +110,17 @@ const SyncManager = () => {
             {(isOneDriveConnected === false || isGoogleDriveConnected === false) && !(isOneDriveConnected === null || isGoogleDriveConnected === null) && (
                  <Card className="border-dashed border-accent">
                     <CardHeader>
-                        <CardTitle className="text-base font-heading">Connect Cloud Storage</CardTitle>
+                        <CardTitle className="text-base font-heading tracking-wide">Connect Cloud Storage</CardTitle>
                         <CardDescription>Connect your OneDrive or Google Drive account to enable data backup and sync.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-4">
                          {isOneDriveConnected === false && (
-                            <Button onClick={() => initiateAuthentication('onedrive')} variant="outline">
+                            <Button onClick={() => initiateAuthentication('onedrive')} variant="default" className="h-11 px-4 py-3">
                                 <Cloud className="mr-2 h-4 w-4"/> Connect OneDrive
                             </Button>
                          )}
                          {isGoogleDriveConnected === false && (
-                             <Button onClick={() => initiateAuthentication('googledrive')} variant="outline">
+                             <Button onClick={() => initiateAuthentication('googledrive')} variant="default" className="h-11 px-4 py-3">
                                  <Cloud className="mr-2 h-4 w-4"/> Connect Google Drive
                              </Button>
                          )}
