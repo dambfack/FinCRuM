@@ -54,7 +54,8 @@ const getContactStatusDisplay = (status?: Contact['contactStatus']): { text: str
     case 'approved':
       return { text: 'Approved', variant: 'default', Icon: CheckCircle };
     default:
-      return { text: status || 'Approved (Legacy)', variant: 'outline' };
+      // Treat undefined (legacy contacts) as approved for display purposes
+      return { text: 'Approved', variant: 'default', Icon: CheckCircle };
   }
 };
 
@@ -63,7 +64,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const { currentUser } = useAuth();
 
-  // console.log('[CustomerTable] currentUser:', currentUser); // For debugging
+  console.log('[CustomerTable] Rendering table, contacts count:', contacts.length, 'Current User:', currentUser);
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -158,9 +159,14 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
               </TableCell>
               <TableCell className="text-foreground/90">{formatDateTime(contact.updatedAt as string)}</TableCell>
               <TableCell className="text-right">
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={(open) => console.log('[CustomerTable] Dropdown open state changed:', open, 'for contact:', contact.id)}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-foreground/70 hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10"
+                      onClick={() => console.log('[CustomerTable] DropdownMenuTrigger clicked for contact:', contact.id)}
+                    >
                       <MoreVertical className="h-4 w-4" />
                       <span className="sr-only">Actions</span>
                     </Button>
@@ -170,7 +176,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                       <Eye className="h-4 w-4" /> View Details
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(contact)} className="gap-2 select-none"
-                      disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'}
+                     // disabled={contact.contactStatus === 'pending_deletion' && currentUser?.role === 'employee'} // Re-enable this after fixing click
                     >
                       <Edit className="h-4 w-4" /> Edit
                     </DropdownMenuItem>
@@ -182,18 +188,19 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ contacts, onEdit, onDelet
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
-                        // console.log('[CustomerTable] Delete onClick for ID:', contact.id); // DEBUG LINE
-                        onDelete(contact.id);
+                        alert('Delete clicked for ' + contact.id);
+                        console.log('[CustomerTable] INSIDE DropdownMenuItem onClick for Delete. Contact ID:', contact.id);
+                        // onDelete(contact.id); // Temporarily commented out to test alert
                       }}
                       className={cn(
-                        "gap-2 select-none",
+                        "select-none", // Removed gap-2 as icon is temporarily removed
                         (contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner')
                           ? "text-orange-500 focus:text-orange-600 focus:bg-orange-500/10"
                           : "text-destructive focus:text-destructive focus:bg-destructive/10"
                       )}
                     >
-                      <Trash2 className="h-4 w-4" />
-                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion' : 'Delete'}
+                      {/* <Trash2 className="h-4 w-4" />  Temporarily removed icon */}
+                      {(contact.contactStatus === 'pending_deletion' && currentUser?.role === 'partner') ? 'Cancel Deletion Text' : 'Delete Text'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
