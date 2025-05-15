@@ -36,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Changed from 'next/image' to NextImage
 import { useTheme } from 'next-themes';
 import { DataItemType, UserThemeSettings } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -125,7 +125,7 @@ const Logo: React.FC<{
   }
   
   return (
-      <NextImage
+      <NextImage // Use NextImage alias
         key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} 
         src={displaySrc}
         alt="Finsculpt CRM Logo"
@@ -180,7 +180,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [showAccentPicker, setShowAccentPicker] = useState(false);
   const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState('#008080'); 
 
-  const [showChartColorPicker, setShowChartColorPicker] = useState<string | null>(null); 
+  const [showChartColorPicker, setShowChartColorPicker] = useState<keyof UserThemeSettings | null>(null); 
   const [currentChartPickerColor, setCurrentChartPickerColor] = useState('#000000');
 
   const chartColorConfig: {
@@ -188,11 +188,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
     stateValue: string | null | undefined; 
     updateFn: (hex: string | null) => void;
     dataItemType: keyof UserThemeSettings; 
+    pickerKey: keyof UserThemeSettings;
   }[] = [
-    { label: 'Open Status Color', stateValue: currentUserThemeSettings?.chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: 'chartPieColorOpen' },
-    { label: 'Closed Status Color', stateValue: currentUserThemeSettings?.chartPieColorClosed, updateFn: updateChartPieColorClosed, dataItemType: 'chartPieColorClosed' },
-    { label: 'Missed Status Color', stateValue: currentUserThemeSettings?.chartPieColorMissed, updateFn: updateChartPieColorMissed, dataItemType: 'chartPieColorMissed' },
-    { label: 'Other Status Color', stateValue: currentUserThemeSettings?.chartPieColorOther, updateFn: updateChartPieColorOther, dataItemType: 'chartPieColorOther' },
+    { label: 'Open Status Color', stateValue: currentUserThemeSettings?.chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: 'chartPieColorOpen', pickerKey: 'chartPieColorOpen' },
+    { label: 'Closed Status Color', stateValue: currentUserThemeSettings?.chartPieColorClosed, updateFn: updateChartPieColorClosed, dataItemType: 'chartPieColorClosed', pickerKey: 'chartPieColorClosed' },
+    { label: 'Missed Status Color', stateValue: currentUserThemeSettings?.chartPieColorMissed, updateFn: updateChartPieColorMissed, dataItemType: 'chartPieColorMissed', pickerKey: 'chartPieColorMissed' },
+    { label: 'Other Status Color', stateValue: currentUserThemeSettings?.chartPieColorOther, updateFn: updateChartPieColorOther, dataItemType: 'chartPieColorOther', pickerKey: 'chartPieColorOther' },
   ];
   
   useEffect(() => {
@@ -257,23 +258,25 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleAccentColorSave = () => { updateCustomAccentColor(currentAccentPickerColor); setShowAccentPicker(false); };
   const handleAccentColorReset = () => { updateCustomAccentColor(null); setCurrentAccentPickerColor('#008080'); setShowAccentPicker(false); };
 
-  const handleChartColorPickerToggle = (chartColorType: keyof UserThemeSettings) => {
-    const config = chartColorConfig.find(c => c.dataItemType === chartColorType);
-    if (config) setCurrentChartPickerColor(config.stateValue || '#000000');
-    setShowChartColorPicker(prev => prev === chartColorType ? null : chartColorType);
+  const handleChartColorPickerToggle = (pickerKey: keyof UserThemeSettings) => {
+    const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
+    if (config) {
+      setCurrentChartPickerColor(config.stateValue || '#000000'); // Use default black if color not set
+    }
+    setShowChartColorPicker(prev => prev === pickerKey ? null : pickerKey);
   };
   const handleChartColorChange = (color: ColorResult) => setCurrentChartPickerColor(color.hex);
   const handleChartColorSave = () => {
     if (showChartColorPicker) {
-        const config = chartColorConfig.find(c => c.dataItemType === showChartColorPicker);
+        const config = chartColorConfig.find(c => c.pickerKey === showChartColorPicker);
         if (config) config.updateFn(currentChartPickerColor);
     }
     setShowChartColorPicker(null);
   };
-  const handleChartColorReset = (chartColorType: keyof UserThemeSettings) => {
-    const config = chartColorConfig.find(c => c.dataItemType === chartColorType);
-    if (config) config.updateFn(null);
-    if (showChartColorPicker === chartColorType) setShowChartColorPicker(null);
+  const handleChartColorReset = (pickerKey: keyof UserThemeSettings) => {
+    const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
+    if (config) config.updateFn(null); // Call update with null to reset
+    if (showChartColorPicker === pickerKey) setShowChartColorPicker(null);
   };
 
   const currentHeaderLogoToDisplay = resolvedTheme === 'dark' 
@@ -369,7 +372,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <Separator className="my-4" />
                 {/* Bottom Section - Two Columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-2 px-3 pb-3">
-                  {/* Left Column (Partner Only settings + Theme Customization) */}
+                  {/* Left Column (Partner Only settings + Theme Customization for all) */}
                   <div className="space-y-6">
                     {currentUser?.role === 'partner' && (
                       <div className="space-y-2">
@@ -390,7 +393,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
                         <div className="space-y-1">
                           <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
-                          {(currentUserThemeSettings?.accentColor || auth.customAccentColor) && ( 
+                          {(currentUserThemeSettings?.accentColor) && ( 
                             <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive h-8" onClick={handleAccentColorReset}><Trash2 className="mr-1.5 h-3 w-3" />Reset Accent Color</Button>
                           )}
                         </div>
@@ -403,13 +406,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         {chartColorConfig.map((config, index) => (
                           <div key={index} className="space-y-1">
                             <div className="flex items-center justify-between gap-2">
-                              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => handleChartColorPickerToggle(config.dataItemType)}>
+                              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => handleChartColorPickerToggle(config.pickerKey)}>
                                 <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm shrink-0"></div>
-                                <span className="truncate">{showChartColorPicker === config.dataItemType ? "Hide" : "Change"} {config.label}</span>
+                                <span className="truncate">{showChartColorPicker === config.pickerKey ? "Hide" : "Change"} {config.label}</span>
                               </Button>
-                              {config.stateValue && (<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => handleChartColorReset(config.dataItemType)} title={`Reset ${config.label}`}><Trash2 className="h-3.5 w-3.5" /></Button>)}
+                              {config.stateValue && (<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => handleChartColorReset(config.pickerKey)} title={`Reset ${config.label}`}><Trash2 className="h-3.5 w-3.5" /></Button>)}
                             </div>
-                            {showChartColorPicker === config.dataItemType && (
+                            {showChartColorPicker === config.pickerKey && (
                               <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
                                 <SketchPicker color={currentChartPickerColor} onChangeComplete={handleChartColorChange} disableAlpha={true} width="100%" className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"/>
                                 <Button size="sm" onClick={handleChartColorSave} className="w-full h-9">Apply {config.label}</Button>
@@ -467,6 +470,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
-
-    

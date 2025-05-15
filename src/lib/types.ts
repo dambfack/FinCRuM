@@ -190,6 +190,7 @@ export interface UserThemeSettings {
 
 /**
  * Stores theme preferences for all users.
+ * Key is userId, value is UserThemeSettings.
  */
 export type UserPreferences = Record<string, UserThemeSettings>;
 
@@ -203,7 +204,7 @@ export enum DataItemType {
   Reminders = 'reminders',
   Appointments = 'appointments',
   CustomerData = 'customerData', // For ExcelData (imported data)
-  LocalData = 'localData', // For a monolithic local data object if ever used
+  // LocalData = 'localData', // For a monolithic local data object if ever used
   LastSyncTime = 'lastSyncTime',
   OneDriveAccessToken = 'onedriveAccessToken',
   OneDriveRefreshToken = 'onedriveRefreshToken',
@@ -212,15 +213,15 @@ export enum DataItemType {
   Users = 'users',
   CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
   Notifications = 'notifications', // For notifications
-  AppLogoLight = 'appLogoLight',
-  AppLogoDark = 'appLogoDark',
-  DefaultAppLogoLight = 'defaultAppLogoLight',
-  DefaultAppLogoDark = 'defaultAppLogoDark',
-  HeaderLogoLight = 'headerLogoLight',
-  HeaderLogoDark = 'headerLogoDark',
+  AppLogoLight = 'appLogoLight', // Custom override light theme app logo
+  AppLogoDark = 'appLogoDark',   // Custom override dark theme app logo
+  DefaultAppLogoLight = 'defaultAppLogoLight', // Partner-set default light theme app logo
+  DefaultAppLogoDark = 'defaultAppLogoDark',   // Partner-set default dark theme app logo
+  HeaderLogoLight = 'headerLogoLight', // Custom override light theme header logo
+  HeaderLogoDark = 'headerLogoDark',   // Custom override dark theme header logo
   BackgroundImage = 'backgroundImage', // For current custom background override
   DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
-  UserThemePreferences = 'userThemePreferences', // User-specific theme settings
+  UserThemePreferences = 'userThemePreferences', // Stores UserPreferences map
 }
 
 /**
@@ -233,19 +234,19 @@ export interface LocalData {
   tasks?: Task[];
   reminders?: Reminder[];
   appointments?: Appointment[];
-  users?: User[]; // Added users
-  notifications?: Notification[]; // Added notifications
-  customerData?: ExcelData; // For imported excel data
-  lastSyncTime?: string; // ISO string
+  users?: User[];
+  notifications?: Notification[];
+  customerData?: ExcelData;
+  lastSyncTime?: string;
   appLogoLight?: string | null;
   appLogoDark?: string | null;
   defaultAppLogoLight?: string | null;
   defaultAppLogoDark?: string | null;
   headerLogoLight?: string | null;
   headerLogoDark?: string | null;
-  backgroundImage?: string | null; // Data URI for current custom background
-  defaultBackgroundImage?: string | null; // Data URI for user-set default background
-  userThemePreferences?: UserPreferences;
+  backgroundImage?: string | null;
+  defaultBackgroundImage?: string | null;
+  userThemePreferences?: UserPreferences; // Changed from individual theme settings
 }
 
 /**

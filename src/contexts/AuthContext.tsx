@@ -14,12 +14,11 @@ const DEFAULT_ACCENT_HSL: Record<'light' | 'dark', string> = {
   dark: '180 100% 35%',  // Lighter Teal
 };
 const DEFAULT_ACCENT_FOREGROUND_HSL: Record<'light' | 'dark', string> = {
-  light: '0 0% 98%', // White/Light Gray text on default teal
-  dark: '0 0% 98%',  // White/Light Gray text on default lighter teal
+  light: '0 0% 98%',
+  dark: '0 0% 98%',
 };
 
-
-// Default HSL values from globals.css for chart pie slices
+// Default HSL values for chart pie slices by theme
 const DEFAULT_CHART_PIE_COLORS_HSL: Record<string, Record<'light' | 'dark', string>> = {
   '--chart-pie-1': { light: '180 100% 25%', dark: '180 100% 35%' }, // Open
   '--chart-pie-2': { light: '210 100% 45%', dark: '210 90% 55%' },  // Closed
@@ -84,46 +83,45 @@ function isHexColorDark(hexColor: string | null): boolean {
   return luminance < 128;
 }
 
-const applyColorToCssVar = (cssVarName: string, hexColor: string | null, defaultHslValue: string, themeKey: 'light' | 'dark') => {
-  if (typeof window === 'undefined') return;
+const applyCustomColorToCssVar = (cssVarName: string, colorHex: string | null, themeKey: 'light' | 'dark') => {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
+  let defaultHslValue: string | undefined;
   if (cssVarName === '--accent') {
-    if (!hexColor) {
-      const accentDefault = DEFAULT_ACCENT_HSL[themeKey];
-      const accentFgDefault = DEFAULT_ACCENT_FOREGROUND_HSL[themeKey];
-      root.style.setProperty('--accent', accentDefault);
-      root.style.setProperty('--accent-foreground', accentFgDefault);
-    } else {
-      const hslString = hexToHslString(hexColor);
-      if (hslString) {
-        root.style.setProperty('--accent', hslString);
-        if (isHexColorDark(hexColor)) {
-          root.style.setProperty('--accent-foreground', DEFAULT_ACCENT_FOREGROUND_HSL.light); // Light text
-        } else {
-          root.style.setProperty('--accent-foreground', '220 10% 20%'); // Dark text
-        }
-      } else {
-        root.style.setProperty('--accent', DEFAULT_ACCENT_HSL[themeKey]);
+    defaultHslValue = DEFAULT_ACCENT_HSL[themeKey];
+  } else if (cssVarName.startsWith('--chart-pie-')) {
+    defaultHslValue = DEFAULT_CHART_PIE_COLORS_HSL[cssVarName]?.[themeKey];
+  }
+
+  if (!colorHex) { // Resetting to default
+    if (defaultHslValue) {
+      root.style.setProperty(cssVarName, defaultHslValue);
+      if (cssVarName === '--accent') {
         root.style.setProperty('--accent-foreground', DEFAULT_ACCENT_FOREGROUND_HSL[themeKey]);
       }
+    } else {
+      root.style.removeProperty(cssVarName); // Should not happen if defaults are defined
     }
-  } else if (cssVarName.startsWith('--chart-pie-')) {
-      const effectiveDefaultHsl = defaultHslValue || DEFAULT_CHART_PIE_COLORS_HSL[cssVarName]?.[themeKey];
-      if (!hexColor) {
-        if (effectiveDefaultHsl) {
-          root.style.setProperty(cssVarName, effectiveDefaultHsl);
+  } else {
+    const hslString = hexToHslString(colorHex);
+    if (hslString) {
+      root.style.setProperty(cssVarName, hslString);
+      if (cssVarName === '--accent') {
+        if (isHexColorDark(colorHex)) {
+          root.style.setProperty('--accent-foreground', DEFAULT_ACCENT_FOREGROUND_HSL.light);
         } else {
-          root.style.removeProperty(cssVarName);
-        }
-      } else {
-        const hslString = hexToHslString(hexColor);
-        if (hslString) {
-          root.style.setProperty(cssVarName, hslString);
-        } else if (effectiveDefaultHsl) {
-          root.style.setProperty(cssVarName, effectiveDefaultHsl);
+          root.style.setProperty('--accent-foreground', '220 10% 20%'); // Dark text HSL
         }
       }
+    } else { // Invalid hex, revert to default
+      if (defaultHslValue) {
+        root.style.setProperty(cssVarName, defaultHslValue);
+        if (cssVarName === '--accent') {
+          root.style.setProperty('--accent-foreground', DEFAULT_ACCENT_FOREGROUND_HSL[themeKey]);
+        }
+      }
+    }
   }
 };
 
@@ -144,20 +142,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUserThemeSettings, setCurrentUserThemeSettings] = useState<UserThemeSettings | null>(null);
   
   const { toast } = useToast();
-  const { resolvedTheme } = useTheme(); // Get current theme
+  const { resolvedTheme, theme } = useTheme();
 
   const applyThemeSettings = useCallback((settings: UserThemeSettings | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    const currentThemeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    console.log('[AuthContext] applyThemeSettings called. Settings:', settings, "ThemeKey:", currentThemeKey);
 
-    applyColorToCssVar('--accent', settings?.accentColor || null, DEFAULT_ACCENT_HSL[themeKey], themeKey);
-    applyColorToCssVar('--chart-pie-1', settings?.chartPieColorOpen || null, DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-1'][themeKey], themeKey);
-    applyColorToCssVar('--chart-pie-2', settings?.chartPieColorClosed || null, DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-2'][themeKey], themeKey);
-    applyColorToCssVar('--chart-pie-3', settings?.chartPieColorMissed || null, DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-3'][themeKey], themeKey);
-    applyColorToCssVar('--chart-pie-4', settings?.chartPieColorOther || null, DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-4'][themeKey], themeKey);
+    applyCustomColorToCssVar('--accent', settings?.accentColor || null, currentThemeKey);
+    applyCustomColorToCssVar('--chart-pie-1', settings?.chartPieColorOpen || null, currentThemeKey);
+    applyCustomColorToCssVar('--chart-pie-2', settings?.chartPieColorClosed || null, currentThemeKey);
+    applyCustomColorToCssVar('--chart-pie-3', settings?.chartPieColorMissed || null, currentThemeKey);
+    applyCustomColorToCssVar('--chart-pie-4', settings?.chartPieColorOther || null, currentThemeKey);
   }, [resolvedTheme]);
 
   useEffect(() => {
+    console.log('[AuthContext] Initial useEffect running - ONCE.');
     setIsLoadingAuth(true);
+    
+    // Load app-wide logos (not user-specific)
     setAppLogoLightUrl(getData<string>(DataItemType.AppLogoLight));
     setAppLogoDarkUrl(getData<string>(DataItemType.AppLogoDark));
     _setDefaultAppLogoLightUrlInternal(getData<string>(DataItemType.DefaultAppLogoLight));
@@ -173,6 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       users = [defaultAdmin];
       if(saveData<User[]>(DataItemType.Users, users)) {
+        console.log('[AuthContext] Default Admin Created, PIN 0000.');
         toast({ title: "Default Admin Created", description: "PIN 0000.", duration: 7000 });
       }
     }
@@ -195,11 +198,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       applyThemeSettings(null); // Apply app defaults if no user
     }
     setIsLoadingAuth(false);
-  }, [toast, applyThemeSettings]); // Removed resolvedTheme from here, applyThemeSettings depends on it
+  }, [toast, applyThemeSettings]);
 
-  // Re-apply theme settings if resolvedTheme changes
+  // Re-apply theme settings if resolvedTheme or currentUserThemeSettings source changes
   useEffect(() => {
-    if (!isLoadingAuth) { // Only apply if initial load is done
+    if (!isLoadingAuth) { 
+        console.log("[AuthContext] Theme or User Settings changed, re-applying. Theme:", resolvedTheme, "User Settings:", currentUserThemeSettings);
         applyThemeSettings(currentUserThemeSettings);
     }
   }, [resolvedTheme, currentUserThemeSettings, isLoadingAuth, applyThemeSettings]);
@@ -235,7 +239,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const allUserPrefs = getData<UserPreferences>(DataItemType.UserThemePreferences) || {};
       const userPrefs = allUserPrefs[userToLogin.id] || {};
       setCurrentUserThemeSettings(userPrefs);
-      applyThemeSettings(userPrefs);
+      applyThemeSettings(userPrefs); // Apply user-specific or defaults
 
       toast({ title: "Login Successful", description: `Welcome back, ${userToLogin.name}!` });
       setIsLoadingAuth(false);
@@ -269,22 +273,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     users[userIndex] = { ...users[userIndex], pin: newPin };
-    if (!saveData<User[]>(DataItemType.Users, users)) {
-      toast({ title: "Storage Error", description: "Could not save PIN.", variant: "destructive" });
-      setIsLoadingAuth(false); return false;
+    if (!saveData<User[]>(DataItemType.Users, users)) { 
+        toast({ title: "Storage Error", description: "Could not save PIN.", variant: "destructive" });
+        setIsLoadingAuth(false); return false; 
     }
-
-    setCurrentUser(users[userIndex]);
+    
+    const userToLogin = users[userIndex];
+    setCurrentUser(userToLogin);
     setIsAuthenticated(true);
     setPinSetupRequiredForUser(null);
-    saveData<string>(DataItemType.CurrentUserId, users[userIndex].id);
+    saveData<string>(DataItemType.CurrentUserId, userToLogin.id);
 
     const allUserPrefs = getData<UserPreferences>(DataItemType.UserThemePreferences) || {};
-    const userPrefs = allUserPrefs[users[userIndex].id] || {};
+    const userPrefs = allUserPrefs[userToLogin.id] || {}; // Will be empty for new user
     setCurrentUserThemeSettings(userPrefs);
-    applyThemeSettings(userPrefs);
+    applyThemeSettings(userPrefs); // Apply (empty, so defaults will be used by applyCustomColorToCssVar)
     
-    toast({ title: "PIN Set Successfully", description: `Welcome, ${users[userIndex].name}!` });
+    toast({ title: "PIN Set Successfully", description: `Welcome, ${userToLogin.name}!` });
     setIsLoadingAuth(false);
     return true;
   };
@@ -303,7 +308,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(false); return true;
   };
   
-  const updateLogo = useCallback((setter: React.Dispatch<React.SetStateAction<string | null>>, itemType: DataItemType, dataUri: string | null, toastTitle: string) => {
+  const updateLogo = useCallback((
+    setter: React.Dispatch<React.SetStateAction<string | null>>, 
+    itemType: DataItemType, 
+    dataUri: string | null, 
+    toastTitle: string
+  ) => {
     const success = dataUri ? saveData<string>(itemType, dataUri) : (localStorage.removeItem(itemType), true);
     if (success) {
       setter(dataUri);
@@ -315,28 +325,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateAppLogoLight = useCallback((dataUri: string | null) => updateLogo(setAppLogoLightUrl, DataItemType.AppLogoLight, dataUri, "Light App Logo"), [updateLogo]);
   const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogo(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo"), [updateLogo]);
+  
   const setDefaultAppLogoLight = useCallback((dataUri: string) => {
+    console.trace("[AuthContext] setDefaultAppLogoLight trace");
     if (saveData<string>(DataItemType.DefaultAppLogoLight, dataUri)) {
       _setDefaultAppLogoLightUrlInternal(dataUri);
       updateAppLogoLight(null); 
       toast({ title: "Default Light App Logo Set" });
     } else { toast({ title: "Storage Full", variant: "destructive" }); }
   }, [updateAppLogoLight, toast]);
+
   const setDefaultAppLogoDark = useCallback((dataUri: string) => {
+    console.trace("[AuthContext] setDefaultAppLogoDark trace");
     if (saveData<string>(DataItemType.DefaultAppLogoDark, dataUri)) {
       _setDefaultAppLogoDarkUrlInternal(dataUri);
       updateAppLogoDark(null);
       toast({ title: "Default Dark App Logo Set" });
     } else { toast({ title: "Storage Full", variant: "destructive" }); }
   }, [updateAppLogoDark, toast]);
+
   const updateHeaderLogoLight = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoLightUrl, DataItemType.HeaderLogoLight, dataUri, "Light Header Logo"), [updateLogo]);
   const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo"), [updateLogo]);
+
 
   const updateUserThemePreference = useCallback((
     colorType: keyof UserThemeSettings,
     hexColor: string | null,
-    cssVarName: string,
-    defaultHsl: string // Theme-independent default HSL (like default accent)
+    cssVarName: string
   ) => {
     if (!currentUser) return;
     const currentThemeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
@@ -344,57 +359,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const allUserPrefs = getData<UserPreferences>(DataItemType.UserThemePreferences) || {};
     const userPrefs = allUserPrefs[currentUser.id] || {};
     
-    if (hexColor === null) {
-      delete userPrefs[colorType]; // Remove specific setting to fall back to default
+    const oldColor = userPrefs[colorType];
+
+    if (hexColor === null) { // Resetting
+      delete userPrefs[colorType]; 
     } else {
       userPrefs[colorType] = hexColor;
     }
     
     allUserPrefs[currentUser.id] = userPrefs;
+
     if (saveData<UserPreferences>(DataItemType.UserThemePreferences, allUserPrefs)) {
-      setCurrentUserThemeSettings({...userPrefs}); // Update context state
-      applyColorToCssVar(cssVarName, hexColor, defaultHsl, currentThemeKey); // Apply to CSS
-      toast({ title: `${cssVarName} Updated`, description: hexColor ? `Set to ${hexColor}` : "Reset to default." });
+      setCurrentUserThemeSettings(prev => ({...prev, ...userPrefs})); // Update context state
+      applyCustomColorToCssVar(cssVarName, hexColor, currentThemeKey); // Apply to CSS
+      toast({ title: `${cssVarName.replace('--','').replace('chart-pie-','Chart ').replace('-',' ')} Updated`, description: hexColor ? `Set to ${hexColor}` : "Reset to default." });
     } else {
+      // Revert optimistic update if save fails
+      if (oldColor === undefined) delete userPrefs[colorType]; else userPrefs[colorType] = oldColor;
+      allUserPrefs[currentUser.id] = userPrefs; //
+      setCurrentUserThemeSettings(prev => ({...prev, ...userPrefs}));
       toast({ title: "Storage Error", description: "Could not save theme preference.", variant: "destructive" });
     }
-  }, [currentUser, resolvedTheme, toast]);
+  }, [currentUser, resolvedTheme, toast, applyThemeSettings]);
 
 
   const updateCustomAccentColor = useCallback((hexColor: string | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    updateUserThemePreference('accentColor', hexColor, '--accent', DEFAULT_ACCENT_HSL[themeKey]);
-  }, [updateUserThemePreference, resolvedTheme]);
+    updateUserThemePreference('accentColor', hexColor, '--accent');
+  }, [updateUserThemePreference]);
 
   const updateChartPieColorOpen = useCallback((hexColor: string | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    updateUserThemePreference('chartPieColorOpen', hexColor, '--chart-pie-1', DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-1'][themeKey]);
-  }, [updateUserThemePreference, resolvedTheme]);
+    updateUserThemePreference('chartPieColorOpen', hexColor, '--chart-pie-1');
+  }, [updateUserThemePreference]);
   const updateChartPieColorClosed = useCallback((hexColor: string | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    updateUserThemePreference('chartPieColorClosed', hexColor, '--chart-pie-2', DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-2'][themeKey]);
-  }, [updateUserThemePreference, resolvedTheme]);
+    updateUserThemePreference('chartPieColorClosed', hexColor, '--chart-pie-2');
+  }, [updateUserThemePreference]);
   const updateChartPieColorMissed = useCallback((hexColor: string | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    updateUserThemePreference('chartPieColorMissed', hexColor, '--chart-pie-3', DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-3'][themeKey]);
-  }, [updateUserThemePreference, resolvedTheme]);
+    updateUserThemePreference('chartPieColorMissed', hexColor, '--chart-pie-3');
+  }, [updateUserThemePreference]);
   const updateChartPieColorOther = useCallback((hexColor: string | null) => {
-    const themeKey = (resolvedTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    updateUserThemePreference('chartPieColorOther', hexColor, '--chart-pie-4', DEFAULT_CHART_PIE_COLORS_HSL['--chart-pie-4'][themeKey]);
-  }, [updateUserThemePreference, resolvedTheme]);
+    updateUserThemePreference('chartPieColorOther', hexColor, '--chart-pie-4');
+  }, [updateUserThemePreference]);
 
 
-  const contextValue = useMemo(() => ({
-    currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
-    appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl: _defaultAppLogoLightUrlInternal, defaultAppLogoDarkUrl: _defaultAppLogoDarkUrlInternal,
-    headerLogoLightUrl, headerLogoDarkUrl,
-    currentUserThemeSettings,
-    login, logout, completePinSetupAndLogin, updateUserProfilePicture,
-    updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
-    updateHeaderLogoLight, updateHeaderLogoDark,
-    updateCustomAccentColor,
-    updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,
-  }), [
+  const contextValue = useMemo(() => {
+    console.log("[AuthContext] PROVIDING CONTEXT VALUE. appLogoLightUrl len:", appLogoLightUrl?.length, "defaultAppLogoLightUrl len:", _defaultAppLogoLightUrlInternal?.length, "headerLogoLightUrl len:", headerLogoLightUrl?.length);
+    console.log("[AuthContext] PROVIDING CONTEXT VALUE. appLogoDarkUrl len:", appLogoDarkUrl?.length, "defaultAppLogoDarkUrl len:", _defaultAppLogoDarkUrlInternal?.length, "headerLogoDarkUrl len:", headerLogoDarkUrl?.length);
+    return {
+        currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
+        appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl: _defaultAppLogoLightUrlInternal, defaultAppLogoDarkUrl: _defaultAppLogoDarkUrlInternal,
+        headerLogoLightUrl, headerLogoDarkUrl,
+        currentUserThemeSettings,
+        login, logout, completePinSetupAndLogin, updateUserProfilePicture,
+        updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
+        updateHeaderLogoLight, updateHeaderLogoDark,
+        updateCustomAccentColor,
+        updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,
+    };
+  }, [
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, _defaultAppLogoLightUrlInternal, _defaultAppLogoDarkUrlInternal,
     headerLogoLightUrl, headerLogoDarkUrl,
