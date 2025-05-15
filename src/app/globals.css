@@ -27,7 +27,7 @@
     --muted: 220 10% 92%;
     --muted-foreground: 220 10% 45%; /* Muted dark gray */
     --accent: 180 100% 25%; /* Teal - THIS IS DYNAMICALLY UPDATED */
-    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
+    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent - THIS IS DYNAMICALLY UPDATED */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 90%; /* Lighter Gray border - general border */
@@ -49,7 +49,7 @@
     --sidebar-background: 0 0% 100%; /* White background for light theme sidebar */
     --sidebar-foreground: 220 10% 20%; /* Dark Gray text for light theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
-    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Light text on accent primary elements */
+    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* DERIVED FROM ACCENT FOREGROUND */
     --sidebar-accent: hsl(var(--accent) / 0.25); /* Light translucent version of accent - Increased opacity */
     --sidebar-accent-foreground: hsl(var(--accent)); /* Accent color for text on this hover */
     --sidebar-border: 220 10% 85%;
@@ -69,7 +69,7 @@
     --muted: 220 10% 20%;
     --muted-foreground: 220 10% 65%; /* Muted light gray */
     --accent: 180 100% 35%; /* Lighter Teal - THIS IS DYNAMICALLY UPDATED */
-    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
+    --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent - THIS IS DYNAMICALLY UPDATED */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 25%; /* Darker Gray border - general border */
@@ -90,9 +90,9 @@
     --sidebar-background: 220 10% 10%; /* Match main dark background base */
     --sidebar-foreground: 0 0% 98%; /* Light text for dark theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
-    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Dark text on lighter accent primary elements - or accent-foreground if accent is very light */
-    --sidebar-accent: hsl(var(--accent) / 0.4); /* Translucent version of accent for dark mode hover - Increased opacity */
-    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Light text on this hover */
+    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* DERIVED FROM ACCENT FOREGROUND */
+    --sidebar-accent: hsl(var(--accent) / 0.6); /* Translucent version of accent for dark mode hover - Increased opacity */
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Light text on this hover - DERIVED FROM ACCENT FOREGROUND*/
     --sidebar-border: 220 10% 30%;
     --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
   }
@@ -350,6 +350,3 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
-
-    
