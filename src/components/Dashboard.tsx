@@ -208,33 +208,27 @@ const Dashboard: FC = () => {
 
      useEffect(() => {
         if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
-            console.log('[Dashboard] Attempting to compute pie chart colors. Theme:', resolvedTheme, 'Labels:', dealStatusLabels);
             const rootStyle = getComputedStyle(document.documentElement);
             const colors = PIE_CHART_CSS_VAR_NAMES.map((varName, index) => {
                 const hslValue = rootStyle.getPropertyValue(varName).trim();
                 if (hslValue) {
-                    console.log(`[Dashboard] CSS Var ${varName}: raw value='${hslValue}'`);
                     // Ensure hslValue is just 'H S% L%'
                     const hslParts = hslValue.match(/(\d+)\s*(\d+%?)\s*(\d+%?)/);
                     if (hslParts && hslParts.length === 4) {
-                        const resolvedHsla = `hsla(${hslParts[1]}, ${hslParts[2]}, ${hslParts[3]}, 0.8)`;
-                        console.log(`[Dashboard] Resolved HSLA for ${varName}: ${resolvedHsla}`);
-                        return resolvedHsla;
+                         return `hsla(${hslParts[1]}, ${hslParts[2]}, ${hslParts[3]}, 0.8)`;
                     } else {
-                         console.warn(`[Dashboard] CSS Var ${varName}: HSL value '${hslValue}' could not be parsed into H S L. Using fallback.`);
-                        return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`; // Visible fallback
+                        console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName}: HSL value '${hslValue}' could not be parsed. Using fallback.`);
+                        return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`;
                     }
                 }
-                console.warn(`[Dashboard] CSS Var ${varName} not found or empty. Using fallback.`);
-                return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`; // Visible fallback for missing var
+                console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} not found or empty. Using fallback.`);
+                return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`;
             }).slice(0, dealStatusLabels.length);
-            
-            console.log('[Dashboard] Computed pie chart colors:', colors);
             setComputedPieChartColors(colors);
         } else if (dealStatusLabels.length === 0) {
-            setComputedPieChartColors([]); // Clear colors if no data
+            setComputedPieChartColors([]);
         }
-    }, [resolvedTheme, dealStatusLabels.length]); // Added dealStatusLabels.length
+    }, [resolvedTheme, dealStatusLabels]);
 
 
     const handleGoogleCalendarAuth = useCallback(async () => {
@@ -387,9 +381,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: computedPieChartColors.length > 0 ? computedPieChartColors : ['rgba(128,128,128,0.8)', 'rgba(150,150,150,0.8)', 'rgba(170,170,170,0.8)', 'rgba(190,190,190,0.8)'], // Fallback if computed colors aren't ready
+      colors: computedPieChartColors.length > 0 ? computedPieChartColors : ['rgba(128,128,128,0.8)', 'rgba(150,150,150,0.8)', 'rgba(170,170,170,0.8)', 'rgba(190,190,190,0.8)'],
       fill: {
-        opacity: 1, // Opacity is handled by the hsla color strings
+        opacity: 1, 
       },
       stroke: {
         show: true,
@@ -402,7 +396,7 @@ const Dashboard: FC = () => {
         floating: false,
         fontSize: '12px',
         labels: {
-            colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' // Adapting legend label color
+            colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333'
         },
         markers: {
             width: 10,
@@ -600,6 +594,7 @@ const Dashboard: FC = () => {
             {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusSeries.length > 0 && computedPieChartColors.length > 0 ? (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
+                    key={resolvedTheme} 
                     options={apexPieChartOptions}
                     series={dealStatusSeries}
                     type="donut"
@@ -878,3 +873,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
