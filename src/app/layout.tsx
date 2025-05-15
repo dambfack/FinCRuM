@@ -79,7 +79,6 @@ const Logo: React.FC<{
     }
     
     if (currentSrc !== determinedSrc || imgError) {
-      console.log(`[Logo Component] useEffect update. Theme: ${resolvedTheme}. New determinedSrc length: ${determinedSrc?.length ?? 'null'}. CurrentSrc length: ${currentSrc?.length ?? 'null'}. ImgError: ${imgError}`);
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
       setImgError(false); 
       setAttemptCounter(0);
@@ -99,13 +98,10 @@ const Logo: React.FC<{
     setImgError(true);
     let nextSrc = '';
     const currentAttemptSrc = currentSrc; 
-    console.error(`[Logo Component] Image error. CurrentSrc: ${currentAttemptSrc}. Attempt: ${attemptCounter}`);
 
     if (currentAttemptSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
-        console.log(`[Logo Component] Error fallback to: ${ultimateFallbackPngLogo}`);
         nextSrc = ultimateFallbackPngLogo;
     } else if (currentAttemptSrc !== absoluteUltimatePlaceholder) {
-        console.log(`[Logo Component] Error fallback to: ${absoluteUltimatePlaceholder}`);
         nextSrc = absoluteUltimatePlaceholder;
     }
 
@@ -114,7 +110,6 @@ const Logo: React.FC<{
       setImgError(false); 
       setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentAttemptSrc !== absoluteUltimatePlaceholder) {
-      console.log(`[Logo Component] Final error fallback to: ${absoluteUltimatePlaceholder}`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
@@ -125,17 +120,6 @@ const Logo: React.FC<{
   const isDataUri = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('data:');
   const isPlaceholderCo = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
-
-  console.log(`--- [Logo Component] RENDERING ---`);
-  console.log(`  [Logo Component] PROPS - appLogoLightUrl: ${props.appLogoLightUrl ? `Data URI (len: ${props.appLogoLightUrl.length})` : 'null'}`);
-  console.log(`  [Logo Component] PROPS - appLogoDarkUrl: ${props.appLogoDarkUrl ? `Data URI (len: ${props.appLogoDarkUrl.length})` : 'null'}`);
-  console.log(`  [Logo Component] PROPS - defaultAppLogoLightUrl: ${props.defaultAppLogoLightUrl ? `Data URI (len: ${props.defaultAppLogoLightUrl.length})` : 'null'}`);
-  console.log(`  [Logo Component] PROPS - defaultAppLogoDarkUrl: ${props.defaultAppLogoDarkUrl ? `Data URI (len: ${props.defaultAppLogoDarkUrl.length})` : 'null'}`);
-  console.log(`  [Logo Component] INTERNAL STATE - currentSrc: ${currentSrc ? `Len: ${currentSrc.length}` : 'null'}, imgError: ${imgError}, attempt: ${attemptCounter}`);
-  console.log(`  [Logo Component] CHOSEN LOGIC - logoToDisplay (intended for Image src): ${logoToDisplay ? logoToDisplay.substring(0,70) + '...' : 'null'}`);
-  console.log(`  [Logo Component] FLAGS - isDataUri: ${isDataUri} , isPlaceholder: ${isPlaceholderCo}`);
-  console.log(`  [Logo Component] IMAGE PROPS - unoptimized: ${unoptimized}`);
-  console.log(`--- [Logo Component] FINISHED LOGIC ---`);
   
   if (!logoToDisplay || (imgError && logoToDisplay === absoluteUltimatePlaceholder && attemptCounter > 2)) {
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
@@ -214,11 +198,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
   ];
   
   useEffect(() => {
-    console.log("[AppContent] Rendering. Context values - " +
-        `appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${defaultAppLogoLightUrl?.length} headerLogoLightUrl len: ${headerLogoLightUrl?.length}`);
-    console.log("[AppContent] Rendering. Context values - " +
-        `appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${defaultAppLogoDarkUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
-    
     if (typeof window !== 'undefined') {
       const APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT = 'https://placehold.co/1920x1080.png';
       const applyInitialBackground = (url: string | null) => {
@@ -231,7 +210,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       else if (storedDefaultBg) applyInitialBackground(storedDefaultBg);
       else applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT);
     }
-  }, [appLogoLightUrl, defaultAppLogoLightUrl, headerLogoLightUrl, appLogoDarkUrl, defaultAppLogoDarkUrl, headerLogoDarkUrl]);
+  }, []);
 
   useEffect(() => {
     setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080');
@@ -245,10 +224,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
-    console.log(`[AppContent] handleFileChangeGeneric triggered for ${toastTitle}`);
     const file = event.target.files?.[0];
     if (file) {
-      console.log(`[AppContent] File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = ''; return;
@@ -258,22 +235,15 @@ function AppContent({ children }: { children: React.ReactNode }) {
          if (inputRef.current) inputRef.current.value = ''; return;
       }
       const reader = new FileReader();
-      reader.onloadstart = () => console.log(`[AppContent] FileReader started for ${file.name}`);
-      reader.onprogress = (e) => console.log(`[AppContent] FileReader progress for ${file.name}: ${e.loaded}/${e.total}`);
       reader.onloadend = () => { 
-        console.log(`[AppContent] FileReader ended for ${file.name}. Result length: ${(reader.result as string)?.length}`);
         setCropSrc(reader.result as string); 
         setCropperOpen(true); 
-        console.log(`[AppContent] Cropper modal should open for ${toastTitle}`);
       };
       reader.onerror = (e) => {
-        console.error(`[AppContent] FileReader error for ${file.name}:`, e);
         toast({ title: "File Read Error", variant: "destructive" });
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
-    } else {
-      console.log(`[AppContent] No file selected for ${toastTitle}`);
     }
   };
 
@@ -396,7 +366,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <PopoverContent className="w-96 sm:w-[672px] glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto p-1">
                 {/* Top Section */}
                 <div className="space-y-3 p-3 mb-3">
-                  <h4 className="font-medium leading-none text-sm font-heading">User</h4>
+                  <h4 className="font-medium leading-none text-sm font-heading">
+                    {currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'User'}
+                  </h4>
                   {currentUser && (
                     <div className="flex flex-col items-center space-y-3 mb-4">
                       <button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
@@ -411,9 +383,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <Separator className="my-4" />
                 {/* Bottom Section - Two Columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-2 px-3 pb-3">
-                  {/* Left Column (Partner Only settings + Theme Customization for all) */}
-                  <div className="space-y-6">
-                     {currentUser?.role === 'partner' && (
+                   {/* Left Column */}
+                   <div className="space-y-6">
+                    {currentUser?.role === 'partner' && (
                       <div className="space-y-3">
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4>
                         <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
@@ -509,3 +481,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
