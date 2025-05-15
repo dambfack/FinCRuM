@@ -2,7 +2,7 @@
 'use client';
 
 import type { Metadata } from 'next';
-import { Inter, Montserrat } from 'next/font/google';
+import { Inter, Montserrat, Inter_Tight } from 'next/font/google'; // Changed Anton to Inter_Tight for Inter Black
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { cn, getFirstInitial, getData, saveData, hexToHslString } from '@/lib/utils';
@@ -36,16 +36,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Ensured NextImage is imported
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import { SketchPicker, type ColorResult } from 'react-color';
 
 
-const interBlack = Inter({
+const interBlack = Inter_Tight({ // Using Inter_Tight which is closer to Inter Black if Inter isn't providing weight 900 well
   subsets: ['latin'],
-  weight: ['900'],
+  weight: ['800'], // Inter_Tight's 800 weight might be visually similar to Inter Black 900
   variable: '--font-inter-black',
 });
 
@@ -70,7 +70,7 @@ const Logo: React.FC<{
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
-    console.log(`[Logo Component] useEffect running. Theme: ${resolvedTheme} Props:`, props);
+    // console.log(`[Logo Component] useEffect running. Theme: ${resolvedTheme} Props:`, props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
@@ -78,26 +78,28 @@ const Logo: React.FC<{
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     
+    // Only update if the determinedSrc is different from currentSrc OR if there was a previous error (to retry with potentially new props)
     if (currentSrc !== determinedSrc || imgError) { 
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-      setImgError(false);
-      console.log(`[Logo Component] useEffect - Chosen Src: ${determinedSrc?.substring(0,30) || ultimateFallbackPngLogo}`);
+      setImgError(false); // Reset error on new src attempt
+      // console.log(`[Logo Component] useEffect - Chosen Src: ${determinedSrc?.substring(0,30) || ultimateFallbackPngLogo}`);
     }
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo, currentSrc, imgError]);
 
 
   const handleError = useCallback(() => {
-    console.error(`[Logo Component] Image load error for: ${currentSrc?.substring(0,50)}. Attempt: ${attemptCounter}`);
+    // console.error(`[Logo Component] Image load error for: ${currentSrc?.substring(0,50)}. Attempt: ${attemptCounter}`);
     setImgError(true);
     let nextSrc = '';
 
+    // Fallback logic: try the other theme's custom, then other theme's default, then ultimate PNG, then absolute placeholder
     if (resolvedTheme === 'dark') {
       if (currentSrc === props.appLogoDarkUrl && props.appLogoLightUrl && currentSrc !== props.appLogoLightUrl) nextSrc = props.appLogoLightUrl;
       else if (currentSrc === props.appLogoLightUrl && props.defaultAppLogoDarkUrl && currentSrc !== props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
       else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoLightUrl && currentSrc !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && currentSrc !== ultimateFallbackPngLogo) nextSrc = ultimateFallbackPngLogo;
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
-    } else { 
+    } else { // Light theme
       if (currentSrc === props.appLogoLightUrl && props.appLogoDarkUrl && currentSrc !== props.appLogoDarkUrl) nextSrc = props.appLogoDarkUrl;
       else if (currentSrc === props.appLogoDarkUrl && props.defaultAppLogoLightUrl && currentSrc !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && props.defaultAppLogoDarkUrl && currentSrc !== props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
@@ -105,28 +107,32 @@ const Logo: React.FC<{
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
     }
     
+    // General fallback if specific theme logic didn't yield a new, different src
     if (!nextSrc) {
-        if (currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
-           nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl) || 
-                     (resolvedTheme === 'dark' ? props.defaultAppLogoLightUrl : props.defaultAppLogoDarkUrl) || 
-                     ultimateFallbackPngLogo;
-        } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
+        // Prefer current theme's default if available and different, then other theme's default, then ultimate
+        if (currentSrc !== (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl) && (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl)) {
+           nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl)!;
+        } else if (currentSrc !== (resolvedTheme === 'dark' ? props.defaultAppLogoLightUrl : props.defaultAppLogoDarkUrl) && (resolvedTheme === 'dark' ? props.defaultAppLogoLightUrl : props.defaultAppLogoDarkUrl)) {
+           nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoLightUrl : props.defaultAppLogoDarkUrl)!;
+        } else if (currentSrc !== ultimateFallbackPngLogo) {
+           nextSrc = ultimateFallbackPngLogo;
+        } else if (currentSrc !== absoluteUltimatePlaceholder) {
            nextSrc = absoluteUltimatePlaceholder;
         }
     }
 
     if (currentSrc !== nextSrc && nextSrc) {
-      console.log(`[Logo Component] Falling back to: ${nextSrc.substring(0,50)}`);
+      // console.log(`[Logo Component] Falling back to: ${nextSrc.substring(0,50)}`);
       setCurrentSrc(nextSrc);
       setImgError(false); 
       setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-      console.log(`[Logo Component] Falling back to absolute placeholder.`);
+      // console.log(`[Logo Component] Falling back to absolute placeholder because no other valid nextSrc found.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     } else {
-        console.log("[Logo Component] No more valid fallbacks or already on absolute placeholder.");
+        // console.log("[Logo Component] No more valid fallbacks or already on absolute placeholder.");
     }
   }, [currentSrc, props, resolvedTheme, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
   
@@ -135,15 +141,25 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof displaySrc === 'string' && displaySrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  console.log(`[Logo Component] RENDERING. currentSrc: ${currentSrc?.substring(0,30)}, imgError: ${imgError}, attempt: ${attemptCounter}, displaySrc: ${displaySrc?.substring(0,30)}, unoptimized: ${unoptimized}`);
+  // console.log(`--- [Logo Component] RENDERING ---`);
+  // console.log(`  [Logo Component] PROPS - appLogoLightUrl: ${props.appLogoLightUrl ? `Data URI (len: ${props.appLogoLightUrl.length})` : 'null'}`);
+  // console.log(`  [Logo Component] PROPS - appLogoDarkUrl: ${props.appLogoDarkUrl ? `Data URI (len: ${props.appLogoDarkUrl.length})` : 'null'}`);
+  // console.log(`  [Logo Component] PROPS - defaultAppLogoLightUrl: ${props.defaultAppLogoLightUrl ? `Data URI (len: ${props.defaultAppLogoLightUrl.length})` : 'null'}`);
+  // console.log(`  [Logo Component] PROPS - defaultAppLogoDarkUrl: ${props.defaultAppLogoDarkUrl ? `Data URI (len: ${props.defaultAppLogoDarkUrl.length})` : 'null'}`);
+  // console.log(`  [Logo Component] INTERNAL STATE - currentSrc: Type: ${typeof currentSrc}, StartsWithData: ${typeof currentSrc === 'string' && currentSrc.startsWith('data:')}, Value: ${currentSrc ? currentSrc.substring(0, 60) + '...' : 'null'}`);
+  // console.log(`  [Logo Component] INTERNAL STATE - imgError: ${imgError}, attemptCounter: ${attemptCounter}`);
+  // console.log(`  [Logo Component] CHOSEN LOGIC - displaySrc (passed to Image): Type: ${typeof displaySrc}, StartsWithData: ${typeof displaySrc === 'string' && displaySrc.startsWith('data:')}, Value: ${displaySrc ? displaySrc.substring(0, 60) + '...' : 'null'}`);
+  // console.log(`  [Logo Component] IMAGE PROPS - unoptimized: ${unoptimized}`);
+  // console.log(`--- [Logo Component] FINISHED LOGIC ---`);
   
-  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 5)) {
+  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 5)) { // Increased attemptCounter limit
+    // console.log("[Logo Component] Rendering fallback div due to error or no src.");
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
   return (
       <NextImage
-        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} 
+        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} // More robust key
         src={displaySrc}
         alt="App Logo"
         width={24} 
@@ -158,7 +174,6 @@ const Logo: React.FC<{
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { resolvedTheme } = useTheme();
   const { 
     toggleSidebar, 
     openMobile: isMobileSidebarOpen 
@@ -176,6 +191,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,
   } = auth;
   
+  const { resolvedTheme } = useTheme();
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
   const appLogoLightInputRef = useRef<HTMLInputElement>(null);
@@ -217,6 +233,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     { label: 'Missed Status Color', stateValue: chartPieColorMissed, updateFn: updateChartPieColorMissed, dataItemType: DataItemType.ChartPieColorMissed },
     { label: 'Other Status Color', stateValue: chartPieColorOther, updateFn: updateChartPieColorOther, dataItemType: DataItemType.ChartPieColorOther },
   ];
+  
+  // console.log(`[AppContent] Rendering. Context values - appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${defaultAppLogoLightUrl?.length} headerLogoLightUrl len: ${headerLogoLightUrl?.length}`);
+  // console.log(`[AppContent] Rendering. Context values - appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${defaultAppLogoDarkUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -256,10 +276,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
-    console.log(`[AppContent] handleFileChangeGeneric triggered for: ${toastTitle}`);
+    // console.log(`[AppContent] handleFileChangeGeneric triggered for: ${toastTitle}`);
     const file = event.target.files?.[0];
     if (file) {
-      console.log(`[AppContent] File selected: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
+      // console.log(`[AppContent] File selected: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
@@ -272,11 +292,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
       }
 
       const reader = new FileReader();
-      reader.onloadstart = () => console.log(`[AppContent] FileReader started for ${toastTitle}`);
-      reader.onprogress = (e) => console.log(`[AppContent] FileReader progress for ${toastTitle}: ${e.loaded}/${e.total}`);
+      // reader.onloadstart = () => console.log(`[AppContent] FileReader started for ${toastTitle}`);
+      // reader.onprogress = (e) => console.log(`[AppContent] FileReader progress for ${toastTitle}: ${e.loaded}/${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        console.log(`[AppContent] FileReader finished for ${toastTitle}. Data URI length: ${dataUri?.length}. Setting crop source and opening cropper.`);
+        // console.log(`[AppContent] FileReader finished for ${toastTitle}. Data URI length: ${dataUri?.length}. Setting crop source and opening cropper.`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -287,7 +307,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
     } else {
-      console.log(`[AppContent] No file selected for ${toastTitle}.`);
+      // console.log(`[AppContent] No file selected for ${toastTitle}.`);
     }
   };
 
@@ -299,7 +319,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { 
-    console.log("[AppContent] handleAppLogoLightCropSave called. CroppedDataUri length:", croppedDataUri.length);
+    // console.log("[AppContent] handleAppLogoLightCropSave called. CroppedDataUri length:", croppedDataUri.length);
     updateAppLogoLight(croppedDataUri); 
     setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); 
   };
@@ -382,7 +402,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     return <PinLoginScreen />;
   }
   
-  const currentHeaderLogo = resolvedTheme === 'dark' 
+  const currentHeaderLogoToDisplay = resolvedTheme === 'dark' 
     ? (headerLogoDarkUrl || headerLogoLightUrl) 
     : (headerLogoLightUrl || headerLogoDarkUrl);
 
@@ -488,8 +508,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 aria-label="View dashboard"
               >
                   <div className="flex items-center font-heading">
-                    {currentHeaderLogo ? (
-                      <NextImage src={currentHeaderLogo} alt="Header Logo" width={150} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" unoptimized/>
+                    {currentHeaderLogoToDisplay ? (
+                      <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={150} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" unoptimized/>
                     ) : (
                       <span className="mr-1">Finsculpt</span>
                     )}
@@ -499,8 +519,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading">
-            {currentHeaderLogo ? (
-              <NextImage src={currentHeaderLogo} alt="Header Logo" width={150} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" unoptimized/>
+            {currentHeaderLogoToDisplay ? (
+              <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={150} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" unoptimized/>
             ) : (
               <span className="mr-1">Finsculpt</span>
             )}
@@ -517,112 +537,128 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   <span className="sr-only">Settings</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto">
+              <PopoverContent className="w-96 sm:w-[672px] glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto">
                 <div className="p-1">
-                  <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4>
-                  {currentUser && (
-                    <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
-                       <button
-                        onClick={() => {
-                          if (currentUser.profilePictureUrl) {
-                            setIsUserAvatarModalOpen(true);
-                          }
-                        }}
-                        className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
-                        aria-label="View profile picture"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
-                          <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
-                        </Avatar>
-                      </button>
-                      <div>
-                        <p className="text-sm font-medium">{currentUser.name}</p>
-                        <p className="text-xs text-muted-foreground">{currentUser.email}</p>
-                      </div>
-                    </div>
-                  )}
-                  <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
-                  <Button variant="outline" size="sm" className="w-full mb-3" onClick={() => userProfilePicInputRef.current?.click()}> <ImageUp className="mr-2 h-4 w-4" /> Change Profile Picture </Button>
-                </div>
-
-                {currentUser?.role === 'partner' && (
-                  <div className="p-1 mt-2 border-t border-border/20 pt-3 space-y-2">
-                    <h4 className="font-medium leading-none text-sm font-heading mb-1">App & Header Logos</h4>
-                    
-                    <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
-                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light App Logo </Button>
-
-                    <input type="file" ref={appLogoDarkInputRef} onChange={handleAppLogoDarkFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
-                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark App Logo </Button>
-
-                    <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
-                    
-                    <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
-                  
-                    <div className="p-1 mt-2 border-t border-border/20 pt-3 space-y-3">
-                      <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
-                      <div className="space-y-1">
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => setShowAccentPicker(!showAccentPicker)}>
-                          <Palette className="mr-2 h-4 w-4" /> {showAccentPicker ? "Hide" : "Change"} Accent Color
-                        </Button>
-                         {customAccentColor && (
-                           <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive" onClick={handleAccentColorReset}>
-                             <Trash2 className="mr-1.5 h-3 w-3" /> Reset Accent Color
-                           </Button>
-                         )}
-                      </div>
-                      {showAccentPicker && (
-                        <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
-                          <SketchPicker
-                            color={currentAccentPickerColor}
-                            onChangeComplete={handleAccentColorChange}
-                            disableAlpha={true}
-                          />
-                          <Button size="sm" onClick={handleAccentColorSave} className="w-full">Apply Accent Color</Button>
-                        </div>
-                      )}
-                      {/* Chart Color Pickers */}
-                      {chartColorConfig.map((config, index) => (
-                        <div key={index} className="space-y-1">
-                           <div className="flex items-center justify-between">
-                             <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChartColorPickerToggle(config.dataItemType.toString())}>
-                               <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm"></div>
-                               {showChartColorPicker === config.dataItemType.toString() ? "Hide" : "Change"} {config.label}
-                             </Button>
-                             {config.stateValue && (
-                               <Button variant="ghost" size="icon" className="ml-1 h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleChartColorReset(config.dataItemType.toString())} title={`Reset ${config.label}`}>
-                                 <Trash2 className="h-3.5 w-3.5" />
-                               </Button>
-                             )}
-                           </div>
-                          {showChartColorPicker === config.dataItemType.toString() && (
-                            <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
-                              <SketchPicker
-                                color={currentChartPickerColor}
-                                onChangeComplete={handleChartColorChange}
-                                disableAlpha={true}
-                              />
-                              <Button size="sm" onClick={handleChartColorSave} className="w-full">Apply {config.label}</Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
+                        {/* ----- COLUMN 1 ----- */}
+                        <div className="space-y-6">
+                            {/* User Section */}
+                            <div>
+                                <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4>
+                                {currentUser && (
+                                    <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
+                                    <button
+                                        onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }}
+                                        className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
+                                        aria-label="View profile picture"
+                                    >
+                                        <Avatar className="h-10 w-10">
+                                        <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                                        <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+                                        </Avatar>
+                                    </button>
+                                    <div>
+                                        <p className="text-sm font-medium">{currentUser.name}</p>
+                                        <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                                    </div>
+                                    </div>
+                                )}
+                                <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => userProfilePicInputRef.current?.click()}> <ImageUp className="mr-2 h-4 w-4" /> Change Profile Picture </Button>
                             </div>
-                          )}
+                             {/* App Background Section */}
+                            <div>
+                                <BackgroundImageSwitcher />
+                            </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        {/* ----- COLUMN 2 ----- */}
+                        <div className="space-y-6">
+                           {currentUser?.role === 'partner' && (
+                             <div>
+                                <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4>
+                                <div className="space-y-2">
+                                    <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light </Button>
 
-                <BackgroundImageSwitcher />
-                {isAuthenticated && (
-                  <Button onClick={logout} variant="outline" size="sm" className="w-full mt-4">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </Button>
-                )}
+                                    <input type="file" ref={appLogoDarkInputRef} onChange={handleAppLogoDarkFileChange} accept="image/png" className="hidden"/>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark </Button>
+
+                                    <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
+                                    
+                                    <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
+                                </div>
+                             </div>
+                           )}
+                           {currentUser?.role === 'partner' && (
+                            <div className="space-y-3">
+                                <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
+                                <div className="space-y-1">
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => setShowAccentPicker(!showAccentPicker)}>
+                                    <Palette className="mr-2 h-4 w-4" /> {showAccentPicker ? "Hide" : "Change"} Accent Color
+                                    </Button>
+                                    {customAccentColor && (
+                                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive" onClick={handleAccentColorReset}>
+                                        <Trash2 className="mr-1.5 h-3 w-3" /> Reset Accent Color
+                                    </Button>
+                                    )}
+                                </div>
+                                {showAccentPicker && (
+                                    <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
+                                    <SketchPicker
+                                        color={currentAccentPickerColor}
+                                        onChangeComplete={handleAccentColorChange}
+                                        disableAlpha={true}
+                                        width="100%"
+                                        className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"
+                                    />
+                                    <Button size="sm" onClick={handleAccentColorSave} className="w-full">Apply Accent Color</Button>
+                                    </div>
+                                )}
+                                {chartColorConfig.map((config, index) => (
+                                    <div key={index} className="space-y-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChartColorPickerToggle(config.dataItemType.toString())}>
+                                            <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm shrink-0"></div>
+                                            <span className="truncate">{showChartColorPicker === config.dataItemType.toString() ? "Hide" : "Change"} {config.label}</span>
+                                        </Button>
+                                        {config.stateValue && (
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => handleChartColorReset(config.dataItemType.toString())} title={`Reset ${config.label}`}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                        )}
+                                    </div>
+                                    {showChartColorPicker === config.dataItemType.toString() && (
+                                        <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
+                                        <SketchPicker
+                                            color={currentChartPickerColor}
+                                            onChangeComplete={handleChartColorChange}
+                                            disableAlpha={true}
+                                            width="100%"
+                                            className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"
+                                        />
+                                        <Button size="sm" onClick={handleChartColorSave} className="w-full">Apply {config.label}</Button>
+                                        </div>
+                                    )}
+                                    </div>
+                                ))}
+                            </div>
+                           )}
+                        </div>
+                         {/* Logout Button (Spanning) */}
+                        {isAuthenticated && (
+                            <div className="sm:col-span-2">
+                            <Button onClick={logout} variant="outline" size="sm" className="w-full mt-2">
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Logout
+                            </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
               </PopoverContent>
             </Popover>
              {currentUser && (
@@ -652,8 +688,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     
     {isUserAvatarModalOpen && <ProfilePictureModal isOpen={isUserAvatarModalOpen} onClose={() => setIsUserAvatarModalOpen(false)} imageUrl={currentUser?.profilePictureUrl} altText={currentUser?.name} />}
     {userImageToCropSrc && <ImageCropperModal isOpen={isUserProfileCropperOpen} onClose={() => {setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);}} imageSrc={userImageToCropSrc} onCropSave={handleUserCropSave} aspectRatio={1/1} />}
+    
     {appLogoLightImageToCropSrc && <ImageCropperModal isOpen={isAppLogoLightCropperOpen} onClose={() => {setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null);}} imageSrc={appLogoLightImageToCropSrc} onCropSave={handleAppLogoLightCropSave} aspectRatio={1/1} />}
     {appLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isAppLogoDarkCropperOpen} onClose={() => {setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null);}} imageSrc={appLogoDarkImageToCropSrc} onCropSave={handleAppLogoDarkCropSave} aspectRatio={1/1} />}
+    
     {headerLogoLightImageToCropSrc && <ImageCropperModal isOpen={isHeaderLogoLightCropperOpen} onClose={() => {setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null);}} imageSrc={headerLogoLightImageToCropSrc} onCropSave={handleHeaderLogoLightCropSave} aspectRatio={16/9} />}
     {headerLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isHeaderLogoDarkCropperOpen} onClose={() => {setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null);}} imageSrc={headerLogoDarkImageToCropSrc} onCropSave={handleHeaderLogoDarkCropSave} aspectRatio={16/9} />}
     </>
@@ -696,3 +734,4 @@ export default function RootLayout({
     </html>
   );
 }
+    
