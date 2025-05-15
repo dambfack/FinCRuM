@@ -22,7 +22,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
-  useSidebar, 
+  useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2 } from 'lucide-react';
@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 
 const interBlack = Inter_Tight({
   subsets: ['latin'],
-  weight: ['900'], 
+  weight: ['900'],
   variable: '--font-inter-black',
 });
 
@@ -65,9 +65,9 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); 
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; 
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
@@ -79,9 +79,10 @@ const Logo: React.FC<{
     }
     
     if (currentSrc !== determinedSrc || imgError) {
+      console.log(`[Logo Component] useEffect update. Theme: ${resolvedTheme}. New determinedSrc length: ${determinedSrc?.length ?? 'null'}. CurrentSrc length: ${currentSrc?.length ?? 'null'}. ImgError: ${imgError}`);
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
       setImgError(false); 
-      setAttemptCounter(0); // Reset attempts when src determination changes
+      setAttemptCounter(0);
     }
   }, [
       props.appLogoLightUrl, 
@@ -90,17 +91,21 @@ const Logo: React.FC<{
       props.defaultAppLogoDarkUrl, 
       resolvedTheme,
       currentSrc, 
-      imgError    
+      imgError,
+      ultimateFallbackPngLogo
   ]);
   
   const handleError = useCallback(() => {
     setImgError(true);
     let nextSrc = '';
-    const currentAttemptSrc = currentSrc; // Capture currentSrc before potential update
+    const currentAttemptSrc = currentSrc; 
+    console.error(`[Logo Component] Image error. CurrentSrc: ${currentAttemptSrc}. Attempt: ${attemptCounter}`);
 
     if (currentAttemptSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
+        console.log(`[Logo Component] Error fallback to: ${ultimateFallbackPngLogo}`);
         nextSrc = ultimateFallbackPngLogo;
     } else if (currentAttemptSrc !== absoluteUltimatePlaceholder) {
+        console.log(`[Logo Component] Error fallback to: ${absoluteUltimatePlaceholder}`);
         nextSrc = absoluteUltimatePlaceholder;
     }
 
@@ -109,26 +114,37 @@ const Logo: React.FC<{
       setImgError(false); 
       setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentAttemptSrc !== absoluteUltimatePlaceholder) {
+      console.log(`[Logo Component] Final error fallback to: ${absoluteUltimatePlaceholder}`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
-  }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
+  }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
-
-  const displaySrc = currentSrc || (imgError ? absoluteUltimatePlaceholder : ultimateFallbackPngLogo);
-  const isDataUri = typeof displaySrc === 'string' && displaySrc.startsWith('data:');
-  const isPlaceholderCo = typeof displaySrc === 'string' && displaySrc.startsWith('https://placehold.co');
+  const logoToDisplay = imgError && attemptCounter > 2 ? absoluteUltimatePlaceholder : (currentSrc || ultimateFallbackPngLogo);
+  const isDataUri = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('data:');
+  const isPlaceholderCo = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 2)) { // Limit fallback attempts
+  console.log(`--- [Logo Component] RENDERING ---`);
+  console.log(`  [Logo Component] PROPS - appLogoLightUrl: ${props.appLogoLightUrl ? `Data URI (len: ${props.appLogoLightUrl.length})` : 'null'}`);
+  console.log(`  [Logo Component] PROPS - appLogoDarkUrl: ${props.appLogoDarkUrl ? `Data URI (len: ${props.appLogoDarkUrl.length})` : 'null'}`);
+  console.log(`  [Logo Component] PROPS - defaultAppLogoLightUrl: ${props.defaultAppLogoLightUrl ? `Data URI (len: ${props.defaultAppLogoLightUrl.length})` : 'null'}`);
+  console.log(`  [Logo Component] PROPS - defaultAppLogoDarkUrl: ${props.defaultAppLogoDarkUrl ? `Data URI (len: ${props.defaultAppLogoDarkUrl.length})` : 'null'}`);
+  console.log(`  [Logo Component] INTERNAL STATE - currentSrc: ${currentSrc ? `Len: ${currentSrc.length}` : 'null'}, imgError: ${imgError}, attempt: ${attemptCounter}`);
+  console.log(`  [Logo Component] CHOSEN LOGIC - logoToDisplay (intended for Image src): ${logoToDisplay ? logoToDisplay.substring(0,70) + '...' : 'null'}`);
+  console.log(`  [Logo Component] FLAGS - isDataUri: ${isDataUri} , isPlaceholder: ${isPlaceholderCo}`);
+  console.log(`  [Logo Component] IMAGE PROPS - unoptimized: ${unoptimized}`);
+  console.log(`--- [Logo Component] FINISHED LOGIC ---`);
+  
+  if (!logoToDisplay || (imgError && logoToDisplay === absoluteUltimatePlaceholder && attemptCounter > 2)) {
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
   return (
       <NextImage
-        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} 
-        src={displaySrc}
+        key={`${logoToDisplay}-${attemptCounter}-${resolvedTheme}`} 
+        src={logoToDisplay}
         alt="Finsculpt CRM Logo"
         width={24} 
         height={24} 
@@ -142,9 +158,9 @@ const Logo: React.FC<{
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { toggleSidebar, openMobile: isMobileSidebarOpen } = useSidebar(); 
+  const { toggleSidebar, openMobile: isMobileSidebarOpen } = useSidebar();
 
-  const auth = useAuth(); 
+  const auth = useAuth();
   const {
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl,
@@ -179,16 +195,16 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
   
   const [showAccentPicker, setShowAccentPicker] = useState(false);
-  const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState('#008080'); 
+  const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState('#008080');
 
-  const [showChartColorPicker, setShowChartColorPicker] = useState<keyof UserThemeSettings | null>(null); 
+  const [showChartColorPicker, setShowChartColorPicker] = useState<keyof UserThemeSettings | null>(null);
   const [currentChartPickerColor, setCurrentChartPickerColor] = useState('#000000');
 
   const chartColorConfig: {
     label: string;
-    stateValue: string | null | undefined; 
+    stateValue: string | null | undefined;
     updateFn: (hex: string | null) => void;
-    dataItemType: keyof UserThemeSettings; 
+    dataItemType: keyof UserThemeSettings;
     pickerKey: keyof UserThemeSettings;
   }[] = [
     { label: 'Open Status Color', stateValue: currentUserThemeSettings?.chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: 'chartPieColorOpen', pickerKey: 'chartPieColorOpen' },
@@ -198,10 +214,15 @@ function AppContent({ children }: { children: React.ReactNode }) {
   ];
   
   useEffect(() => {
+    console.log("[AppContent] Rendering. Context values - " +
+        `appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${defaultAppLogoLightUrl?.length} headerLogoLightUrl len: ${headerLogoLightUrl?.length}`);
+    console.log("[AppContent] Rendering. Context values - " +
+        `appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${defaultAppLogoDarkUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
+    
     if (typeof window !== 'undefined') {
       const APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT = 'https://placehold.co/1920x1080.png';
       const applyInitialBackground = (url: string | null) => {
-        document.body.style.backgroundImage = url ? `url('${url}')` : '';
+        document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT}')`;
         document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'abstract gradient');
       };
       const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
@@ -210,7 +231,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       else if (storedDefaultBg) applyInitialBackground(storedDefaultBg);
       else applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT);
     }
-  }, []); 
+  }, [appLogoLightUrl, defaultAppLogoLightUrl, headerLogoLightUrl, appLogoDarkUrl, defaultAppLogoDarkUrl, headerLogoDarkUrl]);
 
   useEffect(() => {
     setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080');
@@ -224,8 +245,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
+    console.log(`[AppContent] handleFileChangeGeneric triggered for ${toastTitle}`);
     const file = event.target.files?.[0];
     if (file) {
+      console.log(`[AppContent] File selected: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = ''; return;
@@ -235,21 +258,36 @@ function AppContent({ children }: { children: React.ReactNode }) {
          if (inputRef.current) inputRef.current.value = ''; return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => { setCropSrc(reader.result as string); setCropperOpen(true); };
-      reader.onerror = () => toast({ title: "File Read Error", variant: "destructive" });
+      reader.onloadstart = () => console.log(`[AppContent] FileReader started for ${file.name}`);
+      reader.onprogress = (e) => console.log(`[AppContent] FileReader progress for ${file.name}: ${e.loaded}/${e.total}`);
+      reader.onloadend = () => { 
+        console.log(`[AppContent] FileReader ended for ${file.name}. Result length: ${(reader.result as string)?.length}`);
+        setCropSrc(reader.result as string); 
+        setCropperOpen(true); 
+        console.log(`[AppContent] Cropper modal should open for ${toastTitle}`);
+      };
+      reader.onerror = (e) => {
+        console.error(`[AppContent] FileReader error for ${file.name}:`, e);
+        toast({ title: "File Read Error", variant: "destructive" });
+      };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
+    } else {
+      console.log(`[AppContent] No file selected for ${toastTitle}`);
     }
   };
 
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setUserImageToCropSrc, setIsUserProfileCropperOpen, 2, "User Profile Picture", userProfilePicInputRef);
   const handleUserCropSave = (croppedImageUrl: string) => { if (currentUser) updateUserProfilePicture(croppedImageUrl); setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null); };
+  
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { updateAppLogoLight(croppedDataUri); setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); };
   const handleAppLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoDarkImageToCropSrc, setIsAppLogoDarkCropperOpen, 1, "Dark App Logo", appLogoDarkInputRef);
   const handleAppLogoDarkCropSave = (croppedDataUri: string) => { updateAppLogoDark(croppedDataUri); setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null); };
-  const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", variant: "default"}); };
-  const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", variant: "default"}); };
+  
+  const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", description: "No light theme logo is currently set.", variant: "default"}); };
+  const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", description: "No dark theme logo is currently set.", variant: "default"}); };
+  
   const handleHeaderLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoLightImageToCropSrc, setIsHeaderLogoLightCropperOpen, 0.5, "Light Header Logo", headerLogoLightInputRef);
   const handleHeaderLogoLightCropSave = (croppedDataUri: string) => { updateHeaderLogoLight(croppedDataUri); setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null); };
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
@@ -276,7 +314,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
   const handleChartColorReset = (pickerKey: keyof UserThemeSettings) => {
     const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
-    if (config) config.updateFn(null); 
+    if (config) config.updateFn(null);
     if (showChartColorPicker === pickerKey) setShowChartColorPicker(null);
   };
 
@@ -360,23 +398,23 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <div className="space-y-3 p-3 mb-3">
                   <h4 className="font-medium leading-none text-sm font-heading">User</h4>
                   {currentUser && (
-                    <div className="flex items-center gap-4 mb-1">
+                    <div className="flex flex-col items-center space-y-3 mb-4">
                       <button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
-                        <Avatar className="h-16 w-16"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback className="text-2xl">{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
+                        <Avatar className="h-24 w-24"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback className="text-3xl">{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
                       </button>
-                      <div><p className="text-sm font-medium">{currentUser.name}</p><p className="text-xs text-muted-foreground">{currentUser.email}</p></div>
+                      <div><p className="text-sm font-medium text-center">{currentUser.name}</p><p className="text-xs text-muted-foreground text-center">{currentUser.email}</p></div>
+                       <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
+                       <Button type="button" variant="outline" size="sm" className="h-9 px-3" onClick={() => userProfilePicInputRef.current?.click()}><ImageUp className="mr-2 h-4 w-4" />Change Profile Picture</Button>
                     </div>
                   )}
-                  <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
-                  <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => userProfilePicInputRef.current?.click()}><ImageUp className="mr-2 h-4 w-4" />Change Profile Picture</Button>
                 </div>
                 <Separator className="my-4" />
                 {/* Bottom Section - Two Columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-2 px-3 pb-3">
                   {/* Left Column (Partner Only settings + Theme Customization for all) */}
                   <div className="space-y-6">
-                    {currentUser?.role === 'partner' && (
-                      <div className="space-y-2">
+                     {currentUser?.role === 'partner' && (
+                      <div className="space-y-3">
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4>
                         <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
                         <Button variant="outline" size="sm" className="w-full h-9" onClick={() => appLogoLightInputRef.current?.click()}><Sun className="mr-2 h-4 w-4" />App Logo (Light)</Button>
@@ -471,4 +509,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
