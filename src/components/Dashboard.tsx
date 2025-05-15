@@ -2,11 +2,11 @@
 // src/components/Dashboard.tsx
 'use client';
 
-import React, { FC, useEffect, useState, useCallback } from 'react';
+import React, { FC, useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive } from 'lucide-react';
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'; // Added PieChart, Pie, Cell
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User } from '@/lib/types';
@@ -23,7 +23,7 @@ import CustomerDetailModal from './CustomerDetailModal';
 import CustomerForm from './CustomerForm';
 import { getData, parseDate, formatDateTime, cn, saveData } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { subMonths, startOfMonth, format, eachMonthOfInterval, isToday } from 'date-fns';
+import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
@@ -45,14 +45,6 @@ const initialStats: DashboardStats = {
   appointmentsTodayCount: 0,
 };
 
-const mockContacts: Contact[] = [
-  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=JD' },
-  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=JS'  },
-  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=AW' },
-  { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=BB' },
-  { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=EF' },
-];
-
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
 const Dashboard: FC = () => {
@@ -69,10 +61,9 @@ const Dashboard: FC = () => {
 
     const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
-    const [computedPieChartColors, setComputedPieChartColors] = useState<string[]>([]);
-
+    
     const { resolvedTheme } = useTheme();
-
+    const [computedPieChartColors, setComputedPieChartColors] = useState<string[]>([]);
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -102,15 +93,9 @@ const Dashboard: FC = () => {
     const loadDashboardData = useCallback(() => {
         setLoading(true);
         try {
-            const customerDataStore = getData<Contact[]>(DataItemType.Contacts) || [];
-            let loadedContacts: Contact[] = [...customerDataStore];
+            const loadedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
             const loadedUsers = getData<User[]>(DataItemType.Users) || [];
             setAllUsersState(loadedUsers);
-
-            if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') {
-                // loadedContacts = mockContacts; // No longer using mock contacts by default
-                 // saveData<Contact[]>(DataItemType.Contacts, mockContacts); // Optionally save mocks for persistence
-            }
             setAllContactsState(loadedContacts);
 
             const tasks = getData<TaskType[]>(DataItemType.Tasks) || [];
@@ -163,27 +148,28 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined>)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
+                if (status === 'approached') { // Should not happen based on current type, but good for safety
+                  statusCounts.other++;
+                } else if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined | 'approached'>)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
                 } else {
                     statusCounts.other++;
                 }
             });
-            const pieDataForApex = Object.entries(statusCounts)
-                .filter(([, value]) => value > 0 || Object.keys(statusCounts).length === 1) 
-                .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
-            setDealStatusSeries(pieDataForApex.map(item => item.value));
-            setDealStatusLabels(pieDataForApex.map(item => item.name));
+            const pieDataLabels = ['Open', 'Closed', 'Missed', 'Other'];
+            const pieDataSeries = [statusCounts.open, statusCounts.closed, statusCounts.missed, statusCounts.other];
+            
+            setDealStatusLabels(pieDataLabels);
+            setDealStatusSeries(pieDataSeries);
 
         } catch (error) {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            // setRecentContacts(mockContacts.slice(0,5)); // Do not fall back to mock data
             setRecentContacts([]);
             setCustomerGrowthChartData([]);
             setDealStatusSeries([]);
@@ -209,43 +195,121 @@ const Dashboard: FC = () => {
         return () => window.removeEventListener('dataChanged', handleDataChange);
     }, [loadDashboardData]);
 
-
-    const PIE_CHART_CSS_VAR_NAMES = [
-        '--chart-pie-1',
-        '--chart-pie-2',
-        '--chart-pie-3',
-        '--chart-pie-4',
+    const PIE_CHART_CSS_VAR_NAMES_MAP: Record<string, string> = {
+      'Open': '--chart-pie-1',
+      'Closed': '--chart-pie-2',
+      'Missed': '--chart-pie-3',
+      'Other': '--chart-pie-4',
+    };
+    
+    const FALLBACK_PIE_COLORS = [
+      'rgba(0, 128, 128, 0.8)',   // Teal for Open
+      'rgba(0, 0, 255, 0.8)',    // Blue for Closed
+      'rgba(255, 165, 0, 0.8)',  // Orange for Missed
+      'rgba(128, 128, 128, 0.8)', // Gray for Other
     ];
 
-    const fallbackPieColors = [ // Fallback colors if CSS variables fail to load
-        'rgba(255, 99, 132, 0.8)', // Reddish
-        'rgba(54, 162, 235, 0.8)', // Blueish
-        'rgba(255, 206, 86, 0.8)', // Yellowish
-        'rgba(153, 102, 255, 0.8)', // Purplish
-    ];
-
-
-     useEffect(() => {
+    useEffect(() => {
         if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
+            console.log(`[Dashboard] Computing pie chart colors for theme: ${resolvedTheme}, Labels:`, dealStatusLabels);
             const rootStyle = getComputedStyle(document.documentElement);
-            console.log('[Dashboard] Computing pie chart colors. Theme:', resolvedTheme, 'Labels:', dealStatusLabels);
-            const colors = PIE_CHART_CSS_VAR_NAMES.map((varName, index) => {
+            const colors = dealStatusLabels.map((label, index) => {
+                const varName = PIE_CHART_CSS_VAR_NAMES_MAP[label] || PIE_CHART_CSS_VAR_NAMES_MAP['Other'];
                 const hslValue = rootStyle.getPropertyValue(varName).trim();
-                 console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
-                 if (hslValue && hslValue.split(' ').length === 3) { // Expecting "H S% L%"
-                    console.log(`[Dashboard] Using HSL value for ${varName}: ${hslValue} -> hsla(${hslValue}, 0.8)`);
-                    return `hsla(${hslValue}, 0.8)`;
+                console.log(`[Dashboard] CSS Var ${varName} for label "${label}": raw value = "${hslValue}"`);
+                if (hslValue && (hslValue.includes(' ') || hslValue.includes(','))) { // Basic check for HSL string
+                    const finalColor = `hsla(${hslValue}, 0.8)`;
+                    console.log(`[Dashboard] Using HSLA value for ${varName}: ${hslValue} -> ${finalColor}`);
+                    return finalColor;
                 }
-                console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} ("${hslValue}") not valid HSL. Using fallback ${fallbackPieColors[index % fallbackPieColors.length]}.`);
-                return fallbackPieColors[index % fallbackPieColors.length];
-            }).slice(0, dealStatusLabels.length);
-            console.log('[Dashboard] Computed pie colors:', colors);
+                console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} ("${hslValue}") for label "${label}" not valid HSL. Using fallback ${FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]}.`);
+                return FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length];
+            });
+            console.log('[Dashboard] Updated computedPieChartColors state:', colors);
             setComputedPieChartColors(colors);
         } else if (dealStatusLabels.length === 0) {
             console.log('[Dashboard] dealStatusLabels is empty, setting empty computedPieChartColors.');
             setComputedPieChartColors([]);
         }
     }, [resolvedTheme, dealStatusLabels]);
+
+
+    const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
+        const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
+        return {
+            chart: {
+                type: 'donut',
+                background: 'transparent',
+                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                toolbar: { show: false }
+            },
+            labels: dealStatusLabels,
+            colors: computedPieChartColors.length === dealStatusLabels.length && totalClients > 0 ? computedPieChartColors : (totalClients > 0 ? FALLBACK_PIE_COLORS.slice(0, dealStatusLabels.length) : ['#555555']), // Use a single dark gray if no data
+            series: totalClients > 0 ? dealStatusSeries : [1], // ApexCharts needs a series to render; use dummy if no data
+            fill: { opacity: 1 }, // Opacity is handled by hsla in computedPieChartColors
+            stroke: { show: true, width: 2, colors: ['transparent'] },
+            legend: {
+                position: 'bottom',
+                horizontalAlign: 'center',
+                floating: false,
+                fontSize: '12px',
+                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
+                markers: { width: 10, height: 10 },
+                itemMargin: { horizontal: 5, vertical: 2 }
+            },
+            plotOptions: {
+                pie: {
+                    expandOnClick: true,
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: totalClients > 0, // Only show labels if there's data
+                            total: {
+                                show: true,
+                                label: 'Total Clients',
+                                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                                color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
+                                formatter: (w) => totalClients.toString()
+                            },
+                            value: {
+                                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                                color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
+                                offsetY: 8,
+                                formatter: (val: string) => val
+                            }
+                        }
+                    },
+                    dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
+                    states: { hover: { filter: { type: 'lighten', value: 0.25 } }, active: { filter: { type: 'none' } } }
+                }
+            },
+            dataLabels: {
+                enabled: totalClients > 0, // Only show data labels if there's data
+                formatter: (val: number, opts: any) => {
+                    if (totalClients === 0) return '';
+                    const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100).toFixed(0);
+                    return `${percentage}%`;
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                    colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
+                },
+                dropShadow: { enabled: false }
+            },
+            tooltip: {
+                theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                fillSeriesColor: false,
+                style: { fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif' },
+                y: { formatter: (val: number) => `${val} client(s)` }
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
+            }]
+        };
+    }, [dealStatusLabels, dealStatusSeries, computedPieChartColors, resolvedTheme]);
 
 
     const handleGoogleCalendarAuth = useCallback(async () => {
@@ -388,127 +452,6 @@ const Dashboard: FC = () => {
     ];
 
     const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
-
-    const apexPieChartOptions: ApexCharts.ApexOptions = {
-      chart: {
-        type: 'donut',
-        background: 'transparent',
-        fontFamily: MONTSERRAT_FONT_STACK,
-        toolbar: {
-            show: false,
-        }
-      },
-      labels: dealStatusLabels,
-      colors: computedPieChartColors.length > 0 ? computedPieChartColors : fallbackPieColors.slice(0, dealStatusLabels.length),
-      fill: {
-        opacity: 1, 
-      },
-      stroke: {
-        show: true,
-        width: 2,
-        colors: ['transparent']
-      },
-      legend: {
-        position: 'bottom',
-        horizontalAlign: 'center',
-        floating: false,
-        fontSize: '12px',
-        fontFamily: MONTSERRAT_FONT_STACK,
-        labels: {
-            colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333'
-        },
-        markers: {
-            width: 10,
-            height: 10,
-        },
-        itemMargin: {
-            horizontal: 5,
-            vertical: 2
-        }
-      },
-      plotOptions: {
-        pie: {
-          expandOnClick: true,
-          donut: {
-            size: '65%',
-            labels: {
-              show: true,
-              total: {
-                show: true,
-                label: 'Total Clients',
-                fontFamily: MONTSERRAT_FONT_STACK,
-                color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
-                formatter: (w) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0).toString()
-              },
-              value: {
-                fontFamily: MONTSERRAT_FONT_STACK,
-                color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
-                offsetY: 8,
-                 formatter: (val: string) => `${val}`
-              }
-            }
-          },
-          dropShadow: {
-            enabled: true,
-            top: 3,
-            left: 0,
-            blur: 3,
-            opacity: 0.3
-          },
-          states: {
-            hover: {
-              filter: {
-                type: 'lighten',
-                value: 0.25,
-              }
-            },
-            active: {
-              filter: {
-                type: 'none',
-              }
-            }
-          }
-        }
-      },
-      dataLabels: {
-        enabled: true,
-        formatter: (val: number, opts: any) => {
-          if (opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) === 0) return '0%';
-          const percentage = (opts.w.globals.series[opts.seriesIndex] / opts.w.globals.seriesTotals.reduce((a:number,b:number) => a+b,0) * 100).toFixed(0);
-          return `${percentage}%`;
-        },
-        style: {
-          fontSize: '12px',
-          fontFamily: MONTSERRAT_FONT_STACK,
-          colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
-        },
-        dropShadow: {
-          enabled: false,
-        }
-      },
-      tooltip: {
-        theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-        fillSeriesColor: false,
-        style: {
-            fontFamily: MONTSERRAT_FONT_STACK,
-        },
-        y: {
-            formatter: (val: number) => `${val} client(s)`
-        }
-      },
-      responsive: [{
-        breakpoint: 480,
-        options: {
-          chart: {
-            width: '100%'
-          },
-          legend: {
-            position: 'bottom'
-          }
-        }
-      }]
-    };
-
     const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
 
     return (
@@ -600,7 +543,7 @@ const Dashboard: FC = () => {
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
                         backdropFilter: 'blur(8px)',
-                        fontFamily: MONTSERRAT_FONT_STACK,
+                        ...RECHARTS_FONT_STYLE
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
@@ -618,10 +561,10 @@ const Dashboard: FC = () => {
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusLabels.length > 0 ? (
+            {loading ? <Skeleton className="h-[300px] w-full" /> : (dealStatusLabels.length > 0 && dealStatusSeries.some(s => s > 0)) ? (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
-                    key={`${resolvedTheme}-${computedPieChartColors.join(',')}`} 
+                    key={`${resolvedTheme}-${computedPieChartColors.join(',')}`}
                     options={apexPieChartOptions}
                     series={dealStatusSeries}
                     type="donut"
