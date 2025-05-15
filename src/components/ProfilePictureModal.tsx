@@ -1,10 +1,11 @@
 
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react'; // Added useRef
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
 
 interface ProfilePictureModalProps {
   isOpen: boolean;
@@ -19,16 +20,25 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
   imageUrl,
   altText = "Profile Picture"
 }) => {
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  useTiltEffect(dialogContentRef);
+
   if (!isOpen || !imageUrl) {
     return null;
   }
 
-  const dialogContentClassName = "sm:max-w-3xl w-auto h-auto p-2 glass-effect bg-card/80 dark:bg-card/70 flex flex-col";
+  const dialogContentClassName = "sm:max-w-3xl w-auto h-auto p-2 glass-effect bg-card/80 dark:bg-card/70 flex flex-col card-tilt-container";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className={dialogContentClassName} onPointerDownOutside={onClose} onEscapeKeyDown={onClose}>
-        <DialogHeader className="sr-only">
+      <DialogContent 
+        ref={dialogContentRef}
+        className={dialogContentClassName} 
+        onPointerDownOutside={onClose} 
+        onEscapeKeyDown={onClose}
+      >
+        <div className="glow" />
+        <DialogHeader className="sr-only relative z-[1]">
           <DialogTitle>View Profile Picture</DialogTitle>
         </DialogHeader>
         <DialogClose asChild>
@@ -42,7 +52,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
                 <X className="h-5 w-5" />
             </Button>
         </DialogClose>
-        <div className="flex-grow flex items-center justify-center p-4 overflow-hidden">
+        <div className="flex-grow flex items-center justify-center p-4 overflow-hidden relative z-[1]">
           <img
             src={imageUrl}
             alt={altText}

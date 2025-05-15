@@ -2,7 +2,7 @@
 // src/components/CustomerDetailModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Contact, User } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
 import { Card, CardContent } from '@/components/ui/card'; // Import Card and CardContent
+import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -36,15 +37,13 @@ interface CustomerDetailModalProps {
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
-  let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  // The div that is flex-1 needs overflow-hidden to allow its child (the <p>) to truncate
   let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; 
 
+  const isTruncateRequested = outerDivClassName.includes('truncate');
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
-    // Apply truncation directly to the <p> tag for better control
     pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full");
   }
 
@@ -102,6 +101,10 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isContactAvatarModalOpen, setIsContactAvatarModalOpen] = useState(false);
+  
+  const detailsCardRef = useRef<HTMLDivElement>(null);
+  useTiltEffect(detailsCardRef);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -197,9 +200,10 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
-            <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
-              <CardContent className="space-y-1 p-4">
+          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full">
+            <Card ref={detailsCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
+              <div className="glow" />
+              <CardContent className="space-y-1 p-4 relative z-[1]"> {/* Ensure content is above glow */}
                 <DetailItem icon={Mail} label="Email" value={contact.email} />
                 {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
                 {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
@@ -212,7 +216,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="attachments" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="attachments" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
@@ -271,4 +275,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-    

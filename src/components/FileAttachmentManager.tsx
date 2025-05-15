@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react'; // Added useRef
 import type { Contact, FileAttachmentMeta } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
 
 interface FileAttachmentManagerProps {
   contact: Contact;
@@ -37,6 +38,12 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<FileAttachmentMeta | null>(null);
+
+  const attachFileCardRef = useRef<HTMLDivElement>(null);
+  const attachedFilesCardRef = useRef<HTMLDivElement>(null);
+  useTiltEffect(attachFileCardRef);
+  useTiltEffect(attachedFilesCardRef);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -61,7 +68,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false,
+      encrypted: false, 
     };
 
     try {
@@ -201,15 +208,16 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
   return (
     <div className="space-y-6 w-full">
-      <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
-        <CardHeader>
+      <Card ref={attachFileCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
+        <div className="glow" />
+        <CardHeader className="relative z-[1]">
           <CardTitle className="text-lg flex items-center font-heading">
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
           <CardDescription>Select a file to attach. Files are stored locally.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 relative z-[1]">
           <div>
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
@@ -221,14 +229,15 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       </Card>
 
       {(contact.attachments && contact.attachments.length > 0) && (
-        <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
-          <CardHeader>
+        <Card ref={attachedFilesCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
+          <div className="glow" />
+          <CardHeader className="relative z-[1]">
             <CardTitle className="text-lg flex items-center font-heading">
               <FileText className="mr-2 h-5 w-5" />
               Attached Files
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-[1]">
             <div className="overflow-x-auto rounded-md border">
               <Table className="w-full table-fixed">
                 <TableHeader>
@@ -246,7 +255,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                       <TableCell className="px-2 text-xs sm:text-sm overflow-hidden">
                         <button
                           onClick={() => handleViewAttachment(att)}
-                          className="hover:underline text-accent hover:text-accent/80 text-left w-full break-all truncate"
+                          className="hover:underline text-accent hover:text-accent/80 text-left w-full break-all"
                           title={`Open ${att.name}`}
                         >
                           {att.name}
