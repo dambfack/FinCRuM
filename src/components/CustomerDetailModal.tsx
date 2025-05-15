@@ -20,6 +20,7 @@ import FileAttachmentManager from './FileAttachmentManager';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
+import { Card, CardContent } from '@/components/ui/card'; // Import Card and CardContent
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -38,23 +39,20 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  let valueContainerClasses = "min-w-0 flex-1"; // Default for the value container
+  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; // Added overflow-hidden here
 
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
-    // Apply truncation styles directly to the p tag
-    pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap");
-    // The value container needs overflow-hidden for its children to truncate effectively.
-    valueContainerClasses = cn(valueContainerClasses, "overflow-hidden");
+    pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"); // Added max-w-full
   }
-  
+
 
   let valueNode: React.ReactNode;
 
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string); 
+    const dateString = formatDateTime(value as string);
     valueNode = (
       <p className={pTagClasses} title={isTruncateRequested ? dateString : undefined}>
         {dateString}
@@ -167,7 +165,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
-        <DialogHeader className="pt-4 mb-4 flex flex-col items-center space-y-3"> {/* Added pt-4 here */}
+        <DialogHeader className="pt-4 mb-4 flex flex-col items-center space-y-3">
           <button
             onClick={() => {
               if (contact.profilePictureUrl) {
@@ -177,12 +175,12 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             className={cn("rounded-full", contact.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
             aria-label="View profile picture"
           >
-            <Avatar className="h-28 w-28"> 
+            <Avatar className="h-28 w-28">
               <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
-              <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback> 
+              <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
             </Avatar>
           </button>
-          <div className="text-center min-w-0 flex-1"> 
+          <div className="text-center min-w-0 flex-1">
             <DialogTitle className="text-2xl font-heading truncate">
               {contact.firstName} {contact.lastName}
             </DialogTitle>
@@ -197,17 +195,20 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
-            <DetailItem icon={Mail} label="Email" value={contact.email} />
-            {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
-            {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
-            {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
-            {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
-            {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
-            {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
-            
-            <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
-            <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
+          <TabsContent value="details" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+            <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
+              <CardContent className="space-y-1 p-4">
+                <DetailItem icon={Mail} label="Email" value={contact.email} />
+                {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
+                {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
+                {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
+                {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
+                {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
+                {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
+                <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
+                <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
+              </CardContent>
+            </Card>
           </TabsContent>
           <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
@@ -269,4 +270,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
 export default CustomerDetailModal;
     
-
