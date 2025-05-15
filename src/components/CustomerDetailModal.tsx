@@ -36,14 +36,17 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
   const isTruncateRequested = className?.includes('truncate');
-  const outerDivClassName = className?.replace('truncate', '').trim();
+  let outerDivClassName = className || "";
+  if (isTruncateRequested) {
+    outerDivClassName = outerDivClassName.replace('truncate', '').trim();
+  }
 
   let valueNode: React.ReactNode;
 
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string); // DD/MM/YYYY format
+    const dateString = formatDateTime(value as string);
     valueNode = (
       <p
         className={cn(
@@ -75,7 +78,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn("min-w-0 flex-1 overflow-hidden")}> {/* This div is crucial for truncation */}
+      <div className={cn("min-w-0 flex-1 overflow-hidden")}>
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -119,7 +122,9 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
   if (!contact) return null;
 
-  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 sm:rounded-lg overflow-hidden p-4"; // Added p-4
+  // Ensure DialogContent itself applies its rounding and overflow hidden.
+  // The p-4 here is crucial to inset children from the rounded edges.
+  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 sm:rounded-lg overflow-hidden p-4";
 
   const handleEditClick = () => {
     if (contact && onEditRequest) {
@@ -198,7 +203,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full">
             <DetailItem icon={Mail} label="Email" value={contact.email} />
             {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
@@ -209,7 +214,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
-          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
@@ -268,4 +273,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-

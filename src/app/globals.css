@@ -106,14 +106,14 @@
 
 /* Glassmorphism utilities - can be applied to components */
 .glass-effect {
-  @apply backdrop-blur-lg shadow-xl border;
+  @apply backdrop-blur-lg shadow-xl; /* REMOVED border from here */
   /* Base colors with opacity will be applied directly on components using Tailwind's opacity modifiers e.g. bg-card/70 */
-  border-color: hsla(var(--glass-border) / 0.1); /* Translucent white border */
+  /* Components like Card and DialogContent have their own @apply border from shadcn, which should use --border variable */
 }
 
-.glass-effect-header {
+.glass-effect-header { /* This can keep its specific border if needed for header only */
   @apply backdrop-blur-lg shadow-lg border-b;
-  border-color: hsla(var(--glass-border) / 0.05);
+  border-color: hsla(var(--glass-border) / 0.05); /* Or use --border if it should match regular borders */
 }
 
 /* .glass-effect-main-content removed as main content area is now transparent */
@@ -354,3 +354,4 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
+
