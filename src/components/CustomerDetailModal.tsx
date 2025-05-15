@@ -60,7 +60,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Always apply these if truncate is requested
         )}
         title={isTruncateRequested ? valueString : undefined}
       >
@@ -74,13 +74,14 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className="min-w-0 flex-1 overflow-hidden"> {/* Ensures this div can shrink and allow truncation */}
+      <div className={cn("min-w-0 flex-1", isTruncateRequested && "overflow-hidden")}> {/* Added overflow-hidden here too */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
     </div>
   );
 };
+
 
 const statusDisplay: Record<Exclude<Contact['status'], undefined>, string> = {
     open: "Open (Deal in Progress)",
@@ -169,8 +170,8 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
             <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1"> {/* Added min-w-0 and flex-1 here */}
-            <DialogTitle className="text-2xl font-heading truncate"> {/* Added truncate */}
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-2xl font-heading truncate">
               {contact.firstName} {contact.lastName}
             </DialogTitle>
             <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -194,8 +195,9 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
+            
           </TabsContent>
-          <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2">
+          <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
@@ -245,4 +247,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-
+    

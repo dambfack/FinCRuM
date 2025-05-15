@@ -88,9 +88,13 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       toast({ title: "Permission Denied", description: "Employees cannot delete attachments.", variant: "destructive" });
       return;
     }
-    if (!confirm(`Are you sure you want to delete '${attachmentName}'? This will remove the file and its metadata.`)) {
+    // Re-implement confirm dialog or use a custom one if native confirm is problematic
+    const confirmed = window.confirm(`Are you sure you want to delete '${attachmentName}'? This will remove the file and its metadata.`);
+    if (!confirmed) {
+      toast({ title: "Deletion Cancelled", description: "No action was taken." });
       return;
     }
+
     try {
       await deleteFile(attachmentId); 
       const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentId);
@@ -181,10 +185,10 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
 
   return (
-    <div className="space-y-6">
-      <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md">
+    <div className="space-y-6 w-full">
+      <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="text-lg flex items-center font-heading">
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
@@ -202,9 +206,9 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       </Card>
 
       {(contact.attachments && contact.attachments.length > 0) && (
-        <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md">
+        <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center font-heading"> {/* Removed tracking-wide */}
+            <CardTitle className="text-lg flex items-center font-heading"> 
               <FileText className="mr-2 h-5 w-5" />
               Attached Files
             </CardTitle>
@@ -224,16 +228,16 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium truncate max-w-xs">
+                      <TableCell className="font-medium max-w-xs"> {/* Removed truncate here to test */}
                         <button
                           onClick={() => handleViewAttachment(att)}
-                          className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
+                          className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate" // Added truncate here
                           title={`Open ${att.name}`}
                         >
                           {att.name}
                         </button>
                       </TableCell>
-                      <TableCell className="truncate max-w-xs" title={att.type}>{att.type || 'N/A'}</TableCell>
+                      <TableCell className="truncate max-w-[100px]" title={att.type}>{att.type || 'N/A'}</TableCell> {/* Reduced max-w */}
                       <TableCell>{formatFileSize(att.size)}</TableCell>
                       <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
                       <TableCell className="text-right space-x-1">
@@ -246,7 +250,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                           onClick={() => handleDeleteAttachment(att.id, att.name)} 
                           title="Delete Attachment" 
                           className="text-destructive hover:text-destructive"
-                          disabled={currentUser?.role === 'employee'} // Disable delete for employees
+                          disabled={currentUser?.role === 'employee'} 
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -264,3 +268,5 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
+
+    
