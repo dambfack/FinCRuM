@@ -61,7 +61,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false,
+      encrypted: false, // Encryption not implemented yet
     };
 
     try {
@@ -233,17 +233,17 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="w-[30%] truncate">Name</TableHead>
-                    <TableHead className="w-[20%] truncate">Type</TableHead>
-                    <TableHead className="w-[15%]">Size</TableHead>
-                    <TableHead className="w-[20%]">Attached On</TableHead>
-                    <TableHead className="text-right w-[15%]">Actions</TableHead>
+                    <TableHead className="w-[30%] truncate px-2">Name</TableHead>
+                    <TableHead className="w-[20%] truncate px-2">Type</TableHead>
+                    <TableHead className="w-[15%] px-2">Size</TableHead>
+                    <TableHead className="w-[20%] px-2">Attached On</TableHead>
+                    <TableHead className="text-right w-[15%] px-2">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium px-2">
                         <button
                           onClick={() => handleViewAttachment(att)}
                           className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
@@ -252,11 +252,11 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                           {att.name}
                         </button>
                       </TableCell>
-                      <TableCell className="truncate" title={att.type}>{att.type || 'N/A'}</TableCell>
-                      <TableCell>{formatFileSize(att.size)}</TableCell>
-                      <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File">
+                      <TableCell className="truncate px-2" title={att.type}>{att.type || 'N/A'}</TableCell>
+                      <TableCell className="px-2">{formatFileSize(att.size)}</TableCell>
+                      <TableCell className="px-2">{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
+                      <TableCell className="text-right space-x-1 px-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File" className="h-7 w-7">
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button
@@ -264,7 +264,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                           size="icon"
                           onClick={() => requestDeleteAttachment(att)}
                           title="Delete Attachment"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive h-7 w-7"
                           disabled={currentUser?.role === 'employee'}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -303,4 +303,3 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
-
