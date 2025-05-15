@@ -79,7 +79,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(true);
 
     setAppLogoLightUrl(getData<string>(DataItemType.AppLogoLight));
+    console.log('[AuthContext] Initial appLogoLightUrl from localStorage:', getData<string>(DataItemType.AppLogoLight)?.length);
     setAppLogoDarkUrl(getData<string>(DataItemType.AppLogoDark));
+    console.log('[AuthContext] Initial appLogoDarkUrl from localStorage:', getData<string>(DataItemType.AppLogoDark)?.length);
     
     const storedDefaultAppLogoLight = getData<string>(DataItemType.DefaultAppLogoLight);
     if (storedDefaultAppLogoLight) {
@@ -131,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || []; // Fetch again in case default was just created
+      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || []; 
       const user = currentUsersOnLoad.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
@@ -244,26 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(false);
     return true;
   };
-
-  const updateLogoGeneric = useCallback((
-    setter: React.Dispatch<React.SetStateAction<string | null>>, 
-    key: DataItemType, 
-    dataUri: string | null, 
-    toastTitle: string, 
-    toastDescription: string
-  ) => {
-    console.log(`[AuthContext] updateLogoGeneric for ${key}. Data URI length:`, dataUri?.length);
-    
-    const success = dataUri ? saveData<string>(key, dataUri) : (localStorage.removeItem(key), true);
-
-    if (success) {
-      setter(dataUri);
-      toast({ title: toastTitle, description: toastDescription });
-    } else {
-      toast({ title: "Storage Full", description: `Could not save ${toastTitle.toLowerCase()}. Local storage quota exceeded.`, variant: "destructive" });
-    }
-  }, [toast]);
-
+  
   const updateAppLogoLight = useCallback((dataUri: string | null) => {
     console.log('[AuthContext] updateAppLogoLight called. Data URI length:', dataUri?.length);
     console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage BEFORE saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
@@ -275,13 +258,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       toast({ title: "Storage Full", description: "Could not save light app logo. Storage quota exceeded.", variant: "destructive" });
     }
-    console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
+     console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
+     console.log('[AuthContext] updateAppLogoLight - AppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
   }, [toast]);
 
-  const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo", dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared."), [updateLogoGeneric]);
+  const updateAppLogoDark = useCallback((dataUri: string | null) => {
+    console.log('[AuthContext] updateAppLogoDark called. Data URI length:', dataUri?.length);
+    const success = dataUri ? saveData<string>(DataItemType.AppLogoDark, dataUri) : (localStorage.removeItem(DataItemType.AppLogoDark), true);
+    if (success) {
+      setAppLogoDarkUrl(dataUri);
+      toast({ title: "Dark App Logo", description: dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not save dark app logo. Storage quota exceeded.", variant: "destructive" });
+    }
+  }, [toast]);
   
   const setDefaultAppLogoLight = useCallback((dataUri: string) => {
     console.trace("[AuthContext] setDefaultAppLogoLight trace");
+    console.log('[AuthContext] setDefaultAppLogoLight - AppLogoLight in localStorage BEFORE saving DefaultAppLogoLight:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
     if (saveData<string>(DataItemType.DefaultAppLogoLight, dataUri)) {
       _setDefaultAppLogoLightUrlInternal(dataUri);
       updateAppLogoLight(null); 
@@ -289,6 +283,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       toast({ title: "Storage Full", description: "Could not set default light app logo. Storage quota exceeded.", variant: "destructive" });
     }
+    console.log('[AuthContext] setDefaultAppLogoLight - AppLogoLight in localStorage AFTER saving DefaultAppLogoLight and clearing override:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
   }, [toast, updateAppLogoLight]);
 
   const setDefaultAppLogoDark = useCallback((dataUri: string) => {
@@ -302,8 +297,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast, updateAppLogoDark]);
 
-  const updateHeaderLogoLight = useCallback((dataUri: string | null) => updateLogoGeneric(setHeaderLogoLightUrl, DataItemType.HeaderLogoLight, dataUri, "Light Header Logo", dataUri ? "Light mode header logo changed." : "Light mode header logo cleared."), [updateLogoGeneric]);
-  const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo", dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared."), [updateLogoGeneric]);
+  const updateHeaderLogoLight = useCallback((dataUri: string | null) => {
+    const success = dataUri ? saveData<string>(DataItemType.HeaderLogoLight, dataUri) : (localStorage.removeItem(DataItemType.HeaderLogoLight), true);
+    if (success) {
+      setHeaderLogoLightUrl(dataUri);
+      toast({ title: "Light Header Logo", description: dataUri ? "Light mode header logo changed." : "Light mode header logo cleared." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not save light header logo. Storage quota exceeded.", variant: "destructive" });
+    }
+  }, [toast]);
+
+  const updateHeaderLogoDark = useCallback((dataUri: string | null) => {
+     const success = dataUri ? saveData<string>(DataItemType.HeaderLogoDark, dataUri) : (localStorage.removeItem(DataItemType.HeaderLogoDark), true);
+    if (success) {
+      setHeaderLogoDarkUrl(dataUri);
+      toast({ title: "Dark Header Logo", description: dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not save dark header logo. Storage quota exceeded.", variant: "destructive" });
+    }
+  }, [toast]);
   
   const updateCustomAccentColor = useCallback((newColorHex: string) => {
     console.log(`[AuthContext] updateCustomAccentColor called with: ${newColorHex}`);
