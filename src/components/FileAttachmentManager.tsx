@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UploadCloud, FileText, Download, Trash2, Eye } from 'lucide-react';
+import { UploadCloud, FileText, Download, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, cn } from '@/lib/utils';
 import { storeFile, getFile, deleteFile as deleteFileFromDB } from '@/lib/indexeddb';
@@ -31,7 +31,6 @@ interface FileAttachmentManagerProps {
 
 const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, onAttachmentsUpdate }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [password, setPassword] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { currentUser } = useAuth();
@@ -62,7 +61,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, 
+      encrypted: false,
     };
 
     try {
@@ -71,7 +70,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       const updatedAttachments = [...(contact.attachments || []), newAttachmentMeta];
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
 
-      onAttachmentsUpdate(updatedContact); 
+      onAttachmentsUpdate(updatedContact);
 
       toast({
         title: 'File Attached',
@@ -79,7 +78,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       });
 
       setSelectedFile(null);
-      setPassword(''); 
 
       const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
@@ -128,7 +126,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       setAttachmentToDelete(null);
     }
   };
-
 
   const handleDownloadAttachment = async (attachment: FileAttachmentMeta) => {
     try {
@@ -202,7 +199,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-
   return (
     <div className="space-y-6 w-full">
       <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
@@ -211,7 +207,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
-          <CardDescription>Select a file to attach to this contact. Files are stored locally in your browser.</CardDescription>
+          <CardDescription>Select a file to attach. Files are stored locally.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -237,7 +233,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="max-w-[200px]">Name</TableHead> {/* Constrain header for name */}
+                    <TableHead className="max-w-[200px]">Name</TableHead>
                     <TableHead className="max-w-[100px]">Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Attached On</TableHead>
@@ -247,7 +243,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium max-w-[200px]"> {/* Constrain cell for name */}
+                      <TableCell className="font-medium max-w-[200px]">
                         <button
                           onClick={() => handleViewAttachment(att)}
                           className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
@@ -288,7 +284,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
           <AlertDialogHeader>
             <AlertDialogTitle className="font-heading">Confirm Attachment Deletion</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the attachment: "{attachmentToDelete?.name || 'this file'}"? This action will remove the file from local storage and cannot be undone.
+              Are you sure you want to delete the attachment: &quot;{attachmentToDelete?.name || 'this file'}&quot;? This action will remove the file from local storage and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -302,10 +298,8 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 };
 
 export default FileAttachmentManager;
-
