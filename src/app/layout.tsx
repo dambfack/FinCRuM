@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Inter, Montserrat, Anton } from 'next/font/google';
 import './globals.css';
-import { cn, getFirstInitial } from '@/lib/utils';
+import { cn, getFirstInitial, getData, saveData } from '@/lib/utils'; // Added getData
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import PinLoginScreen from '@/components/PinLoginScreen';
@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, Image as ImageIcon, CheckCircle, Sun, Moon, Download } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -37,7 +37,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
 import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
-
+import { DataItemType } from '@/lib/types'; // Added DataItemType
 
 const interBlack = Inter({
   subsets: ['latin'],
@@ -74,7 +74,7 @@ const Logo: React.FC<{
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
     setImgError(false);
-    // console.log(`[Logo useEffect] Theme: ${resolvedTheme}, Determined Src: ${determinedSrc}, Props:`, props);
+    // console.log(`[Logo useEffect] Theme: ${resolvedTheme}, Determined Src: ${determinedSrc}`);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
 
   const handleError = useCallback(() => {
@@ -106,7 +106,7 @@ const Logo: React.FC<{
     if (nextSrc && currentSrc !== nextSrc) {
       // console.log(`[Logo handleError] Attempting to set nextSrc: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false); // Reset error for the new attempt
+      setImgError(false); 
       setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
         // console.log(`[Logo handleError] No valid nextSrc found, setting absolute placeholder.`);
@@ -130,7 +130,7 @@ const Logo: React.FC<{
 
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}`}
+      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Added resolvedTheme to key
       src={currentSrc}
       alt="App Logo"
       width={24}
@@ -178,18 +178,43 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isHeaderLogoDarkCropperOpen, setIsHeaderLogoDarkCropperOpen] = useState(false);
   const [headerLogoDarkImageToCropSrc, setHeaderLogoDarkImageToCropSrc] = useState<string | null>(null);
 
+  // Effect to apply background image on initial load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT = 'https://placehold.co/1920x1080.png';
+      
+      const applyInitialBackground = (url: string | null) => {
+        document.body.style.backgroundImage = url ? `url('${url}')` : '';
+        if (url) {
+          document.body.setAttribute('data-ai-hint', 'custom background');
+        } else {
+          document.body.setAttribute('data-ai-hint', 'abstract gradient');
+        }
+      };
+
+      const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
+      const storedDefaultBg = getData<string>(DataItemType.DefaultBackgroundImage);
+
+      if (storedCustomBg) {
+        applyInitialBackground(storedCustomBg);
+      } else if (storedDefaultBg) {
+        applyInitialBackground(storedDefaultBg);
+      } else {
+        applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT);
+      }
+    }
+  }, []); // Empty dependency array ensures this runs once on mount of AppContent
+
 
   const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
-    // console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      // console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, Size: ${file.size}, Type: ${file.type}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
         return;
       }
-      if (toastTitle.toLowerCase().includes("logo") && !file.type.startsWith('image/png')) { // Allow all image types for profile, PNG for logos
+      if (toastTitle.toLowerCase().includes("logo") && !file.type.startsWith('image/png')) { 
          toast({ title: "Invalid File Type", description: "Please upload a PNG file for logos.", variant: "destructive" });
          if (inputRef.current) inputRef.current.value = '';
          return;
@@ -197,7 +222,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        // console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length: ${dataUri.length}`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -207,8 +231,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
-    } else {
-      // console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null.`);
     }
   };
 
@@ -235,14 +257,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
   const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
-
-
-  useEffect(() => {
-    // console.log(`[AppContent] Rendering. Context values - appLogoUrl: len: ${appLogoLightUrl?.length} defaultAppLogoUrl: len: ${defaultAppLogoLightUrl?.length} headerLogoUrl: len: ${headerLogoLightUrl?.length}`);
-    // console.log(`[AppContent] Rendering. Context values - appLogoLightUrl: len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl: len: ${defaultAppLogoLightUrl?.length}`);
-    // console.log(`[AppContent] Rendering. Context values - appLogoDarkUrl: len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl: len: ${defaultAppLogoDarkUrl?.length}`);
-    // console.log(`[AppContent] Rendering. Context values - headerLogoLightUrl: len: ${headerLogoLightUrl?.length} headerLogoDarkUrl: len: ${headerLogoDarkUrl?.length}`);
-  }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
 
 
   if (isLoadingAuth) {
@@ -497,3 +511,4 @@ export default function RootLayout({
     </html>
   );
 }
+
