@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet" // Added SheetTitle import
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -74,20 +74,23 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
+    // Initialize with default, then update from cookie client-side
     const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(defaultPinnedOpen);
     const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
     const [isHoverActive, setIsHoverActive] = React.useState(false);
 
     React.useEffect(() => {
+      // This effect runs only on the client after hydration
       if (typeof document !== "undefined" && pinnedOpenProp === undefined) {
         const cookieValue = document.cookie
           .split("; ")
           .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
           ?.split("=")[1];
         if (cookieValue !== undefined) {
-            _setIsPinnedOpen(cookieValue === "true");
+          _setIsPinnedOpen(cookieValue === "true");
         } else {
-            _setIsPinnedOpen(defaultPinnedOpen);
+          // If no cookie, set to defaultPinnedOpen (could also choose to set cookie here)
+           _setIsPinnedOpen(defaultPinnedOpen);
         }
       }
     }, [defaultPinnedOpen, pinnedOpenProp]);
@@ -227,7 +230,7 @@ const Sidebar = React.forwardRef<
             data-mobile="true"
             className={cn(
               "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden",
-              "bg-sidebar-background/70 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5"
+              "bg-sidebar-background/80 dark:bg-card/85 backdrop-blur-lg shadow-2xl border-r border-sidebar-border"
             )}
             style={
               {
@@ -288,9 +291,9 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             className={cn(
               "flex h-full w-full flex-col",
-              "bg-sidebar-background/50 dark:bg-sidebar-background/60",
+              "group-data-[variant=floating]:bg-sidebar-background/50 dark:group-data-[variant=floating]:bg-sidebar-background/60",
               "group-data-[variant=floating]:rounded-xl",
-              "group-data-[variant=floating]:border group-data-[variant=floating]:border-white/10 dark:group-data-[variant=floating]:border-white/5",
+              "group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border",
               "group-data-[variant=floating]:shadow-2xl",
               "group-data-[variant=floating]:backdrop-blur-xl",
               "group-data-[variant=floating]:transition-all group-data-[variant=floating]:duration-300 group-data-[variant=floating]:ease-in-out",
