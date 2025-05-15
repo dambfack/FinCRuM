@@ -28,7 +28,7 @@ interface CustomerDetailModalProps {
   onAddAppointmentRequest?: (contact: Contact) => void;
   onAddReminderRequest?: (contact: Contact) => void;
   onAddTaskRequest?: (contact: Contact) => void;
-  onContactUpdate?: (updatedContact: Contact) => void;
+  onContactUpdate?: (updatedContact: Contact) => void; // Changed signature
 }
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
@@ -47,7 +47,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Apply direct truncation styles
         )}
         title={isTruncateRequested ? dateString : undefined}
       >
@@ -60,7 +60,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Always apply these if truncate is requested
+           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Apply direct truncation styles
         )}
         title={isTruncateRequested ? valueString : undefined}
       >
@@ -74,7 +74,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn("min-w-0 flex-1", isTruncateRequested && "overflow-hidden")}> {/* Added overflow-hidden here too */}
+      <div className={cn("min-w-0 flex-1", isTruncateRequested && "overflow-hidden")}>
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -150,7 +150,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
-        onContactUpdate(updatedContactWithNewAttachments);
+        onContactUpdate(updatedContactWithNewAttachments); // Pass updated contact up
       }
     }
   };
@@ -181,7 +181,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="attachments">
+            <TabsTrigger value="attachments" className="w-full">
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
@@ -195,7 +195,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
-            
           </TabsContent>
           <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
@@ -247,4 +246,3 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
-    

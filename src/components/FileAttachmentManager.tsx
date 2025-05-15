@@ -8,23 +8,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UploadCloud, FileText, ShieldCheck, Download, Trash2, Eye } from 'lucide-react';
+import { UploadCloud, FileText, Download, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, cn } from '@/lib/utils';
-import { storeFile, getFile, deleteFile } from '@/lib/indexeddb'; 
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { storeFile, getFile, deleteFile as deleteFileFromDB } from '@/lib/indexeddb';
+import { useAuth } from '@/contexts/AuthContext'; // Corrected import path
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FileAttachmentManagerProps {
   contact: Contact;
-  onAttachmentsUpdate: (updatedContact: Contact) => void; 
+  onAttachmentsUpdate: (updatedContact: Contact) => void;
 }
 
 const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, onAttachmentsUpdate }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [password, setPassword] = useState(''); 
+  const [password, setPassword] = useState(''); // Password state kept for potential future encryption
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
-  const { currentUser } = useAuth(); // Get current user
+  const { currentUser } = useAuth();
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<FileAttachmentMeta | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -39,7 +52,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       toast({ title: 'No File Selected', description: 'Please select a file to attach.', variant: 'destructive' });
       return;
     }
-    
+
     setIsUploading(true);
 
     const newAttachmentMeta: FileAttachmentMeta = {
@@ -49,16 +62,18 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, 
+      encrypted: false, // Not encrypted in this phase
     };
 
     try {
-      await storeFile(newAttachmentMeta.id, selectedFile); 
+      // Store the actual file content in IndexedDB
+      await storeFile(newAttachmentMeta.id, selectedFile);
 
+      // Update contact's metadata list in localStorage
       const updatedAttachments = [...(contact.attachments || []), newAttachmentMeta];
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
 
-      onAttachmentsUpdate(updatedContact); 
+      onAttachmentsUpdate(updatedContact); // This should trigger save to localStorage and state update in parent
 
       toast({
         title: 'File Attached',
@@ -66,8 +81,9 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       });
 
       setSelectedFile(null);
-      setPassword('');
-      
+      setPassword(''); // Clear password field
+
+      // Reset file input
       const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
@@ -83,24 +99,28 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string, attachmentName: string) => {
-    if (currentUser?.role === 'employee') {
+  const requestDeleteAttachment = (attachment: FileAttachmentMeta) => {
+     if (currentUser?.role === 'employee') {
       toast({ title: "Permission Denied", description: "Employees cannot delete attachments.", variant: "destructive" });
       return;
     }
-    // Re-implement confirm dialog or use a custom one if native confirm is problematic
-    const confirmed = window.confirm(`Are you sure you want to delete '${attachmentName}'? This will remove the file and its metadata.`);
-    if (!confirmed) {
-      toast({ title: "Deletion Cancelled", description: "No action was taken." });
-      return;
-    }
+    setAttachmentToDelete(attachment);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const executeActualDeleteAttachment = async () => {
+    if (!attachmentToDelete) return;
 
     try {
-      await deleteFile(attachmentId); 
-      const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentId);
+      // Delete file from IndexedDB
+      await deleteFileFromDB(attachmentToDelete.id);
+
+      // Update contact's metadata list
+      const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentToDelete.id);
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
-      onAttachmentsUpdate(updatedContact); 
-      toast({ title: 'Attachment Deleted', description: `'${attachmentName}' and its metadata removed.` });
+      onAttachmentsUpdate(updatedContact); // This should trigger save to localStorage and state update in parent
+
+      toast({ title: 'Attachment Deleted', description: `'${attachmentToDelete.name}' and its content removed from local storage.` });
     } catch (error) {
       console.error("Error deleting attachment:", error);
       toast({
@@ -108,8 +128,12 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
         description: `Could not delete file: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
+    } finally {
+      setIsDeleteConfirmOpen(false);
+      setAttachmentToDelete(null);
     }
   };
+
 
   const handleDownloadAttachment = async (attachment: FileAttachmentMeta) => {
     try {
@@ -163,6 +187,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
         const url = URL.createObjectURL(fileBlob);
         window.open(url, '_blank');
       } else {
+        // For non-viewable types, trigger download
         handleDownloadAttachment(attachment);
       }
     } catch (error) {
@@ -192,13 +217,26 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
-          <CardDescription>Select a file to attach to this contact. Encryption is not yet implemented.</CardDescription>
+          <CardDescription>Select a file to attach to this contact. Files are stored locally in your browser.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
           </div>
+          {/* Encryption password input is commented out for now
+          <div>
+            <Label htmlFor="file-password">Encryption Password (Optional)</Label>
+            <Input
+              id="file-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Leave blank for no encryption"
+              className="mt-1"
+            />
+          </div>
+          */}
           <Button onClick={handleAttachFile} disabled={isUploading || !selectedFile} className="w-full md:w-auto h-11 px-4 py-3">
             {isUploading ? 'Attaching...' : 'Attach File'}
           </Button>
@@ -208,7 +246,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       {(contact.attachments && contact.attachments.length > 0) && (
         <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center font-heading"> 
+            <CardTitle className="text-lg flex items-center font-heading">
               <FileText className="mr-2 h-5 w-5" />
               Attached Files
             </CardTitle>
@@ -219,7 +257,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
                     <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead className="max-w-[100px]">Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Attached On</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -228,29 +266,29 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium max-w-xs"> {/* Removed truncate here to test */}
+                      <TableCell className="font-medium">
                         <button
                           onClick={() => handleViewAttachment(att)}
-                          className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate" // Added truncate here
+                          className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
                           title={`Open ${att.name}`}
                         >
                           {att.name}
                         </button>
                       </TableCell>
-                      <TableCell className="truncate max-w-[100px]" title={att.type}>{att.type || 'N/A'}</TableCell> {/* Reduced max-w */}
+                      <TableCell className="max-w-[100px] truncate" title={att.type}>{att.type || 'N/A'}</TableCell>
                       <TableCell>{formatFileSize(att.size)}</TableCell>
                       <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File">
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDeleteAttachment(att.id, att.name)} 
-                          title="Delete Attachment" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => requestDeleteAttachment(att)}
+                          title="Delete Attachment"
                           className="text-destructive hover:text-destructive"
-                          disabled={currentUser?.role === 'employee'} 
+                          disabled={currentUser?.role === 'employee'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -263,10 +301,29 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent className="glass-effect bg-card/80 dark:bg-card/70">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">Confirm Attachment Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the attachment: "{attachmentToDelete?.name || 'this file'}"? This action will remove the file from local storage and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setIsDeleteConfirmOpen(false); setAttachmentToDelete(null); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeActualDeleteAttachment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Attachment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };
 
 export default FileAttachmentManager;
-
-    
