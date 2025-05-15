@@ -37,37 +37,33 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 
   let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
+  let pTagClasses = "text-sm text-foreground";
+
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
+    // Apply truncation styles directly to the p tag
+    pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap");
   }
+  
+  // This div is a flex child and needs min-w-0 to allow its children to truncate
+  const valueContainerClasses = "min-w-0 flex-1 overflow-hidden";
+
 
   let valueNode: React.ReactNode;
 
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string);
+    const dateString = formatDateTime(value as string); // Assuming formatDateTime takes string
     valueNode = (
-      <p
-        className={cn(
-          "text-sm text-foreground",
-          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
-        )}
-        title={isTruncateRequested ? dateString : undefined}
-      >
+      <p className={pTagClasses} title={isTruncateRequested ? dateString : undefined}>
         {dateString}
       </p>
     );
   } else if (value !== null && value !== undefined) {
     const valueString = String(value);
     valueNode = (
-      <p
-        className={cn(
-          "text-sm text-foreground",
-           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
-        )}
-        title={isTruncateRequested ? valueString : undefined}
-      >
+      <p className={pTagClasses} title={isTruncateRequested ? valueString : undefined}>
         {valueString}
       </p>
     );
@@ -78,7 +74,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn("min-w-0 flex-1 overflow-hidden")}>
+      <div className={valueContainerClasses}>
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -155,6 +151,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
+        // Ensure this prop signature matches in parent components
         onContactUpdate(updatedContactWithNewAttachments);
       }
     }
@@ -171,7 +168,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
-        <DialogHeader className="mb-2 flex flex-row items-center space-x-4">
+        <DialogHeader className="mb-4 flex flex-col items-center space-y-3"> {/* Updated classes */}
           <button
             onClick={() => {
               if (contact.profilePictureUrl) {
@@ -181,12 +178,12 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             className={cn("rounded-full", contact.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
             aria-label="View profile picture"
           >
-            <Avatar className="h-16 w-16">
+            <Avatar className="h-28 w-28"> {/* Increased size */}
               <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
-              <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
+              <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback> {/* Increased text size */}
             </Avatar>
           </button>
-          <div className="min-w-0 flex-1">
+          <div className="text-center"> {/* Wrapper for centering text */}
             <DialogTitle className="text-2xl font-heading truncate">
               {contact.firstName} {contact.lastName}
             </DialogTitle>
@@ -271,3 +268,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
+    
