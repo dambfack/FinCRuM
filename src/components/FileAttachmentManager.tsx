@@ -61,7 +61,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, // Encryption not implemented yet
+      encrypted: false,
     };
 
     try {
@@ -233,17 +233,17 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="max-w-[200px] truncate">Name</TableHead>
-                    <TableHead className="max-w-[100px] truncate">Type</TableHead>
-                    <TableHead className="w-[100px]">Size</TableHead>
-                    <TableHead className="w-[120px]">Attached On</TableHead>
-                    <TableHead className="text-right w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[30%] truncate">Name</TableHead>
+                    <TableHead className="w-[20%] truncate">Type</TableHead>
+                    <TableHead className="w-[15%]">Size</TableHead>
+                    <TableHead className="w-[20%]">Attached On</TableHead>
+                    <TableHead className="text-right w-[15%]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium max-w-[200px]">
+                      <TableCell className="font-medium">
                         <button
                           onClick={() => handleViewAttachment(att)}
                           className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
@@ -252,7 +252,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                           {att.name}
                         </button>
                       </TableCell>
-                      <TableCell className="max-w-[100px] truncate" title={att.type}>{att.type || 'N/A'}</TableCell>
+                      <TableCell className="truncate" title={att.type}>{att.type || 'N/A'}</TableCell>
                       <TableCell>{formatFileSize(att.size)}</TableCell>
                       <TableCell>{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
                       <TableCell className="text-right space-x-1">
