@@ -178,6 +178,23 @@ export interface DataConflict {
 }
 
 /**
+ * User-specific theme settings.
+ */
+export interface UserThemeSettings {
+  accentColor?: string | null; // Hex string
+  chartPieColorOpen?: string | null; // Hex string
+  chartPieColorClosed?: string | null; // Hex string
+  chartPieColorMissed?: string | null; // Hex string
+  chartPieColorOther?: string | null; // Hex string
+}
+
+/**
+ * Stores theme preferences for all users.
+ */
+export type UserPreferences = Record<string, UserThemeSettings>;
+
+
+/**
  * Enum for local storage keys or data types.
  */
 export enum DataItemType {
@@ -203,11 +220,7 @@ export enum DataItemType {
   HeaderLogoDark = 'headerLogoDark',
   BackgroundImage = 'backgroundImage', // For current custom background override
   DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
-  CustomAccentColor = 'customAccentColor', // For user-defined accent color
-  ChartPieColorOpen = 'chartPieColorOpen',
-  ChartPieColorClosed = 'chartPieColorClosed',
-  ChartPieColorMissed = 'chartPieColorMissed',
-  ChartPieColorOther = 'chartPieColorOther',
+  UserThemePreferences = 'userThemePreferences', // User-specific theme settings
 }
 
 /**
@@ -224,19 +237,15 @@ export interface LocalData {
   notifications?: Notification[]; // Added notifications
   customerData?: ExcelData; // For imported excel data
   lastSyncTime?: string; // ISO string
-  appLogoLight?: string;
-  appLogoDark?: string;
-  defaultAppLogoLight?: string;
-  defaultAppLogoDark?: string;
-  headerLogoLight?: string;
-  headerLogoDark?: string;
-  backgroundImage?: string; // Data URI for current custom background
-  defaultBackgroundImage?: string; // Data URI for user-set default background
-  customAccentColor?: string; // Hex string for custom accent
-  chartPieColorOpen?: string; // Hex string
-  chartPieColorClosed?: string; // Hex string
-  chartPieColorMissed?: string; // Hex string
-  chartPieColorOther?: string; // Hex string
+  appLogoLight?: string | null;
+  appLogoDark?: string | null;
+  defaultAppLogoLight?: string | null;
+  defaultAppLogoDark?: string | null;
+  headerLogoLight?: string | null;
+  headerLogoDark?: string | null;
+  backgroundImage?: string | null; // Data URI for current custom background
+  defaultBackgroundImage?: string | null; // Data URI for user-set default background
+  userThemePreferences?: UserPreferences;
 }
 
 /**
