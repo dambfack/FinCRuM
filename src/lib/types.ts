@@ -1,5 +1,4 @@
 
-
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -205,6 +204,10 @@ export enum DataItemType {
   BackgroundImage = 'backgroundImage', // For current custom background override
   DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
   CustomAccentColor = 'customAccentColor', // For user-defined accent color
+  ChartPieColorOpen = 'chartPieColorOpen',
+  ChartPieColorClosed = 'chartPieColorClosed',
+  ChartPieColorMissed = 'chartPieColorMissed',
+  ChartPieColorOther = 'chartPieColorOther',
 }
 
 /**
@@ -230,6 +233,10 @@ export interface LocalData {
   backgroundImage?: string; // Data URI for current custom background
   defaultBackgroundImage?: string; // Data URI for user-set default background
   customAccentColor?: string; // Hex string for custom accent
+  chartPieColorOpen?: string; // Hex string
+  chartPieColorClosed?: string; // Hex string
+  chartPieColorMissed?: string; // Hex string
+  chartPieColorOther?: string; // Hex string
 }
 
 /**

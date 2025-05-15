@@ -25,7 +25,7 @@ import {
   useSidebar, 
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2 } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -70,6 +70,7 @@ const Logo: React.FC<{
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
+    console.log(`[Logo Component] useEffect running. Theme: ${resolvedTheme} Props:`, props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
@@ -80,7 +81,7 @@ const Logo: React.FC<{
     if (currentSrc !== determinedSrc || imgError) { 
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
       setImgError(false);
-      console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc?.substring(0,30) || ultimateFallbackPngLogo}`);
+      console.log(`[Logo Component] useEffect - Chosen Src: ${determinedSrc?.substring(0,30) || ultimateFallbackPngLogo}`);
     }
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo, currentSrc, imgError]);
 
@@ -168,13 +169,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl,
     headerLogoLightUrl, headerLogoDarkUrl, customAccentColor,
+    chartPieColorOpen, chartPieColorClosed, chartPieColorMissed, chartPieColorOther,
     logout, updateUserProfilePicture,
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark, updateCustomAccentColor,
+    updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,
   } = auth;
-  
-  console.log(`[AppContent] Rendering. Context values - appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${defaultAppLogoLightUrl?.length} headerLogoLightUrl len: ${headerLogoLightUrl?.length}`);
-  console.log(`[AppContent] Rendering. Context values - appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${defaultAppLogoDarkUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -199,8 +199,24 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [headerLogoDarkImageToCropSrc, setHeaderLogoDarkImageToCropSrc] = useState<string | null>(null);
 
   const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
+  
   const [showAccentPicker, setShowAccentPicker] = useState(false);
-  const [currentPickerColor, setCurrentPickerColor] = useState(customAccentColor || '#008080'); 
+  const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState(customAccentColor || '#008080'); 
+
+  const [showChartColorPicker, setShowChartColorPicker] = useState<string | null>(null); // 'open', 'closed', 'missed', 'other'
+  const [currentChartPickerColor, setCurrentChartPickerColor] = useState('#000000');
+
+  const chartColorConfig: {
+    label: string;
+    stateValue: string | null;
+    updateFn: (hex: string | null) => void;
+    dataItemType: DataItemType;
+  }[] = [
+    { label: 'Open Status Color', stateValue: chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: DataItemType.ChartPieColorOpen },
+    { label: 'Closed Status Color', stateValue: chartPieColorClosed, updateFn: updateChartPieColorClosed, dataItemType: DataItemType.ChartPieColorClosed },
+    { label: 'Missed Status Color', stateValue: chartPieColorMissed, updateFn: updateChartPieColorMissed, dataItemType: DataItemType.ChartPieColorMissed },
+    { label: 'Other Status Color', stateValue: chartPieColorOther, updateFn: updateChartPieColorOther, dataItemType: DataItemType.ChartPieColorOther },
+  ];
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -229,7 +245,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   }, []); 
 
   useEffect(() => {
-    setCurrentPickerColor(customAccentColor || '#008080');
+    setCurrentAccentPickerColor(customAccentColor || '#008080');
   }, [customAccentColor]);
 
   const handleFileChangeGeneric = (
@@ -304,13 +320,47 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
 
   const handleAccentColorChange = (color: ColorResult) => {
-    setCurrentPickerColor(color.hex);
+    setCurrentAccentPickerColor(color.hex);
   };
-
   const handleAccentColorSave = () => {
-    updateCustomAccentColor(currentPickerColor);
+    updateCustomAccentColor(currentAccentPickerColor);
     setShowAccentPicker(false);
   };
+  const handleAccentColorReset = () => {
+    updateCustomAccentColor(null); // Pass null to reset
+    setCurrentAccentPickerColor('#008080'); // Reset picker to default
+    setShowAccentPicker(false);
+  };
+
+  const handleChartColorPickerToggle = (chartColorType: string) => {
+    const config = chartColorConfig.find(c => c.dataItemType.toString().toLowerCase().includes(chartColorType.toLowerCase()));
+    if (config) {
+        setCurrentChartPickerColor(config.stateValue || '#000000'); // Default to black if no color set
+    }
+    setShowChartColorPicker(prev => prev === chartColorType ? null : chartColorType);
+  };
+  const handleChartColorChange = (color: ColorResult) => {
+    setCurrentChartPickerColor(color.hex);
+  };
+  const handleChartColorSave = () => {
+    if (showChartColorPicker) {
+        const config = chartColorConfig.find(c => c.dataItemType.toString().toLowerCase().includes(showChartColorPicker.toLowerCase()));
+        if (config) {
+            config.updateFn(currentChartPickerColor);
+        }
+    }
+    setShowChartColorPicker(null);
+  };
+  const handleChartColorReset = (chartColorType: string) => {
+    const config = chartColorConfig.find(c => c.dataItemType.toString().toLowerCase().includes(chartColorType.toLowerCase()));
+    if (config) {
+        config.updateFn(null); // Pass null to reset
+    }
+    if (showChartColorPicker === chartColorType) {
+        setShowChartColorPicker(null);
+    }
+  };
+
 
   if (isLoadingAuth) {
     return (
@@ -514,21 +564,54 @@ function AppContent({ children }: { children: React.ReactNode }) {
                     <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
                     <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
                   
-                    <div className="p-1 mt-2 border-t border-border/20 pt-3">
+                    <div className="p-1 mt-2 border-t border-border/20 pt-3 space-y-3">
                       <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
-                      <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => setShowAccentPicker(!showAccentPicker)}>
-                        <Palette className="mr-2 h-4 w-4" /> {showAccentPicker ? "Hide" : "Change"} Accent Color
-                      </Button>
+                      <div className="space-y-1">
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setShowAccentPicker(!showAccentPicker)}>
+                          <Palette className="mr-2 h-4 w-4" /> {showAccentPicker ? "Hide" : "Change"} Accent Color
+                        </Button>
+                         {customAccentColor && (
+                           <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive" onClick={handleAccentColorReset}>
+                             <Trash2 className="mr-1.5 h-3 w-3" /> Reset Accent Color
+                           </Button>
+                         )}
+                      </div>
                       {showAccentPicker && (
-                        <div className="flex flex-col items-center space-y-2">
+                        <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
                           <SketchPicker
-                            color={currentPickerColor}
+                            color={currentAccentPickerColor}
                             onChangeComplete={handleAccentColorChange}
                             disableAlpha={true}
                           />
                           <Button size="sm" onClick={handleAccentColorSave} className="w-full">Apply Accent Color</Button>
                         </div>
                       )}
+                      {/* Chart Color Pickers */}
+                      {chartColorConfig.map((config, index) => (
+                        <div key={index} className="space-y-1">
+                           <div className="flex items-center justify-between">
+                             <Button variant="outline" size="sm" className="flex-1" onClick={() => handleChartColorPickerToggle(config.dataItemType.toString())}>
+                               <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm"></div>
+                               {showChartColorPicker === config.dataItemType.toString() ? "Hide" : "Change"} {config.label}
+                             </Button>
+                             {config.stateValue && (
+                               <Button variant="ghost" size="icon" className="ml-1 h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleChartColorReset(config.dataItemType.toString())} title={`Reset ${config.label}`}>
+                                 <Trash2 className="h-3.5 w-3.5" />
+                               </Button>
+                             )}
+                           </div>
+                          {showChartColorPicker === config.dataItemType.toString() && (
+                            <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
+                              <SketchPicker
+                                color={currentChartPickerColor}
+                                onChangeComplete={handleChartColorChange}
+                                disableAlpha={true}
+                              />
+                              <Button size="sm" onClick={handleChartColorSave} className="w-full">Apply {config.label}</Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

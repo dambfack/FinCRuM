@@ -1,3 +1,4 @@
+
 // src/components/Dashboard.tsx
 'use client';
 
@@ -27,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from 'next-themes';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext'; 
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -70,7 +71,8 @@ const Dashboard: FC = () => {
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
     
     const { resolvedTheme } = useTheme();
-    const { customAccentColor } = useAuth(); 
+    const auth = useAuth(); 
+    const { customAccentColor } = auth;
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -203,32 +205,35 @@ const Dashboard: FC = () => {
     }, [loadDashboardData]);
 
 
-   useEffect(() => {
-      if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
-          console.log(`[Dashboard] Computing pie chart colors. Theme: ${resolvedTheme}, Labels count: ${dealStatusLabels.length}`);
-          const newComputedColors = dealStatusLabels.map((_, index) => {
-              const varName = `--chart-pie-${index + 1}`;
-              let hslValue = '';
-              try {
-                  hslValue = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-                  console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
-                  if (hslValue && hslValue.match(/(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%/)) {
-                      const color = `hsla(${hslValue}, 0.8)`;
-                      console.log(`[Dashboard] Using HSLA value for ${varName}: "${color}"`);
-                      return color;
-                  }
-              } catch (e) {
-                  console.warn(`[Dashboard] Error accessing CSS variable ${varName}:`, e);
-              }
-              console.warn(`[Dashboard] Could not parse HSL value for ${varName} ("${hslValue}"). Using fallback.`);
-              return FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length];
-          });
-          console.log('[Dashboard] Updated computedPieChartColors state:', newComputedColors);
-          setComputedPieChartColors(newComputedColors);
-      } else if (dealStatusLabels.length === 0) {
-          console.log("[Dashboard] dealStatusLabels is empty, setting empty computedPieChartColors.");
-          setComputedPieChartColors([]);
-      }
+  useEffect(() => {
+    if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
+        console.log(`[Dashboard] Computing pie chart colors for theme: ${resolvedTheme}, Labels count: ${dealStatusLabels.length}`);
+        const colors: string[] = [];
+        const cssVarNames = ['--chart-pie-1', '--chart-pie-2', '--chart-pie-3', '--chart-pie-4'];
+        
+        cssVarNames.forEach((varName, index) => {
+            try {
+                const hslValue = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
+                if (hslValue && hslValue.match(/(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%/)) {
+                    const color = `hsla(${hslValue}, 0.8)`;
+                    colors.push(color);
+                    console.log(`[Dashboard] Using HSLA value for ${varName}: ${hslValue} -> ${color}`);
+                } else {
+                    console.warn(`[Dashboard] Could not parse HSL value for ${varName} ("${hslValue}"). Using fallback.`);
+                    colors.push(FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]);
+                }
+            } catch (e) {
+                console.warn(`[Dashboard] Error accessing CSS variable ${varName}:`, e, ". Using fallback.");
+                colors.push(FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]);
+            }
+        });
+        console.log('[Dashboard] Updated computedPieChartColors state:', colors);
+        setComputedPieChartColors(colors);
+    } else if (dealStatusLabels.length === 0) {
+        console.log("[Dashboard] dealStatusLabels is empty, setting empty computedPieChartColors.");
+        setComputedPieChartColors([]);
+    }
   }, [resolvedTheme, dealStatusLabels]);
 
 
@@ -257,7 +262,7 @@ const Dashboard: FC = () => {
               toolbar: { show: false }
           },
           labels: totalClients > 0 ? dealStatusLabels : (dealStatusSeries.length > 0 ? ['No Data Available'] : []),
-          colors: currentChartColors.length > 0 ? currentChartColors : ['#555555'], // Ensure colors array is not empty
+          colors: currentChartColors.length > 0 ? currentChartColors : ['#555555'], 
           fill: { opacity: 1 }, 
           stroke: { show: true, width: 2, colors: ['transparent'] },
           legend: {
@@ -300,13 +305,11 @@ const Dashboard: FC = () => {
               enabled: totalClients > 0,
               formatter: (val: number, opts: any) => {
                   if (totalClients === 0) return '';
-                  // Check if opts.w.globals.series exists and is an array
                   if (opts && opts.w && opts.w.globals && Array.isArray(opts.w.globals.series) && opts.w.globals.series[opts.seriesIndex] !== undefined) {
                     const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100);
-                    // Avoid showing 0% if the value is very small but not zero
                     return percentage < 1 && percentage > 0 ? '<1%' : `${percentage.toFixed(0)}%`;
                   }
-                  return ''; // Fallback if series data is not available
+                  return ''; 
               },
               style: {
                   fontSize: '12px',
@@ -547,7 +550,7 @@ const Dashboard: FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? <Skeleton className="h-[300px] w-full" /> : customerGrowthChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300} key={resolvedTheme}>
+                <ResponsiveContainer width="100%" height={300} key={`${resolvedTheme}-${customAccentColor}`}>
                   <RechartsBarChart data={customerGrowthChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
                     <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tick={RECHARTS_FONT_STYLE}/>
@@ -560,11 +563,11 @@ const Dashboard: FC = () => {
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
                         backdropFilter: 'blur(8px)',
-                        fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif'
+                        fontFamily: MONTSERRAT_FONT_STACK
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
-                    <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px', fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif' }}/>
+                    <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px', fontFamily: MONTSERRAT_FONT_STACK }}/>
                     <Bar dataKey="customers" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                   </RechartsBarChart>
                 </ResponsiveContainer>

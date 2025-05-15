@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -7,6 +6,21 @@ import type { User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, saveData, hexToHslString } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+
+// Default HSL values from globals.css for chart pie slices
+const DEFAULT_CHART_PIE_COLORS_HSL: Record<string, string> = {
+  '--chart-pie-1': '180 100% 25%', // Teal for 'Open' (light theme)
+  '--chart-pie-2': '210 100% 45%', // Blue for 'Closed' (light theme)
+  '--chart-pie-3': '40 100% 50%',  // Yellow/Orange for 'Missed' (light theme)
+  '--chart-pie-4': '220 10% 60%',  // Gray for 'Other' (light theme)
+};
+const DEFAULT_DARK_CHART_PIE_COLORS_HSL: Record<string, string> = {
+  '--chart-pie-1': '180 100% 35%', // Lighter Teal for 'Open' (dark theme)
+  '--chart-pie-2': '210 90% 55%',  // Lighter Blue for 'Closed' (dark theme)
+  '--chart-pie-3': '40 90% 60%',   // Lighter Yellow/Orange for 'Missed' (dark theme)
+  '--chart-pie-4': '220 10% 50%',  // Darker Gray for 'Other' (dark theme)
+};
+
 
 interface AuthContextType {
   currentUser: User | null;
@@ -22,6 +36,11 @@ interface AuthContextType {
   headerLogoDarkUrl: string | null;
   customAccentColor: string | null;
 
+  chartPieColorOpen: string | null;
+  chartPieColorClosed: string | null;
+  chartPieColorMissed: string | null;
+  chartPieColorOther: string | null;
+
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
@@ -33,27 +52,40 @@ interface AuthContextType {
   setDefaultAppLogoDark: (dataUri: string) => void;
   updateHeaderLogoLight: (dataUri: string | null) => void;
   updateHeaderLogoDark: (dataUri: string | null) => void;
-  updateCustomAccentColor: (newColor: string) => void;
+  updateCustomAccentColor: (newColor: string | null) => void;
+
+  updateChartPieColorOpen: (hexColor: string | null) => void;
+  updateChartPieColorClosed: (hexColor: string | null) => void;
+  updateChartPieColorMissed: (hexColor: string | null) => void;
+  updateChartPieColorOther: (hexColor: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to apply accent color dynamically
-const applyCustomAccentColor = (colorHex: string | null) => {
-  if (typeof window === 'undefined') return; // Guard against SSR
+const applyCustomColorToCssVar = (cssVarName: string, colorHex: string | null, defaultHslValue?: string) => {
+  if (typeof window === 'undefined') return; 
   if (!colorHex) {
-    // Reset to default if colorHex is null by removing the style property
-    document.documentElement.style.removeProperty('--accent');
-    console.log('[AuthContext] applyCustomAccentColor: Reset to default theme accent.');
+    if (defaultHslValue) {
+      document.documentElement.style.setProperty(cssVarName, defaultHslValue);
+      console.log(`[AuthContext] applyCustomColorToCssVar: Reset ${cssVarName} to default HSL: ${defaultHslValue}`);
+    } else {
+      document.documentElement.style.removeProperty(cssVarName);
+      console.log(`[AuthContext] applyCustomColorToCssVar: Removed ${cssVarName}.`);
+    }
     return;
   }
   const hslString = hexToHslString(colorHex);
   if (hslString) {
-    document.documentElement.style.setProperty('--accent', hslString);
-    console.log(`[AuthContext] applyCustomAccentColor: Applied ${colorHex} as HSL: ${hslString}`);
+    document.documentElement.style.setProperty(cssVarName, hslString);
+    console.log(`[AuthContext] applyCustomColorToCssVar: Applied ${colorHex} as HSL to ${cssVarName}: ${hslString}`);
   } else {
-    console.warn(`[AuthContext] applyCustomAccentColor: Could not convert ${colorHex} to HSL. Using default teal.`);
-    document.documentElement.style.setProperty('--accent', '180 100% 25%'); // Fallback to default teal HSL
+    console.warn(`[AuthContext] applyCustomColorToCssVar: Could not convert ${colorHex} to HSL for ${cssVarName}. Using default.`);
+    if (defaultHslValue) {
+        document.documentElement.style.setProperty(cssVarName, defaultHslValue);
+    } else if (cssVarName === '--accent') {
+        document.documentElement.style.setProperty('--accent', '180 100% 25%'); 
+    }
   }
 };
 
@@ -71,6 +103,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [headerLogoLightUrl, setHeaderLogoLightUrl] = useState<string | null>(null);
   const [headerLogoDarkUrl, setHeaderLogoDarkUrl] = useState<string | null>(null);
   const [customAccentColor, setCustomAccentColorState] = useState<string | null>(null);
+
+  const [chartPieColorOpen, setChartPieColorOpen] = useState<string | null>(null);
+  const [chartPieColorClosed, setChartPieColorClosed] = useState<string | null>(null);
+  const [chartPieColorMissed, setChartPieColorMissed] = useState<string | null>(null);
+  const [chartPieColorOther, setChartPieColorOther] = useState<string | null>(null);
   
   const { toast } = useToast();
 
@@ -79,36 +116,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingAuth(true);
 
     setAppLogoLightUrl(getData<string>(DataItemType.AppLogoLight));
-    console.log('[AuthContext] Initial appLogoLightUrl from localStorage:', getData<string>(DataItemType.AppLogoLight)?.length);
     setAppLogoDarkUrl(getData<string>(DataItemType.AppLogoDark));
-    console.log('[AuthContext] Initial appLogoDarkUrl from localStorage:', getData<string>(DataItemType.AppLogoDark)?.length);
     
     const storedDefaultAppLogoLight = getData<string>(DataItemType.DefaultAppLogoLight);
-    if (storedDefaultAppLogoLight) {
-      _setDefaultAppLogoLightUrlInternal(storedDefaultAppLogoLight);
-      console.log('[AuthContext] Initial storedDefaultAppLogoLight: Length:', storedDefaultAppLogoLight.length);
-    } else {
-      console.log('[AuthContext] Initial storedDefaultAppLogoLight: null');
-    }
-
+    _setDefaultAppLogoLightUrlInternal(storedDefaultAppLogoLight);
+    
     const storedDefaultAppLogoDark = getData<string>(DataItemType.DefaultAppLogoDark);
-    if (storedDefaultAppLogoDark) {
-      _setDefaultAppLogoDarkUrlInternal(storedDefaultAppLogoDark);
-       console.log('[AuthContext] Initial storedDefaultAppLogoDark: Length:', storedDefaultAppLogoDark.length);
-    } else {
-       console.log('[AuthContext] Initial storedDefaultAppLogoDark: null');
-    }
+    _setDefaultAppLogoDarkUrlInternal(storedDefaultAppLogoDark);
     
     setHeaderLogoLightUrl(getData<string>(DataItemType.HeaderLogoLight));
     setHeaderLogoDarkUrl(getData<string>(DataItemType.HeaderLogoDark));
 
     const storedAccent = getData<string>(DataItemType.CustomAccentColor);
-    if (storedAccent) {
-      setCustomAccentColorState(storedAccent);
-      applyCustomAccentColor(storedAccent);
-    } else {
-      applyCustomAccentColor(null); // Apply default if nothing stored
-    }
+    setCustomAccentColorState(storedAccent);
+    applyCustomColorToCssVar('--accent', storedAccent, '180 100% 25%'); // Default HSL for accent
+
+    // Load and apply custom chart colors
+    const currentThemeIsDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultPieColors = currentThemeIsDark ? DEFAULT_DARK_CHART_PIE_COLORS_HSL : DEFAULT_CHART_PIE_COLORS_HSL;
+
+    const storedChartPieColorOpen = getData<string>(DataItemType.ChartPieColorOpen);
+    setChartPieColorOpen(storedChartPieColorOpen);
+    applyCustomColorToCssVar('--chart-pie-1', storedChartPieColorOpen, defaultPieColors['--chart-pie-1']);
+
+    const storedChartPieColorClosed = getData<string>(DataItemType.ChartPieColorClosed);
+    setChartPieColorClosed(storedChartPieColorClosed);
+    applyCustomColorToCssVar('--chart-pie-2', storedChartPieColorClosed, defaultPieColors['--chart-pie-2']);
+
+    const storedChartPieColorMissed = getData<string>(DataItemType.ChartPieColorMissed);
+    setChartPieColorMissed(storedChartPieColorMissed);
+    applyCustomColorToCssVar('--chart-pie-3', storedChartPieColorMissed, defaultPieColors['--chart-pie-3']);
+    
+    const storedChartPieColorOther = getData<string>(DataItemType.ChartPieColorOther);
+    setChartPieColorOther(storedChartPieColorOther);
+    applyCustomColorToCssVar('--chart-pie-4', storedChartPieColorOther, defaultPieColors['--chart-pie-4']);
     
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
@@ -248,22 +289,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateAppLogoLight = useCallback((dataUri: string | null) => {
-    console.log('[AuthContext] updateAppLogoLight called. Data URI length:', dataUri?.length);
-    console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage BEFORE saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
     const success = dataUri ? saveData<string>(DataItemType.AppLogoLight, dataUri) : (localStorage.removeItem(DataItemType.AppLogoLight), true);
-    console.log('[AuthContext] updateAppLogoLight: Saved AppLogoLight to localStorage. Success:', success, 'New AppLogoLight Length:', dataUri?.length);
     if (success) {
       setAppLogoLightUrl(dataUri);
       toast({ title: "Light App Logo", description: dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared." });
     } else {
       toast({ title: "Storage Full", description: "Could not save light app logo. Storage quota exceeded.", variant: "destructive" });
     }
-     console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
-     console.log('[AuthContext] updateAppLogoLight - AppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
   }, [toast]);
 
   const updateAppLogoDark = useCallback((dataUri: string | null) => {
-    console.log('[AuthContext] updateAppLogoDark called. Data URI length:', dataUri?.length);
     const success = dataUri ? saveData<string>(DataItemType.AppLogoDark, dataUri) : (localStorage.removeItem(DataItemType.AppLogoDark), true);
     if (success) {
       setAppLogoDarkUrl(dataUri);
@@ -274,8 +309,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
   
   const setDefaultAppLogoLight = useCallback((dataUri: string) => {
-    console.trace("[AuthContext] setDefaultAppLogoLight trace");
-    console.log('[AuthContext] setDefaultAppLogoLight - AppLogoLight in localStorage BEFORE saving DefaultAppLogoLight:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
     if (saveData<string>(DataItemType.DefaultAppLogoLight, dataUri)) {
       _setDefaultAppLogoLightUrlInternal(dataUri);
       updateAppLogoLight(null); 
@@ -283,11 +316,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       toast({ title: "Storage Full", description: "Could not set default light app logo. Storage quota exceeded.", variant: "destructive" });
     }
-    console.log('[AuthContext] setDefaultAppLogoLight - AppLogoLight in localStorage AFTER saving DefaultAppLogoLight and clearing override:', localStorage.getItem(DataItemType.AppLogoLight)?.length);
   }, [toast, updateAppLogoLight]);
 
   const setDefaultAppLogoDark = useCallback((dataUri: string) => {
-     console.trace("[AuthContext] setDefaultAppLogoDark trace");
     if (saveData<string>(DataItemType.DefaultAppLogoDark, dataUri)) {
       _setDefaultAppLogoDarkUrlInternal(dataUri);
       updateAppLogoDark(null);
@@ -317,21 +348,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast]);
   
-  const updateCustomAccentColor = useCallback((newColorHex: string) => {
+  const updateCustomAccentColor = useCallback((newColorHex: string | null) => {
     console.log(`[AuthContext] updateCustomAccentColor called with: ${newColorHex}`);
-    const newHslString = hexToHslString(newColorHex);
-    if (newHslString) {
-      if (saveData(DataItemType.CustomAccentColor, newColorHex)) {
-        setCustomAccentColorState(newColorHex); 
-        applyCustomAccentColor(newColorHex); 
-        toast({ title: "Accent Color Updated", description: `New accent color ${newColorHex} applied.` });
-      } else {
-        toast({ title: "Storage Full", description: "Could not save accent color. Storage quota exceeded.", variant: "destructive" });
-      }
+    const success = newColorHex ? saveData(DataItemType.CustomAccentColor, newColorHex) : (localStorage.removeItem(DataItemType.CustomAccentColor), true);
+    if (success) {
+        setCustomAccentColorState(newColorHex);
+        applyCustomColorToCssVar('--accent', newColorHex, '180 100% 25%');
+        toast({ title: "Accent Color Updated", description: newColorHex ? `New accent color ${newColorHex} applied.` : "Accent color reset to default." });
     } else {
-      toast({ title: "Invalid Color", description: "The selected color format was not valid.", variant: "destructive" });
+        toast({ title: "Storage Full", description: "Could not save accent color. Storage quota exceeded.", variant: "destructive" });
     }
   }, [toast]);
+
+  const updateChartPieColor = useCallback((
+    dataItemType: DataItemType,
+    cssVarName: string,
+    defaultHslValue: string,
+    setter: React.Dispatch<React.SetStateAction<string | null>>,
+    hexColor: string | null
+  ) => {
+    console.log(`[AuthContext] updateChartPieColor for ${cssVarName} called with: ${hexColor}`);
+    const success = hexColor ? saveData(dataItemType, hexColor) : (localStorage.removeItem(dataItemType), true);
+    if (success) {
+      setter(hexColor);
+      applyCustomColorToCssVar(cssVarName, hexColor, defaultHslValue);
+      toast({ title: `Chart Color Updated`, description: `${cssVarName.replace('--chart-pie-', 'Slice ')} color ${hexColor ? 'set to ' + hexColor : 'reset to default'}.` });
+    } else {
+      toast({ title: "Storage Full", description: `Could not save ${cssVarName} color. Storage quota exceeded.`, variant: "destructive" });
+    }
+  }, [toast]);
+
+  const updateChartPieColorOpen = useCallback((hexColor: string | null) => {
+    const currentThemeIsDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultColor = (currentThemeIsDark ? DEFAULT_DARK_CHART_PIE_COLORS_HSL : DEFAULT_CHART_PIE_COLORS_HSL)['--chart-pie-1'];
+    updateChartPieColor(DataItemType.ChartPieColorOpen, '--chart-pie-1', defaultColor, setChartPieColorOpen, hexColor);
+  }, [updateChartPieColor]);
+
+  const updateChartPieColorClosed = useCallback((hexColor: string | null) => {
+    const currentThemeIsDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultColor = (currentThemeIsDark ? DEFAULT_DARK_CHART_PIE_COLORS_HSL : DEFAULT_CHART_PIE_COLORS_HSL)['--chart-pie-2'];
+    updateChartPieColor(DataItemType.ChartPieColorClosed, '--chart-pie-2', defaultColor, setChartPieColorClosed, hexColor);
+  }, [updateChartPieColor]);
+
+  const updateChartPieColorMissed = useCallback((hexColor: string | null) => {
+    const currentThemeIsDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultColor = (currentThemeIsDark ? DEFAULT_DARK_CHART_PIE_COLORS_HSL : DEFAULT_CHART_PIE_COLORS_HSL)['--chart-pie-3'];
+    updateChartPieColor(DataItemType.ChartPieColorMissed, '--chart-pie-3', defaultColor, setChartPieColorMissed, hexColor);
+  }, [updateChartPieColor]);
+
+  const updateChartPieColorOther = useCallback((hexColor: string | null) => {
+    const currentThemeIsDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultColor = (currentThemeIsDark ? DEFAULT_DARK_CHART_PIE_COLORS_HSL : DEFAULT_CHART_PIE_COLORS_HSL)['--chart-pie-4'];
+    updateChartPieColor(DataItemType.ChartPieColorOther, '--chart-pie-4', defaultColor, setChartPieColorOther, hexColor);
+  }, [updateChartPieColor]);
 
 
   const contextValue = React.useMemo(() => {
@@ -351,6 +420,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         headerLogoLightUrl,
         headerLogoDarkUrl,
         customAccentColor,
+        chartPieColorOpen,
+        chartPieColorClosed,
+        chartPieColorMissed,
+        chartPieColorOther,
         login,
         logout,
         completePinSetupAndLogin,
@@ -362,14 +435,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         updateHeaderLogoLight,
         updateHeaderLogoDark,
         updateCustomAccentColor,
+        updateChartPieColorOpen,
+        updateChartPieColorClosed,
+        updateChartPieColorMissed,
+        updateChartPieColorOther,
     };
   }, [
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, _defaultAppLogoLightUrlInternal, _defaultAppLogoDarkUrlInternal,
     headerLogoLightUrl, headerLogoDarkUrl, customAccentColor,
+    chartPieColorOpen, chartPieColorClosed, chartPieColorMissed, chartPieColorOther,
     login, logout, completePinSetupAndLogin, updateUserProfilePicture,
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark, updateCustomAccentColor,
+    updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,
   ]);
   
   return (
