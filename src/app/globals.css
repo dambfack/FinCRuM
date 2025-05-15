@@ -44,12 +44,14 @@
     --chart-pie-3: 40 100% 50%;  /* Yellow/Orange for 'Missed' */
     --chart-pie-4: 220 10% 60%;  /* Gray for 'Other' */
     --radius: 0.75rem; /* Increased radius for more rounded look */
-    --sidebar-background: 220 10% 10%; /* Match main dark background base */
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 180 100% 25%; /* Teal for primary sidebar elements */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 180 100% 35%; /* Slightly lighter teal for accent */
-    --sidebar-accent-foreground: 0 0% 98%;
+
+    /* Light Theme Sidebar */
+    --sidebar-background: 0 0% 100%; /* White background for light theme sidebar */
+    --sidebar-foreground: 220 10% 20%; /* Dark Gray text for light theme sidebar */
+    --sidebar-primary: 180 100% 25%; /* Teal for primary sidebar elements (active items) */
+    --sidebar-primary-foreground: 0 0% 98%; /* Light text on teal primary elements */
+    --sidebar-accent: 220 15% 92%; /* Light gray for hover/accent on light sidebar */
+    --sidebar-accent-foreground: 220 10% 15%; /* Dark text on light gray hover/accent */
     --sidebar-border: 220 10% 85%;
     --sidebar-ring: 180 100% 25%;
   }
@@ -83,12 +85,14 @@
     --chart-pie-2: 210 90% 55%;  /* Lighter Blue for 'Closed' */
     --chart-pie-3: 40 90% 60%;   /* Lighter Yellow/Orange for 'Missed' */
     --chart-pie-4: 220 10% 50%;  /* Darker Gray for 'Other' */
+
+    /* Dark Theme Sidebar */
     --sidebar-background: 220 10% 10%; /* Match main dark background base */
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 180 100% 35%; /* Teal for primary sidebar elements */
-    --sidebar-primary-foreground: 220 10% 10%;
-    --sidebar-accent: 180 100% 25%; /* Darker teal for accent */
-    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-foreground: 0 0% 98%; /* Light text for dark theme sidebar */
+    --sidebar-primary: 180 100% 35%; /* Lighter Teal for primary sidebar elements */
+    --sidebar-primary-foreground: 220 10% 10%; /* Dark text on lighter teal primary elements */
+    --sidebar-accent: 220 10% 20%; /* Darker gray for hover/accent on dark sidebar */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light text on dark gray hover/accent */
     --sidebar-border: 220 10% 30%;
     --sidebar-ring: 180 100% 35%;
   }
@@ -354,3 +358,5 @@
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
 
+
+    
