@@ -61,7 +61,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false,
+      encrypted: false, // Encryption not implemented yet
     };
 
     try {
@@ -201,7 +201,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
   return (
     <div className="space-y-6 w-full">
-      <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
+      <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
         <CardHeader>
           <CardTitle className="text-lg flex items-center font-heading">
             <UploadCloud className="mr-2 h-5 w-5" />
@@ -221,7 +221,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       </Card>
 
       {(contact.attachments && contact.attachments.length > 0) && (
-        <Card className="bg-card/60 dark:bg-card/50 backdrop-blur-md w-full">
+        <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
           <CardHeader>
             <CardTitle className="text-lg flex items-center font-heading">
               <FileText className="mr-2 h-5 w-5" />
@@ -230,14 +230,14 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border">
-              <Table>
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="max-w-[200px]">Name</TableHead>
-                    <TableHead className="max-w-[100px]">Type</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Attached On</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="max-w-[200px] truncate">Name</TableHead>
+                    <TableHead className="max-w-[100px] truncate">Type</TableHead>
+                    <TableHead className="w-[100px]">Size</TableHead>
+                    <TableHead className="w-[120px]">Attached On</TableHead>
+                    <TableHead className="text-right w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -303,3 +303,4 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
+
