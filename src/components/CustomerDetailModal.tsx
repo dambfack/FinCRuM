@@ -39,11 +39,13 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; // Added overflow-hidden here
+  // The div that is flex-1 needs overflow-hidden to allow its child (the <p>) to truncate
+  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; 
 
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
-    pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"); // Added max-w-full
+    // Apply truncation directly to the <p> tag for better control
+    pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full");
   }
 
 
@@ -195,7 +197,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
               <CardContent className="space-y-1 p-4">
                 <DetailItem icon={Mail} label="Email" value={contact.email} />
@@ -210,7 +212,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="attachments" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
