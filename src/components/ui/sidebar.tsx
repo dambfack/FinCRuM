@@ -230,7 +230,7 @@ const Sidebar = React.forwardRef<
             data-mobile="true"
             className={cn(
               "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden",
-              "bg-sidebar-background/80 dark:bg-card/85 backdrop-blur-lg shadow-2xl border-r border-sidebar-border"
+              "bg-sidebar-background/95 dark:bg-card/85 backdrop-blur-lg shadow-2xl border-r border-sidebar-border" 
             )}
             style={
               {
@@ -239,7 +239,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetTitle className="sr-only">Main menu</SheetTitle> {/* Added for accessibility */}
+            <SheetTitle className="sr-only">Main menu</SheetTitle> 
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
