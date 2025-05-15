@@ -61,7 +61,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, 
+      encrypted: false,
     };
 
     try {
@@ -233,20 +233,20 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="w-[35%] px-2 text-xs sm:text-sm whitespace-normal break-words">Name</TableHead>
+                    <TableHead className="w-[30%] px-2 text-xs sm:text-sm whitespace-normal break-words">Name</TableHead>
                     <TableHead className="w-[20%] px-2 text-xs sm:text-sm whitespace-normal break-words">Type</TableHead>
                     <TableHead className="w-[15%] px-2 text-xs sm:text-sm">Size</TableHead>
-                    <TableHead className="w-[15%] px-2 text-xs sm:text-sm whitespace-normal break-words">Attached On</TableHead>
+                    <TableHead className="w-[20%] px-2 text-xs sm:text-sm whitespace-normal break-words">Attached On</TableHead>
                     <TableHead className="text-right w-[15%] px-2 text-xs sm:text-sm">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium px-2 text-xs sm:text-sm overflow-hidden">
+                      <TableCell className="px-2 text-xs sm:text-sm overflow-hidden">
                         <button
                           onClick={() => handleViewAttachment(att)}
-                          className="hover:underline text-accent hover:text-accent/80 text-left w-full break-all" 
+                          className="hover:underline text-accent hover:text-accent/80 text-left w-full break-all truncate"
                           title={`Open ${att.name}`}
                         >
                           {att.name}
