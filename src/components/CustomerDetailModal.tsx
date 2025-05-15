@@ -35,7 +35,6 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
   const isTruncateRequested = className?.includes('truncate');
-  // Remove 'truncate' from outerDivClassName as it's handled internally for the value
   const outerDivClassName = className?.replace('truncate', '').trim();
 
   let valueNode: React.ReactNode;
@@ -63,7 +62,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className="min-w-0 flex-1 overflow-hidden"> {/* Added overflow-hidden here */}
+      <div className="min-w-0 flex-1 overflow-hidden"> {/* Ensures this div can shrink and allow truncation */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -180,7 +179,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
             {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
-            {contact.profilePictureUrl && <DetailItem icon={ImageIcon} label="Profile Picture URL" value={contact.profilePictureUrl} className="truncate w-full" />}
+            {/* Profile Picture URL is no longer displayed here */}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
