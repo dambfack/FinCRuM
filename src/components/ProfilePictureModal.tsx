@@ -5,7 +5,7 @@ import React, { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { useTiltEffect } from '@/hooks/useTiltEffect';
+// import { useTiltEffect } from '@/hooks/useTiltEffect'; // Temporarily disable for debugging
 
 interface ProfilePictureModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
   altText = "Profile Picture"
 }) => {
   const dialogContentRef = useRef<HTMLDivElement>(null);
-  useTiltEffect(dialogContentRef);
+  // useTiltEffect(dialogContentRef); // Temporarily disable for debugging
 
   useEffect(() => {
     if (isOpen) {
@@ -42,37 +42,26 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     return null;
   }
 
-  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col items-center justify-center card-tilt-container";
+  // Using a solid, non-glassmorphic background for DialogContent for this test
+  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 bg-background border border-border flex flex-col items-center justify-center shadow-2xl rounded-lg";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         ref={dialogContentRef}
         className={dialogContentClassName}
-        onPointerDownOutside={onClose}
+        onPointerDownOutside={onClose} 
         onEscapeKeyDown={onClose}
       >
-        <DialogHeader className="sr-only"> {/* Added DialogHeader for accessibility */}
-          <DialogTitle className="sr-only">View Profile Picture</DialogTitle> {/* Visually hidden title */}
+        <DialogHeader className="sr-only"> {/* Visually hidden title for accessibility */}
+          <DialogTitle className="sr-only">View Profile Picture</DialogTitle>
         </DialogHeader>
-        <div className="glow" />
-        {/* Close button is part of DialogContent by default, but we can add our own if needed for styling
-         <DialogClose asChild>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full text-muted-foreground hover:bg-muted/20 hover:text-foreground"
-                onClick={onClose}
-                aria-label="Close image viewer"
-            >
-                <X className="h-5 w-5" />
-            </Button>
-        </DialogClose> */}
+        {/* <div className="glow" /> // Glow div removed as tilt effect is disabled */}
         <img
           src={imageUrl}
           alt={altText}
-          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg relative z-[1]"
-          style={{ backgroundColor: 'transparent' }} // Removed diagnostic bg
+          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg"
+          // Removed style={{ backgroundColor: 'white', border: '2px solid limegreen' }} as DialogContent background is now solid
           onLoad={handleImageLoad}
           onError={handleImageError}
         />
