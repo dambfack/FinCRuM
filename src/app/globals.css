@@ -20,8 +20,8 @@
     --card-foreground: 220 10% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 10% 20%;
-    --primary: 220 10% 20%; /* Dark Gray for primary elements */
-    --primary-foreground: 0 0% 98%; /* Light text on primary */
+    --primary: hsl(var(--accent)); /* Dark Gray for primary elements - NOW USES ACCENT */
+    --primary-foreground: hsl(var(--accent-foreground)); /* Light text on primary - NOW USES ACCENT FOREGROUND */
     --secondary: 220 10% 92%; /* Slightly darker gray */
     --secondary-foreground: 220 10% 10%;
     --muted: 220 10% 92%;
@@ -49,9 +49,9 @@
     --sidebar-background: 0 0% 100%; /* White background for light theme sidebar */
     --sidebar-foreground: 220 10% 20%; /* Dark Gray text for light theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
-    --sidebar-primary-foreground: 0 0% 98%; /* Light text on accent primary elements */
-    --sidebar-accent: 220 15% 92%; /* Light gray for hover/accent on light sidebar */
-    --sidebar-accent-foreground: 220 10% 15%; /* Dark text on light gray hover/accent */
+    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Light text on accent primary elements */
+    --sidebar-accent: hsl(var(--accent) / 0.15); /* Light translucent version of accent */
+    --sidebar-accent-foreground: hsl(var(--accent)); /* Accent color for text on this hover */
     --sidebar-border: 220 10% 85%;
     --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
   }
@@ -62,8 +62,8 @@
     --card-foreground: 0 0% 98%;
     --popover: 220 10% 15%; /* Dark popover for consistency with dialogs */
     --popover-foreground: 0 0% 98%; /* White/Very Light Gray text for popovers */
-    --primary: 0 0% 98%; /* Light Gray for primary elements */
-    --primary-foreground: 220 10% 10%; /* Dark text on primary */
+    --primary: hsl(var(--accent)); /* Light Gray for primary elements - NOW USES ACCENT */
+    --primary-foreground: hsl(var(--accent-foreground)); /* Dark text on primary - NOW USES ACCENT FOREGROUND */
     --secondary: 220 10% 20%; /* Slightly lighter dark gray */
     --secondary-foreground: 0 0% 98%;
     --muted: 220 10% 20%;
@@ -90,9 +90,9 @@
     --sidebar-background: 220 10% 10%; /* Match main dark background base */
     --sidebar-foreground: 0 0% 98%; /* Light text for dark theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
-    --sidebar-primary-foreground: 220 10% 10%; /* Dark text on lighter accent primary elements */
-    --sidebar-accent: 220 10% 20%; /* Darker gray for hover/accent on dark sidebar */
-    --sidebar-accent-foreground: 0 0% 98%; /* Light text on dark gray hover/accent */
+    --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Dark text on lighter accent primary elements - or accent-foreground if accent is very light */
+    --sidebar-accent: hsl(var(--accent) / 0.3); /* Translucent version of accent for dark mode hover */
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Light text on this hover */
     --sidebar-border: 220 10% 30%;
     --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
   }
@@ -114,12 +114,6 @@
   /* Base colors with opacity will be applied directly on components using Tailwind's opacity modifiers e.g. bg-card/70 */
   /* Components like Card and DialogContent have their own @apply border from shadcn, which should use --border variable */
 }
-
-.glass-effect-header { /* This can keep its specific border if needed for header only */
-  @apply backdrop-blur-lg shadow-lg border-b;
-  border-color: hsla(var(--glass-border) / 0.05); /* Or use --border if it should match regular borders */
-}
-
 
 /* Custom styles for react-datepicker */
 .react-datepicker-popper {
@@ -252,7 +246,7 @@
 
 .react-datepicker__day--today {
   @apply font-semibold border border-accent/50;
-  color: hsl(var(--accent));
+  color: hsl(var(--accent)); /* Use accent color for today's date text in light mode */
 }
 .dark .react-datepicker__day--today {
   color: #ffffff !important; /* White text for today's date in dark mode */
