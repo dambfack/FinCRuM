@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { Metadata } from 'next';
@@ -78,7 +77,7 @@ const Logo: React.FC<{
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     
-    if (currentSrc !== determinedSrc || imgError) { // Also update if previous attempt had an error
+    if (currentSrc !== determinedSrc || imgError) { 
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
       setImgError(false);
       console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc?.substring(0,30) || ultimateFallbackPngLogo}`);
@@ -91,7 +90,6 @@ const Logo: React.FC<{
     setImgError(true);
     let nextSrc = '';
 
-    // Simplified fallback logic: try the other theme's custom, then other theme's default, then ultimate PNG, then absolute placeholder
     if (resolvedTheme === 'dark') {
       if (currentSrc === props.appLogoDarkUrl && props.appLogoLightUrl && currentSrc !== props.appLogoLightUrl) nextSrc = props.appLogoLightUrl;
       else if (currentSrc === props.appLogoLightUrl && props.defaultAppLogoDarkUrl && currentSrc !== props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
@@ -138,7 +136,7 @@ const Logo: React.FC<{
 
   console.log(`[Logo Component] RENDERING. currentSrc: ${currentSrc?.substring(0,30)}, imgError: ${imgError}, attempt: ${attemptCounter}, displaySrc: ${displaySrc?.substring(0,30)}, unoptimized: ${unoptimized}`);
   
-  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 5)) { // Added attempt limit for absolute placeholder
+  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 5)) {
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
@@ -469,7 +467,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   <span className="sr-only">Settings</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5">
+              <PopoverContent className="w-80 glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto">
                 <div className="p-1">
                   <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4>
                   {currentUser && (
