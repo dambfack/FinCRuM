@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft, Menu as MenuIcon } from "lucide-react"; // Ensure MenuIcon is imported if used as default mobile
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -74,13 +74,9 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // Initialize with default, then update from cookie client-side
     const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(defaultPinnedOpen);
-    const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
-    const [isHoverActive, setIsHoverActive] = React.useState(false);
-
+    
     React.useEffect(() => {
-      // This effect runs only on the client after hydration
       if (typeof document !== "undefined" && pinnedOpenProp === undefined) {
         const cookieValue = document.cookie
           .split("; ")
@@ -89,11 +85,13 @@ const SidebarProvider = React.forwardRef<
         if (cookieValue !== undefined) {
           _setIsPinnedOpen(cookieValue === "true");
         } else {
-          // If no cookie, set to defaultPinnedOpen (could also choose to set cookie here)
            _setIsPinnedOpen(defaultPinnedOpen);
         }
       }
     }, [defaultPinnedOpen, pinnedOpenProp]);
+
+    const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
+    const [isHoverActive, setIsHoverActive] = React.useState(false);
 
 
     const setPinnedOpen = React.useCallback(
@@ -313,7 +311,7 @@ Sidebar.displayName = "Sidebar"
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+>(({ className, onClick, children, ...props }, ref) => { // Added children prop
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -329,7 +327,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      {children || <PanelLeft />} {/* Use children if provided, else default to PanelLeft */}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -815,5 +813,7 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
 
     

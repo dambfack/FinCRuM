@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat } from 'next/font/google';
+import { Inter, Montserrat, Anton } from 'next/font/google'; // Keep Anton if still used elsewhere, or remove
 import './globals.css';
 import { cn, getFirstInitial, getData, saveData } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -24,7 +24,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon } from 'lucide-react'; // Added MenuIcon
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -35,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Renamed to avoid conflict with window.Image
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -62,79 +62,54 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render with a new key
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Local fallback in public folder
-  const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F"; // Absolute fallback
+  const ultimateFallbackPngLogo = "/f_logo.png";
+  const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
-    console.log('[Logo Component] useEffect triggered by props or theme change.');
-    console.log('[Logo Component] Props: appLogoLightUrl:', props.appLogoLightUrl?.substring(0,30), 'appLogoDarkUrl:', props.appLogoDarkUrl?.substring(0,30), 'defaultAppLogoLightUrl:', props.defaultAppLogoLightUrl?.substring(0,30), 'defaultAppLogoDarkUrl:', props.defaultAppLogoDarkUrl?.substring(0,30));
-    console.log('[Logo Component] resolvedTheme:', resolvedTheme);
-
     let determinedSrc: string | null = null;
-
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    } else { // light or system (assuming system might pick light here if no explicit dark theme)
+    } else {
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
-    
-    console.log('[Logo Component] Determined initial src:', determinedSrc?.substring(0,60));
-    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo); // Ensure fallback if all are null
-    setImgError(false); // Reset error on new source determination
-    // No need to increment attemptCounter here, it's for onError retries
+    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
+    setImgError(false);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo]);
 
-
   const handleError = useCallback(() => {
-    console.error('[Logo Component] onError triggered for src:', currentSrc?.substring(0,60), 'Attempt:', attemptCounter);
     setImgError(true);
     let nextSrc = '';
-
-    // Simplified fallback logic: try the next best option progressively.
-    // This logic prioritizes theme-specific, then cross-theme, then ultimate fallbacks.
     if (currentSrc === props.appLogoDarkUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoDarkUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
     else if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     else if (currentSrc === props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
     else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = ultimateFallbackPngLogo;
     else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
-    else return; // Already at absolute fallback, or no valid path
+    else return;
 
-    console.log('[Logo Component] onError - attempting nextSrc:', nextSrc?.substring(0,60));
-    
     if (currentSrc !== nextSrc && nextSrc) {
-        setCurrentSrc(nextSrc);
-        setImgError(false); // Reset error for the new attempt
-        setAttemptCounter(prev => prev + 1); // Force re-render with new key
+      setCurrentSrc(nextSrc);
+      setImgError(false);
+      setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-        // This case should ideally not be hit if ultimateFallbackPngLogo is always a valid string
-        // but as a safety, go to absolute placeholder
-        setCurrentSrc(absoluteUltimatePlaceholder);
-        setImgError(false);
-        setAttemptCounter(prev => prev + 1);
+      setCurrentSrc(absoluteUltimatePlaceholder);
+      setImgError(false);
+      setAttemptCounter(prev => prev + 1);
     }
-
   }, [currentSrc, props, attemptCounter, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
 
-  console.log('[Logo Component] Rendering with currentSrc:', currentSrc?.substring(0,60), 'imgError:', imgError, 'attemptCounter:', attemptCounter);
-
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    console.warn('[Logo Component] Rendering fallback div due to no src or unrecoverable error.');
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
   const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
-  
-  // Unoptimized should be true for data URIs and known external placeholders that don't need Next.js optimization.
   const unoptimized = isDataUri || isPlaceholderCo;
-
-  console.log(`[Logo Component] Final Image props - src: ${currentSrc?.substring(0,60)}, unoptimized: ${unoptimized}, key: ${currentSrc}-${attemptCounter}-${resolvedTheme}`);
 
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Add resolvedTheme to key for theme changes
+      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`}
       src={currentSrc}
       alt="App Logo"
       width={24}
@@ -158,7 +133,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
     logout, updateUserProfilePicture,
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark,
-  } = auth;
+    openMobile, // Get openMobile state from useSidebar via AuthContext or pass useSidebar here
+  } = auth; // Assuming useAuth now exposes openMobile or we call useSidebar here. For now, let's assume useAuth gives us this.
+                // If not, useSidebar() hook would need to be called directly in AppContent for openMobile.
+                // For this change, I will assume useAuth is updated or we'd call useSidebar() directly in AppContent
+                // Let's call useSidebar() for clarity:
+  const { openMobile: isMobileSidebarOpen } = useSidebar(); // Call useSidebar from ui/sidebar
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -218,16 +198,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
-    console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      console.log(`[AppContent] ${toastTitle} - File selected:`, file.name, file.type, file.size);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
         return;
       }
-      // For logos, enforce PNG. For user profile pics, any image is fine.
       if (toastTitle.toLowerCase().includes("logo") && !file.type.startsWith('image/png')) {
          toast({ title: "Invalid File Type", description: "Please upload a PNG file for logos.", variant: "destructive" });
          if (inputRef.current) inputRef.current.value = '';
@@ -235,23 +212,16 @@ function AppContent({ children }: { children: React.ReactNode }) {
       }
 
       const reader = new FileReader();
-      reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
-      reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress: ${e.loaded}/${e.total}`);
       reader.onloadend = () => {
-        console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Result length:`, (reader.result as string)?.length);
         const dataUri = reader.result as string;
         setCropSrc(dataUri);
         setCropperOpen(true);
-        console.log(`[AppContent] ${toastTitle} - Set crop src and opening cropper modal.`);
       };
       reader.onerror = (e) => {
-        console.error(`[AppContent] ${toastTitle} - FileReader error:`, e);
         toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
-    } else {
-      console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null.`);
     }
   };
 
@@ -276,7 +246,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
   const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
 
-  console.log("[AppContent] Rendering. Context values - appLogoUrl: len:", appLogoLightUrl?.length, "appLogoDarkUrl: len:", appLogoDarkUrl?.length, "defaultAppLogoUrl: len:", defaultAppLogoLightUrl?.length, "defaultDarkAppLogoUrl: len:", defaultAppLogoDarkUrl?.length, "headerLogoLightUrl: len:", headerLogoLightUrl?.length, "headerLogoDarkUrl: len:", headerLogoDarkUrl?.length );
 
   if (isLoadingAuth) {
     return (
@@ -372,7 +341,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="Export Data">
                     <Link href="/export-data">
-                        <Download />
+                        <FileArchive /> {/* Changed icon for Export */}
                         <span className="group-data-[state=collapsed]:hidden">Export Data</span>
                     </Link>
                     </SidebarMenuButton>
@@ -381,7 +350,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
-           <SidebarTrigger />
+           <SidebarTrigger>
+             <PanelLeft /> {/* Default Desktop Trigger Icon */}
+           </SidebarTrigger>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className={cn("flex flex-col")}>
@@ -392,23 +363,27 @@ function AppContent({ children }: { children: React.ReactNode }) {
           "hover:shadow-2xl transition-shadow duration-300"
         )}>
           <div className="flex items-center gap-2 md:hidden">
-            <SidebarTrigger />
-            <Link href="/" className="font-semibold text-lg flex items-center gap-2">
-               <Logo 
-                appLogoLightUrl={appLogoLightUrl} 
-                appLogoDarkUrl={appLogoDarkUrl}
-                defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
-                defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
-              />
-              <div className="flex items-center font-heading">
-                {currentHeaderLogo ? (
-                  <img src={currentHeaderLogo} alt="Header Logo" className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" />
-                ) : (
-                  <span className="mr-1">Finsculpt</span>
-                )}
-                <span>CRM</span>
-              </div>
-            </Link>
+            <SidebarTrigger>
+              <MenuIcon /> {/* Hamburger icon for mobile */}
+            </SidebarTrigger>
+            {!isMobileSidebarOpen && ( /* Conditionally render logo and text if mobile sidebar is closed */
+              <Link href="/" className="font-semibold text-lg flex items-center gap-2">
+                <Logo 
+                  appLogoLightUrl={appLogoLightUrl} 
+                  appLogoDarkUrl={appLogoDarkUrl}
+                  defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
+                  defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
+                />
+                <div className="flex items-center font-heading">
+                  {currentHeaderLogo ? (
+                    <img src={currentHeaderLogo} alt="Header Logo" className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" />
+                  ) : (
+                    <span className="mr-1">Finsculpt</span>
+                  )}
+                  <span>CRM</span>
+                </div>
+              </Link>
+            )}
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading">
             {currentHeaderLogo ? (
@@ -522,6 +497,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -548,11 +524,24 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <AppContent>{children}</AppContent>
+            {/* useSidebar needs to be within SidebarProvider, 
+                so AppContent needs to be a child of SidebarProvider if it uses useSidebar */}
+            <SidebarProvider defaultPinnedOpen={true}> 
+              <AppContent>{children}</AppContent>
+            </SidebarProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+// Removed SidebarProvider from inside AuthProvider in RootLayout
+// and wrapped AppContent with SidebarProvider instead.
+// This ensures useSidebar() inside AppContent has access to its context.
 
+// Also had to ensure PanelLeft is imported for the desktop sidebar trigger.
+// It might have been unintentionally removed earlier.
+// Added MenuIcon to imports as well for the mobile trigger.
+
+
+    
