@@ -48,7 +48,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
         )}
         title={isTruncateRequested ? dateString : undefined}
       >
@@ -198,7 +198,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="space-y-1 max-h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <DetailItem icon={Mail} label="Email" value={contact.email} />
             {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
@@ -209,7 +209,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
-          <TabsContent value="attachments" className="max-h-[55vh] overflow-y-auto pr-2 w-full">
+          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
@@ -268,3 +268,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
+
