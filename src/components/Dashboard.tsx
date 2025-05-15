@@ -76,11 +76,7 @@ const Dashboard: FC = () => {
     const { resolvedTheme } = useTheme();
     const auth = useAuth(); 
     const { 
-      customAccentColor,
-      chartPieColorOpen,
-      chartPieColorClosed,
-      chartPieColorMissed,
-      chartPieColorOther
+      currentUserThemeSettings
     } = auth;
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
@@ -166,13 +162,11 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (status !== 'approached' && statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined | 'approached'>)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
-                } else if (status === 'approached'){
-                     statusCounts.other++; // Group 'approached' into 'other'
+                 if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined>)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
                 } else {
                      statusCounts.other++;
                 }
@@ -213,114 +207,126 @@ const Dashboard: FC = () => {
         return () => window.removeEventListener('dataChanged', handleDataChange);
     }, [loadDashboardData]);
 
+    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
 
-    const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
-      const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
-      
-      const currentPieColors: string[] = [];
-      const customHexColors = [chartPieColorOpen, chartPieColorClosed, chartPieColorMissed, chartPieColorOther];
+    const apexPieChartOptions = useMemo(() => {
+        const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
+        let currentPieColors: string[] = [];
 
-      dealStatusLabels.forEach((_label, index) => {
-        if (customHexColors[index]) {
-          currentPieColors.push(customHexColors[index] as string); // Use custom hex color from AuthContext
-        } else {
-          currentPieColors.push(PIE_CHART_CSS_VARS_FALLBACK[index]); // Fallback to CSS HSL variable string
-        }
-      });
-      
-      if (dealStatusLabels.length === 0 && totalClients === 0) {
-        currentPieColors.push(resolvedTheme === 'dark' ? '#555555' : '#AAAAAA'); // Default for no data
-      }
-      
-      console.log("[Dashboard] apexPieChartOptions using colors:", currentPieColors);
+        // Prioritize user-set theme colors from AuthContext
+        const userColors = [
+          currentUserThemeSettings?.chartPieColorOpen,
+          currentUserThemeSettings?.chartPieColorClosed,
+          currentUserThemeSettings?.chartPieColorMissed,
+          currentUserThemeSettings?.chartPieColorOther,
+        ];
 
-      return {
-          chart: {
-              type: 'donut',
-              background: 'transparent',
-              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-              toolbar: { show: false }
-          },
-          labels: totalClients > 0 ? dealStatusLabels : (dealStatusSeries.length > 0 ? ['No Data Available'] : []),
-          colors: currentPieColors, 
-          fill: { opacity: 0.8 }, // Apply opacity globally
-          stroke: { show: true, width: 2, colors: ['transparent'] },
-          legend: {
-              position: 'bottom',
-              horizontalAlign: 'center',
-              floating: false,
-              fontSize: '12px',
-              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-              labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
-              markers: { width: 10, height: 10 },
-              itemMargin: { horizontal: 5, vertical: 2 }
-          },
-          plotOptions: {
-              pie: {
-                  expandOnClick: true,
-                  donut: {
-                      size: '65%',
-                      labels: {
-                          show: totalClients > 0,
-                          total: {
-                              show: true,
-                              label: 'Total Clients',
-                              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                              color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
-                              formatter: (w) => totalClients.toString()
-                          },
-                          value: {
-                              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                              color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
-                              offsetY: 8,
-                              formatter: (val: string) => val
-                          }
-                      }
-                  },
-                  dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
-                  states: { hover: { filter: { type: 'lighten', value: 0.25 } } }
-              }
-          },
-          dataLabels: {
-              enabled: totalClients > 0,
-              formatter: (val: number, opts: any) => {
-                  if (totalClients === 0) return '';
-                  if (opts && opts.w && opts.w.globals && Array.isArray(opts.w.globals.series) && opts.w.globals.series[opts.seriesIndex] !== undefined) {
-                    const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100);
-                    return percentage < 1 && percentage > 0 ? '<1%' : `${percentage.toFixed(0)}%`;
+        if (dealStatusLabels.length > 0 && totalClients > 0) {
+            currentPieColors = dealStatusLabels.map((_label, index) => {
+              if (userColors[index]) { // User has set a custom color for this slice
+                  const hex = userColors[index] as string;
+                  // Convert hex to rgba for opacity
+                  let r = 0, g = 0, b = 0;
+                  if (hex.length === 4) {
+                    r = parseInt(hex[1] + hex[1], 16);
+                    g = parseInt(hex[2] + hex[2], 16);
+                    b = parseInt(hex[3] + hex[3], 16);
+                  } else if (hex.length === 7) {
+                    r = parseInt(hex.substring(1, 2), 16);
+                    g = parseInt(hex.substring(3, 4), 16);
+                    b = parseInt(hex.substring(5, 6), 16);
                   }
-                  return ''; 
-              },
-              style: {
-                  fontSize: '12px',
-                  fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                  colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
-              },
-              dropShadow: { enabled: false }
-          },
-          tooltip: {
-              theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-              fillSeriesColor: false,
-              style: { fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif' },
-              y: { formatter: (val: number) => `${val} client(s)` }
-          },
-          responsive: [{
-              breakpoint: 480,
-              options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
-          }]
-      };
-  }, [
-    resolvedTheme, 
-    dealStatusLabels, 
-    dealStatusSeries,
-    chartPieColorOpen,
-    chartPieColorClosed,
-    chartPieColorMissed,
-    chartPieColorOther
-  ]);
+                  return `rgba(${r},${g},${b},0.8)`;
+              }
+              // Fallback to CSS variables if no user-specific color
+              return `hsla(var(--chart-pie-${index + 1}), 0.8)`;
+            });
+        } else if (dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) {
+            // Fallback if labels are missing but series data exists (less likely)
+            currentPieColors = dealStatusSeries.map((_, index) => `hsla(var(--chart-pie-${index + 1}), 0.8)`);
+        } else {
+            currentPieColors = [resolvedTheme === 'dark' ? 'rgba(85,85,85,0.8)' : 'rgba(170,170,170,0.8)']; // Default gray for no data
+        }
+
+        return {
+            chart: {
+                type: 'donut',
+                background: 'transparent',
+                fontFamily: MONTSERRAT_FONT_STACK,
+                toolbar: { show: false }
+            },
+            labels: (dealStatusLabels.length > 0 && totalClients > 0) ? dealStatusLabels : ['No Data Available'],
+            colors: currentPieColors,
+            fill: { opacity: 1 }, // Opacity is now part of the color strings
+            stroke: { show: true, width: 2, colors: ['transparent'] },
+            legend: {
+                position: 'bottom',
+                horizontalAlign: 'center',
+                floating: false,
+                fontSize: '12px',
+                fontFamily: MONTSERRAT_FONT_STACK,
+                labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
+                markers: { width: 10, height: 10 },
+                itemMargin: { horizontal: 5, vertical: 2 }
+            },
+            plotOptions: {
+                pie: {
+                    expandOnClick: true,
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: totalClients > 0,
+                            total: {
+                                show: true,
+                                label: 'Total Clients',
+                                fontFamily: MONTSERRAT_FONT_STACK,
+                                color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
+                                formatter: (w: any) => totalClients.toString()
+                            },
+                            value: {
+                                fontFamily: MONTSERRAT_FONT_STACK,
+                                color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
+                                offsetY: 8,
+                                formatter: (val: string) => val
+                            }
+                        }
+                    },
+                    dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
+                    states: { hover: { filter: { type: 'lighten', value: 0.25 } } }
+                }
+            },
+            dataLabels: {
+                enabled: totalClients > 0,
+                formatter: (val: number, opts: any) => {
+                    if (totalClients === 0) return '';
+                    if (opts && opts.w && opts.w.globals && Array.isArray(opts.w.globals.series) && opts.w.globals.series[opts.seriesIndex] !== undefined) {
+                        const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100);
+                        return percentage < 1 && percentage > 0 ? '<1%' : `${percentage.toFixed(0)}%`;
+                    }
+                    return '';
+                },
+                style: {
+                    fontSize: '12px',
+                    fontFamily: MONTSERRAT_FONT_STACK,
+                    colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
+                },
+                dropShadow: { enabled: false }
+            },
+            tooltip: {
+                theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+                fillSeriesColor: false,
+                style: { fontFamily: MONTSERRAT_FONT_STACK },
+                y: { formatter: (val: number) => `${val} client(s)` }
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
+            }]
+        };
+    }, [resolvedTheme, dealStatusLabels, dealStatusSeries, currentUserThemeSettings]);
+
 
     const chartKey = useMemo(() => {
-      // Using JSON.stringify on the colors array ensures the key changes if the array content changes.
       return `${resolvedTheme}-${JSON.stringify(apexPieChartOptions.colors)}`;
     }, [resolvedTheme, apexPieChartOptions.colors]);
 
@@ -464,13 +470,13 @@ const Dashboard: FC = () => {
       { title: "Appointments Today", value: stats.appointmentsTodayCount, icon: Calendar, note: "Scheduled for today", action: handleShowTodaysAppointments }
     ];
 
-    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
+    
     const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
 
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
+          <h1 className="text-3xl font-bold font-heading">CRM Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -574,18 +580,18 @@ const Dashboard: FC = () => {
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-[300px] w-full" /> : (dealStatusLabels.length > 0 && dealStatusSeries.some(s => s > 0)) ? (
+            {loading ? <Skeleton className="h-[300px] w-full" /> : (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
                     key={chartKey}
                     options={apexPieChartOptions}
-                    series={(dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) ? dealStatusSeries : [1]}
+                    series={(dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) ? dealStatusSeries : (dealStatusLabels.length > 0 ? dealStatusLabels.map(() => 0) : [1])}
                     type="donut"
                     height="100%"
                     width="100%"
                   />
                 </div>
-             ) : <p className="text-sm text-muted-foreground text-center py-10">No deal status data to display.</p>}
+             ) }
           </CardContent>
         </Card>
       </div>
@@ -856,4 +862,3 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
-
