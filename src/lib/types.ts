@@ -204,30 +204,25 @@ export enum DataItemType {
   Reminders = 'reminders',
   Appointments = 'appointments',
   CustomerData = 'customerData', // For ExcelData (imported data)
-  // LocalData = 'localData', // For a monolithic local data object if ever used
   LastSyncTime = 'lastSyncTime',
   OneDriveAccessToken = 'onedriveAccessToken',
   OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
   Users = 'users',
-  CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
-  Notifications = 'notifications', // For notifications
-  AppLogoLight = 'appLogoLight', // Custom override light theme app logo
-  AppLogoDark = 'appLogoDark',   // Custom override dark theme app logo
-  DefaultAppLogoLight = 'defaultAppLogoLight', // Partner-set default light theme app logo
-  DefaultAppLogoDark = 'defaultAppLogoDark',   // Partner-set default dark theme app logo
-  HeaderLogoLight = 'headerLogoLight', // Custom override light theme header logo
-  HeaderLogoDark = 'headerLogoDark',   // Custom override dark theme header logo
-  BackgroundImage = 'backgroundImage', // For current custom background override
-  DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
-  UserThemePreferences = 'userThemePreferences', // Stores UserPreferences map
+  CurrentUserId = 'currentUserId', 
+  Notifications = 'notifications', 
+  HeaderLogoLight = 'headerLogoLight', 
+  HeaderLogoDark = 'headerLogoDark',
+  DefaultHeaderLogoLight = 'defaultHeaderLogoLight', // New
+  DefaultHeaderLogoDark = 'defaultHeaderLogoDark',   // New
+  BackgroundImage = 'backgroundImage', 
+  DefaultBackgroundImage = 'defaultBackgroundImage', 
+  UserThemePreferences = 'userThemePreferences', 
 }
 
 /**
  * Represents the structure of all local data managed by the CRM.
- * This can be used if storing all data under a single key,
- * or as a reference for individual item types.
  */
 export interface LocalData {
   contacts?: Contact[];
@@ -238,15 +233,13 @@ export interface LocalData {
   notifications?: Notification[];
   customerData?: ExcelData;
   lastSyncTime?: string;
-  appLogoLight?: string | null;
-  appLogoDark?: string | null;
-  defaultAppLogoLight?: string | null;
-  defaultAppLogoDark?: string | null;
   headerLogoLight?: string | null;
   headerLogoDark?: string | null;
+  defaultHeaderLogoLight?: string | null; // New
+  defaultHeaderLogoDark?: string | null;  // New
   backgroundImage?: string | null;
   defaultBackgroundImage?: string | null;
-  userThemePreferences?: UserPreferences; // Changed from individual theme settings
+  userThemePreferences?: UserPreferences; 
 }
 
 /**
