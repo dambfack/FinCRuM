@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat } from 'next/font/google'; // Removed Anton
+import { Inter, Montserrat } from 'next/font/google';
 import './globals.css';
 import { cn, getFirstInitial, getData, saveData } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -36,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Corrected import to NextImage
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -63,9 +63,9 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0);
+  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render on error fallback
 
-  const ultimateFallbackPngLogo = "/f_logo.png";
+  const ultimateFallbackPngLogo = "/f_logo.png"; // Assumes f_logo.png is in public folder
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
 
@@ -77,7 +77,7 @@ const Logo: React.FC<{
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-    setImgError(false);
+    setImgError(false); // Reset error state when props or theme change
     // console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo]);
 
@@ -87,6 +87,8 @@ const Logo: React.FC<{
     setImgError(true);
     let nextSrc = '';
 
+    // Determine next fallback based on current source and theme
+    // This logic prioritizes theme-specific fallbacks before cross-theme or absolute fallbacks
     if (currentSrc === props.appLogoDarkUrl && props.appLogoDarkUrl !== props.appLogoLightUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoDarkUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
     else if (currentSrc === props.appLogoLightUrl && props.appLogoLightUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoDarkUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
@@ -94,21 +96,21 @@ const Logo: React.FC<{
     else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
     else {
       // console.log("[Logo Component] No more fallbacks.");
-      return;
+      return; // No more fallbacks
     }
-
+    
     if (currentSrc !== nextSrc && nextSrc) {
       // console.log(`[Logo Component] Falling back to: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false);
-      setAttemptCounter(prev => prev + 1);
+      setImgError(false); // Reset error for the new attempt
+      setAttemptCounter(prev => prev + 1); // Increment attempt counter to change key
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
       // console.log(`[Logo Component] Falling back to absolute placeholder.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
-  }, [currentSrc, props, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
+  }, [currentSrc, props, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]); // Added attemptCounter
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
@@ -125,7 +127,7 @@ const Logo: React.FC<{
   
   return (
       <NextImage
-        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`}
+        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Key includes attemptCounter to force re-render on error/fallback
         src={currentSrc}
         alt="App Logo"
         width={24}
@@ -151,7 +153,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     updateHeaderLogoLight, updateHeaderLogoDark,
   } = auth;
   
-  const { openMobile: isMobileSidebarOpen } = useSidebar(); 
+  const { toggleSidebar, openMobile: isMobileSidebarOpen } = useSidebar(); 
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -288,14 +290,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
-            <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-primary transition-colors">
-              <Logo 
-                appLogoLightUrl={appLogoLightUrl} 
-                appLogoDarkUrl={appLogoDarkUrl}
-                defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
-                defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
-              />
-            </Link>
+            <Logo 
+              appLogoLightUrl={appLogoLightUrl} 
+              appLogoDarkUrl={appLogoDarkUrl}
+              defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
+              defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
+            />
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -380,7 +380,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
               <MenuIcon /> 
             </SidebarTrigger>
             {!isMobileSidebarOpen && ( 
-              <Link href="/" className="font-semibold text-lg flex items-center gap-2">
+              <button 
+                onClick={toggleSidebar} 
+                className="font-semibold text-lg flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+                aria-label="Open sidebar and view dashboard"
+              >
                 <Logo 
                   appLogoLightUrl={appLogoLightUrl} 
                   appLogoDarkUrl={appLogoDarkUrl}
@@ -395,7 +399,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   )}
                   <span>CRM</span>
                 </div>
-              </Link>
+              </button>
             )}
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading">
