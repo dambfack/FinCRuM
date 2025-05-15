@@ -50,7 +50,7 @@
     --sidebar-foreground: 220 10% 20%; /* Dark Gray text for light theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
     --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Light text on accent primary elements */
-    --sidebar-accent: hsl(var(--accent) / 0.15); /* Light translucent version of accent */
+    --sidebar-accent: hsl(var(--accent) / 0.25); /* Light translucent version of accent - Increased opacity */
     --sidebar-accent-foreground: hsl(var(--accent)); /* Accent color for text on this hover */
     --sidebar-border: 220 10% 85%;
     --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
@@ -91,7 +91,7 @@
     --sidebar-foreground: 0 0% 98%; /* Light text for dark theme sidebar */
     --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
     --sidebar-primary-foreground: hsl(var(--accent-foreground)); /* Dark text on lighter accent primary elements - or accent-foreground if accent is very light */
-    --sidebar-accent: hsl(var(--accent) / 0.3); /* Translucent version of accent for dark mode hover */
+    --sidebar-accent: hsl(var(--accent) / 0.4); /* Translucent version of accent for dark mode hover - Increased opacity */
     --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Light text on this hover */
     --sidebar-border: 220 10% 30%;
     --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
@@ -350,3 +350,6 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
+
+
+    
