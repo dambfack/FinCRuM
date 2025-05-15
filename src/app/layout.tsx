@@ -36,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Changed from 'next/image' to NextImage
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 import { DataItemType, UserThemeSettings } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -70,7 +70,6 @@ const Logo: React.FC<{
   const ultimateFallbackPngLogo = "/f_logo.png"; 
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-
   useEffect(() => {
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
@@ -82,6 +81,7 @@ const Logo: React.FC<{
     if (currentSrc !== determinedSrc || imgError) {
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
       setImgError(false); 
+      setAttemptCounter(0); // Reset attempts when src determination changes
     }
   }, [
       props.appLogoLightUrl, 
@@ -96,23 +96,24 @@ const Logo: React.FC<{
   const handleError = useCallback(() => {
     setImgError(true);
     let nextSrc = '';
+    const currentAttemptSrc = currentSrc; // Capture currentSrc before potential update
 
-    if (currentSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
+    if (currentAttemptSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
         nextSrc = ultimateFallbackPngLogo;
-    } else if (currentSrc !== absoluteUltimatePlaceholder) {
+    } else if (currentAttemptSrc !== absoluteUltimatePlaceholder) {
         nextSrc = absoluteUltimatePlaceholder;
     }
 
-    if (currentSrc !== nextSrc && nextSrc) {
+    if (currentAttemptSrc !== nextSrc && nextSrc) {
       setCurrentSrc(nextSrc);
       setImgError(false); 
       setAttemptCounter(prev => prev + 1); 
-    } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+    } else if (!nextSrc && currentAttemptSrc !== absoluteUltimatePlaceholder) {
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
-  }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
+  }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
 
 
   const displaySrc = currentSrc || (imgError ? absoluteUltimatePlaceholder : ultimateFallbackPngLogo);
@@ -120,12 +121,12 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof displaySrc === 'string' && displaySrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 5)) {
+  if (!displaySrc || (imgError && displaySrc === absoluteUltimatePlaceholder && attemptCounter > 2)) { // Limit fallback attempts
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
   return (
-      <NextImage // Use NextImage alias
+      <NextImage
         key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} 
         src={displaySrc}
         alt="Finsculpt CRM Logo"
@@ -261,7 +262,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleChartColorPickerToggle = (pickerKey: keyof UserThemeSettings) => {
     const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
     if (config) {
-      setCurrentChartPickerColor(config.stateValue || '#000000'); // Use default black if color not set
+      setCurrentChartPickerColor(config.stateValue || '#000000');
     }
     setShowChartColorPicker(prev => prev === pickerKey ? null : pickerKey);
   };
@@ -275,7 +276,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
   const handleChartColorReset = (pickerKey: keyof UserThemeSettings) => {
     const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
-    if (config) config.updateFn(null); // Call update with null to reset
+    if (config) config.updateFn(null); 
     if (showChartColorPicker === pickerKey) setShowChartColorPicker(null);
   };
 
@@ -356,18 +357,18 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </PopoverTrigger>
               <PopoverContent className="w-96 sm:w-[672px] glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto p-1">
                 {/* Top Section */}
-                <div className="space-y-4 p-3 mb-3">
+                <div className="space-y-3 p-3 mb-3">
                   <h4 className="font-medium leading-none text-sm font-heading">User</h4>
                   {currentUser && (
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-4 mb-1">
                       <button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
-                        <Avatar className="h-10 w-10"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
+                        <Avatar className="h-16 w-16"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback className="text-2xl">{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
                       </button>
                       <div><p className="text-sm font-medium">{currentUser.name}</p><p className="text-xs text-muted-foreground">{currentUser.email}</p></div>
                     </div>
                   )}
                   <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
-                  <Button variant="outline" size="sm" className="w-full h-9" onClick={() => userProfilePicInputRef.current?.click()}><ImageUp className="mr-2 h-4 w-4" />Change Profile Picture</Button>
+                  <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => userProfilePicInputRef.current?.click()}><ImageUp className="mr-2 h-4 w-4" />Change Profile Picture</Button>
                 </div>
                 <Separator className="my-4" />
                 {/* Bottom Section - Two Columns */}
@@ -389,7 +390,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoDarkInputRef.current?.click()}><Moon className="mr-2 h-4 w-4" />Header Logo (Dark)</Button>
                       </div>
                     )}
-                     <div className="space-y-3"> {/* Theme Customization for all users */}
+                     <div className="space-y-3"> 
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
                         <div className="space-y-1">
                           <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
@@ -470,3 +471,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
