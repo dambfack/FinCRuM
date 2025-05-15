@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useRef, useEffect } from 'react'; // Added useEffect
+import React, { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
+import { useTiltEffect } from '@/hooks/useTiltEffect';
 
 interface ProfilePictureModalProps {
   isOpen: boolean;
@@ -33,7 +33,17 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     return null;
   }
 
-  const dialogContentClassName = "sm:max-w-3xl w-auto h-auto p-2 glass-effect bg-card/80 dark:bg-card/70 flex flex-col card-tilt-container";
+  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col card-tilt-container"; // Ensure background
+
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const img = event.currentTarget;
+    console.log(`[ProfilePictureModal] Image loaded. Natural dimensions: ${img.naturalWidth}x${img.naturalHeight}. Rendered dimensions: ${img.width}x${img.height}`);
+  };
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('[ProfilePictureModal] Image load error:', event, 'Src:', imageUrl?.substring(0,100) + '...');
+    // Optionally, you could try to show a fallback image here or close the modal
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -59,11 +69,14 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
             </Button>
         </DialogClose>
         <div className="flex-grow flex items-center justify-center p-4 overflow-hidden relative z-[1]">
+          {/* Diagnostic styling below */}
           <img
             src={imageUrl}
             alt={altText}
-            className="block max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain rounded-md shadow-lg"
-            onError={(e) => console.error('[ProfilePictureModal] Image load error:', e, 'Src:', imageUrl?.substring(0,100) + '...')}
+            className="block max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain rounded-md shadow-lg border-2 border-red-500" // Added red border for visibility
+            style={{ backgroundColor: 'rgba(0, 255, 0, 0.1)' }} // Added light green background
+            onLoad={handleImageLoad}
+            onError={handleImageError} 
           />
         </div>
       </DialogContent>
