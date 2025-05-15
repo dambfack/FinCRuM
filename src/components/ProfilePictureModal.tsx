@@ -5,7 +5,8 @@ import React, { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-// import { useTiltEffect } from '@/hooks/useTiltEffect'; // Temporarily disable for debugging
+import { useTiltEffect } from '@/hooks/useTiltEffect'; // Re-import the hook
+import { cn } from '@/lib/utils';
 
 interface ProfilePictureModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
   altText = "Profile Picture"
 }) => {
   const dialogContentRef = useRef<HTMLDivElement>(null);
-  // useTiltEffect(dialogContentRef); // Temporarily disable for debugging
+  useTiltEffect(dialogContentRef); // Re-enable the tilt effect
 
   useEffect(() => {
     if (isOpen) {
@@ -42,26 +43,29 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     return null;
   }
 
-  // Using a solid, non-glassmorphic background for DialogContent for this test
-  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 bg-background border border-border flex flex-col items-center justify-center shadow-2xl rounded-lg";
+  const dialogContentClassName = cn(
+    "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 flex flex-col items-center justify-center shadow-2xl rounded-lg",
+    "glass-effect bg-card/80 dark:bg-card/70", // Restore glassmorphic background
+    "card-tilt-container" // Add class for tilt effect hook
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         ref={dialogContentRef}
         className={dialogContentClassName}
-        onPointerDownOutside={onClose} 
+        onPointerDownOutside={onClose}
         onEscapeKeyDown={onClose}
       >
-        <DialogHeader className="sr-only"> {/* Visually hidden title for accessibility */}
-          <DialogTitle className="sr-only">View Profile Picture</DialogTitle>
+        <div className="glow" /> {/* Add glow element for the tilt effect */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>View Profile Picture</DialogTitle>
         </DialogHeader>
-        {/* <div className="glow" /> // Glow div removed as tilt effect is disabled */}
+        {/* Image is positioned relative to allow glow to be behind it if needed by stacking context */}
         <img
           src={imageUrl}
           alt={altText}
-          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg"
-          // Removed style={{ backgroundColor: 'white', border: '2px solid limegreen' }} as DialogContent background is now solid
+          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg relative z-[1]"
           onLoad={handleImageLoad}
           onError={handleImageError}
         />
@@ -71,4 +75,3 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
 };
 
 export default ProfilePictureModal;
-    
