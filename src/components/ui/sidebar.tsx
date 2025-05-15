@@ -77,8 +77,7 @@ const SidebarProvider = React.forwardRef<
     const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(defaultPinnedOpen);
     
     React.useEffect(() => {
-      // This effect runs only on the client after hydration
-      if (typeof document !== "undefined" && pinnedOpenProp === undefined) {
+      if (typeof document !== "undefined") { // Ensure this runs only on client
         const cookieValue = document.cookie
           .split("; ")
           .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
@@ -86,10 +85,10 @@ const SidebarProvider = React.forwardRef<
         if (cookieValue !== undefined) {
           _setIsPinnedOpen(cookieValue === "true");
         } else {
-           _setIsPinnedOpen(defaultPinnedOpen); // Fallback to default if cookie not set
+           _setIsPinnedOpen(defaultPinnedOpen); 
         }
       }
-    }, [defaultPinnedOpen, pinnedOpenProp]); // Add pinnedOpenProp here if it can change
+    }, [defaultPinnedOpen]);
 
 
     const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
@@ -104,12 +103,12 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setIsPinnedOpen(newPinnedState);
         }
-        setIsHoverActive(false); // Reset hover state when pin state changes
+        setIsHoverActive(false); 
         if (typeof document !== "undefined") {
             document.cookie = `${SIDEBAR_COOKIE_NAME}=${newPinnedState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
         }
       },
-      [setPinnedOpenProp, isPinnedOpen] // isPinnedOpen should be a dependency
+      [setPinnedOpenProp, isPinnedOpen] 
     );
 
     const toggleSidebar = React.useCallback(() => {
@@ -131,7 +130,6 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [toggleSidebar]);
 
-    // Determine effective state based on mobile, pinned, and hover
     const isEffectivelyOpen = isMobile ? openMobile : (isPinnedOpen || isHoverActive);
     const effectiveState = isEffectivelyOpen ? "expanded" : "collapsed";
 
@@ -566,13 +564,13 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button text-sidebar-foreground flex w-full items-center gap-2.5 overflow-hidden rounded-lg p-2.5 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding,color,background-color] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-primary-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:items-center [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
+  "peer/menu-button text-sidebar-foreground flex w-full items-center gap-2.5 overflow-hidden rounded-lg p-2.5 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding,color,background-color] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-primary-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:items-center [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        default: "hover:bg-red-500 hover:text-white", // Temporarily changed for debugging
         outline:
-          "bg-transparent shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-transparent shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
         default: "h-10 text-sm",
