@@ -12,7 +12,7 @@ import { UploadCloud, FileText, Download, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime, cn } from '@/lib/utils';
 import { storeFile, getFile, deleteFile as deleteFileFromDB } from '@/lib/indexeddb';
-import { useAuth } from '@/contexts/AuthContext'; // Corrected import path
+import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +31,7 @@ interface FileAttachmentManagerProps {
 
 const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, onAttachmentsUpdate }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [password, setPassword] = useState(''); // Password state kept for potential future encryption
+  const [password, setPassword] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { currentUser } = useAuth();
@@ -62,18 +62,16 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       size: selectedFile.size,
       contactId: contact.id,
       createdAt: new Date().toISOString(),
-      encrypted: false, // Not encrypted in this phase
+      encrypted: false, 
     };
 
     try {
-      // Store the actual file content in IndexedDB
       await storeFile(newAttachmentMeta.id, selectedFile);
 
-      // Update contact's metadata list in localStorage
       const updatedAttachments = [...(contact.attachments || []), newAttachmentMeta];
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
 
-      onAttachmentsUpdate(updatedContact); // This should trigger save to localStorage and state update in parent
+      onAttachmentsUpdate(updatedContact); 
 
       toast({
         title: 'File Attached',
@@ -81,9 +79,8 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       });
 
       setSelectedFile(null);
-      setPassword(''); // Clear password field
+      setPassword(''); 
 
-      // Reset file input
       const fileInput = document.getElementById('file-attachment-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
@@ -112,13 +109,11 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
     if (!attachmentToDelete) return;
 
     try {
-      // Delete file from IndexedDB
       await deleteFileFromDB(attachmentToDelete.id);
 
-      // Update contact's metadata list
       const updatedAttachments = (contact.attachments || []).filter(att => att.id !== attachmentToDelete.id);
       const updatedContact = { ...contact, attachments: updatedAttachments, updatedAt: new Date().toISOString() };
-      onAttachmentsUpdate(updatedContact); // This should trigger save to localStorage and state update in parent
+      onAttachmentsUpdate(updatedContact);
 
       toast({ title: 'Attachment Deleted', description: `'${attachmentToDelete.name}' and its content removed from local storage.` });
     } catch (error) {
@@ -187,7 +182,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
         const url = URL.createObjectURL(fileBlob);
         window.open(url, '_blank');
       } else {
-        // For non-viewable types, trigger download
         handleDownloadAttachment(attachment);
       }
     } catch (error) {
@@ -224,19 +218,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
           </div>
-          {/* Encryption password input is commented out for now
-          <div>
-            <Label htmlFor="file-password">Encryption Password (Optional)</Label>
-            <Input
-              id="file-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Leave blank for no encryption"
-              className="mt-1"
-            />
-          </div>
-          */}
           <Button onClick={handleAttachFile} disabled={isUploading || !selectedFile} className="w-full md:w-auto h-11 px-4 py-3">
             {isUploading ? 'Attaching...' : 'Attach File'}
           </Button>
@@ -256,7 +237,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead>Name</TableHead>
+                    <TableHead className="max-w-[200px]">Name</TableHead> {/* Constrain header for name */}
                     <TableHead className="max-w-[100px]">Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Attached On</TableHead>
@@ -266,7 +247,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                 <TableBody>
                   {contact.attachments.map((att) => (
                     <TableRow key={att.id} className="hover:bg-white/5 dark:hover:bg-white/5">
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium max-w-[200px]"> {/* Constrain cell for name */}
                         <button
                           onClick={() => handleViewAttachment(att)}
                           className="hover:underline text-accent hover:text-accent/80 text-left w-full truncate"
@@ -327,3 +308,4 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
+
