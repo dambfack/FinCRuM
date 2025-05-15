@@ -354,27 +354,3 @@
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
 
-/* Tilt and Glow Effect Styles */
-.card-tilt-container {
-  position: relative; /* Or 'static' if it causes issues, but relative is usually needed for absolute children */
-  transition: transform 0.1s ease-out; /* Smooth transform reset */
-  will-change: transform; /* Performance hint for browsers */
-  z-index: 1; /* Ensure it's above other static elements if transform causes stacking issues */
-}
-
-.card-tilt-container .glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Allows clicks to pass through to the card */
-  border-radius: inherit; /* Inherits border-radius from parent card */
-  z-index: 0; /* Behind card content but on top of card background */
-  opacity: 0; /* Initially hidden, will be shown by JS */
-  transition: opacity 0.2s ease-out; /* Smooth fade for glow */
-}
-
-.card-tilt-container:hover .glow {
-  opacity: 1; /* Show glow on hover of the card */
-}

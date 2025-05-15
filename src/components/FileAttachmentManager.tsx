@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react'; // Added useRef
+import React, { useState, useCallback, useRef } from 'react';
 import type { Contact, FileAttachmentMeta } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
 
 interface FileAttachmentManagerProps {
   contact: Contact;
@@ -38,12 +37,6 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<FileAttachmentMeta | null>(null);
-
-  const attachFileCardRef = useRef<HTMLDivElement>(null);
-  const attachedFilesCardRef = useRef<HTMLDivElement>(null);
-  useTiltEffect(attachFileCardRef);
-  useTiltEffect(attachedFilesCardRef);
-
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -208,16 +201,15 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 
   return (
     <div className="space-y-6 w-full">
-      <Card ref={attachFileCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
-        <div className="glow" />
-        <CardHeader className="relative z-[1]">
+      <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
+        <CardHeader>
           <CardTitle className="text-lg flex items-center font-heading">
             <UploadCloud className="mr-2 h-5 w-5" />
             Attach New File
           </CardTitle>
           <CardDescription>Select a file to attach. Files are stored locally.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 relative z-[1]">
+        <CardContent className="space-y-4">
           <div>
             <Label htmlFor="file-attachment-input">File</Label>
             <Input id="file-attachment-input" type="file" onChange={handleFileChange} className="mt-1" />
@@ -229,15 +221,14 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
       </Card>
 
       {(contact.attachments && contact.attachments.length > 0) && (
-        <Card ref={attachedFilesCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
-          <div className="glow" />
-          <CardHeader className="relative z-[1]">
+        <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
+          <CardHeader>
             <CardTitle className="text-lg flex items-center font-heading">
               <FileText className="mr-2 h-5 w-5" />
               Attached Files
             </CardTitle>
           </CardHeader>
-          <CardContent className="relative z-[1]">
+          <CardContent>
             <div className="overflow-x-auto rounded-md border">
               <Table className="w-full table-fixed">
                 <TableHeader>

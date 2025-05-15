@@ -7,7 +7,7 @@ import type { Contact, User } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, cn, saveData, getData, getFirstInitial } from '@/lib/utils';
-import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase, Image as ImageIcon } from 'lucide-react';
 import { DataItemType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -19,9 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileAttachmentManager from './FileAttachmentManager';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
+import ProfilePictureModal from './ProfilePictureModal';
 import { Card, CardContent } from '@/components/ui/card';
-import { useTiltEffect } from '@/hooks/useTiltEffect';
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -39,15 +38,13 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; // Added overflow-hidden here
+  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden";
 
   const isTruncateRequested = outerDivClassName.includes('truncate');
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
-    // Apply truncation styles directly to the <p> tag that renders the value
     pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full");
   }
-
 
   let valueNode: React.ReactNode;
 
@@ -74,7 +71,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={valueContainerClasses}> {/* This div already has min-w-0 flex-1 */}
+      <div className={cn(valueContainerClasses, "overflow-hidden")}> {/* Added overflow-hidden here */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -102,10 +99,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isContactAvatarModalOpen, setIsContactAvatarModalOpen] = useState(false);
-  
-  const detailsCardRef = useRef<HTMLDivElement>(null);
-  useTiltEffect(detailsCardRef);
-
 
   useEffect(() => {
     if (isOpen) {
@@ -201,10 +194,9 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full">
-            <Card ref={detailsCardRef} className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md card-tilt-container">
-              <div className="glow" />
-              <CardContent className="space-y-1 p-4 relative z-[1]"> {/* Ensure content is above glow */}
+          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+            <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
+              <CardContent className="space-y-1 p-4">
                 <DetailItem icon={Mail} label="Email" value={contact.email} />
                 {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
                 {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
