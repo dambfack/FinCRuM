@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileAttachmentManager from './FileAttachmentManager';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -28,7 +29,7 @@ interface CustomerDetailModalProps {
   onAddAppointmentRequest?: (contact: Contact) => void;
   onAddReminderRequest?: (contact: Contact) => void;
   onAddTaskRequest?: (contact: Contact) => void;
-  onContactUpdate?: (updatedContact: Contact) => void; // Changed signature
+  onContactUpdate?: (updatedContact: Contact) => void;
 }
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
@@ -47,7 +48,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Apply direct truncation styles
+           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
         )}
         title={isTruncateRequested ? dateString : undefined}
       >
@@ -60,7 +61,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
       <p
         className={cn(
           "text-sm text-foreground",
-           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full" // Apply direct truncation styles
+           isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
         )}
         title={isTruncateRequested ? valueString : undefined}
       >
@@ -74,7 +75,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn("min-w-0 flex-1", isTruncateRequested && "overflow-hidden")}>
+      <div className={cn("min-w-0 flex-1 overflow-hidden")}> {/* Added overflow-hidden here */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -101,6 +102,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     onContactUpdate
 }) => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [isContactAvatarModalOpen, setIsContactAvatarModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -150,7 +152,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
-        onContactUpdate(updatedContactWithNewAttachments); // Pass updated contact up
+        onContactUpdate(updatedContactWithNewAttachments);
       }
     }
   };
@@ -163,13 +165,24 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   ) : 'N/A';
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
         <DialogHeader className="mb-2 flex flex-row items-center space-x-4">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
-            <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
-          </Avatar>
+          <button
+            onClick={() => {
+              if (contact.profilePictureUrl) {
+                setIsContactAvatarModalOpen(true);
+              }
+            }}
+            className={cn("rounded-full", contact.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
+            aria-label="View profile picture"
+          >
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
+              <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
+            </Avatar>
+          </button>
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-2xl font-heading truncate">
               {contact.firstName} {contact.lastName}
@@ -242,6 +255,15 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         </div>
       </DialogContent>
     </Dialog>
+    {isContactAvatarModalOpen && (
+      <ProfilePictureModal
+        isOpen={isContactAvatarModalOpen}
+        onClose={() => setIsContactAvatarModalOpen(false)}
+        imageUrl={contact?.profilePictureUrl}
+        altText={`${contact?.firstName} ${contact?.lastName}`}
+      />
+    )}
+    </>
   );
 };
 

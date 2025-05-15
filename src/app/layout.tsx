@@ -3,9 +3,9 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat, Anton } from 'next/font/google';
+import { Inter, Montserrat } from 'next/font/google'; // Removed Anton
 import './globals.css';
-import { cn, getFirstInitial, getData, saveData } from '@/lib/utils'; // Added getData
+import { cn, getFirstInitial, getData, saveData } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import PinLoginScreen from '@/components/PinLoginScreen';
@@ -35,13 +35,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image';
+import NextImage from 'next/image'; // Keep NextImage for specific fallback if needed
 import { useTheme } from 'next-themes';
-import { DataItemType } from '@/lib/types'; // Added DataItemType
+import { DataItemType } from '@/lib/types';
+import ProfilePictureModal from '@/components/ProfilePictureModal'; // Import ProfilePictureModal
+
 
 const interBlack = Inter({
   subsets: ['latin'],
-  weight: ['900'],
+  weight: ['900'], // Using 900 for "Black"
   variable: '--font-inter-black',
 });
 
@@ -74,13 +76,11 @@ const Logo: React.FC<{
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
     setImgError(false);
-    // console.log(`[Logo useEffect] Theme: ${resolvedTheme}, Determined Src: ${determinedSrc}`);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, attemptCounter]);
 
   const handleError = useCallback(() => {
     setImgError(true);
     let nextSrc = '';
-    // console.log(`[Logo handleError] Error with: ${currentSrc}. Theme: ${resolvedTheme}. Attempt: ${attemptCounter}`);
 
     if (currentSrc && currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       if (resolvedTheme === 'dark') {
@@ -99,17 +99,14 @@ const Logo: React.FC<{
     } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
       nextSrc = absoluteUltimatePlaceholder;
     } else {
-      // console.log("[Logo handleError] Already at ultimate fallback or currentSrc is null. No further action.");
-      return; 
+      return;
     }
     
     if (nextSrc && currentSrc !== nextSrc) {
-      // console.log(`[Logo handleError] Attempting to set nextSrc: ${nextSrc}`);
       setCurrentSrc(nextSrc);
       setImgError(false); 
       setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-        // console.log(`[Logo handleError] No valid nextSrc found, setting absolute placeholder.`);
         setCurrentSrc(absoluteUltimatePlaceholder);
         setImgError(false);
         setAttemptCounter(prev => prev + 1);
@@ -118,7 +115,6 @@ const Logo: React.FC<{
 
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    // console.log("[Logo Render] Fallback: Rendering placeholder div due to error or no src.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -126,11 +122,9 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  // console.log(`[Logo Render] Rendering NextImage. Src: ${currentSrc?.substring(0,50)}... Unoptimized: ${unoptimized}, Key: ${currentSrc}-${attemptCounter}`);
-
   return (
     <NextImage
-      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Added resolvedTheme to key
+      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} 
       src={currentSrc}
       alt="App Logo"
       width={24}
@@ -178,7 +172,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isHeaderLogoDarkCropperOpen, setIsHeaderLogoDarkCropperOpen] = useState(false);
   const [headerLogoDarkImageToCropSrc, setHeaderLogoDarkImageToCropSrc] = useState<string | null>(null);
 
-  // Effect to apply background image on initial load
+  const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
+
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT = 'https://placehold.co/1920x1080.png';
@@ -203,7 +199,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT);
       }
     }
-  }, []); // Empty dependency array ensures this runs once on mount of AppContent
+  }, []); 
 
 
   const handleFileChangeGeneric = (event: React.ChangeEvent<HTMLInputElement>, setCropSrc: (src: string | null) => void, setCropperOpen: (open: boolean) => void, maxSizeMB: number, toastTitle: string, inputRef: React.RefObject<HTMLInputElement>) => {
@@ -234,14 +230,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Profile Picture
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setUserImageToCropSrc, setIsUserProfileCropperOpen, 2, "User Profile Picture", userProfilePicInputRef);
   const handleUserCropSave = (croppedImageUrl: string) => {
     if (currentUser) updateUserProfilePicture(croppedImageUrl);
     setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);
   };
 
-  // App Logos
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { updateAppLogoLight(croppedDataUri); setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); };
   
@@ -251,7 +245,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", description: "No custom light app logo is currently set, or insufficient permissions.", variant: "default"}); };
   const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", description: "No custom dark app logo is currently set, or insufficient permissions.", variant: "default"}); };
 
-  // Header Logos
   const handleHeaderLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoLightImageToCropSrc, setIsHeaderLogoLightCropperOpen, 0.5, "Light Header Logo", headerLogoLightInputRef);
   const handleHeaderLogoLightCropSave = (croppedDataUri: string) => { updateHeaderLogoLight(croppedDataUri); setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null); };
 
@@ -411,10 +404,20 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   <h4 className="font-medium leading-none text-sm font-heading mb-2">User</h4>
                   {currentUser && (
                     <div className="flex items-center gap-3 mb-3 p-2 rounded-md bg-muted/30">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
-                        <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
-                      </Avatar>
+                       <button
+                        onClick={() => {
+                          if (currentUser.profilePictureUrl) {
+                            setIsUserAvatarModalOpen(true);
+                          }
+                        }}
+                        className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
+                        aria-label="View profile picture"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                          <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+                        </Avatar>
+                      </button>
                       <div>
                         <p className="text-sm font-medium">{currentUser.name}</p>
                         <p className="text-xs text-muted-foreground">{currentUser.email}</p>
@@ -455,10 +458,20 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </PopoverContent>
             </Popover>
              {currentUser && (
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
-                <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
-              </Avatar>
+               <button
+                onClick={() => {
+                  if (currentUser.profilePictureUrl) {
+                    setIsUserAvatarModalOpen(true);
+                  }
+                }}
+                className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
+                aria-label="View profile picture"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                  <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+                </Avatar>
+              </button>
             )}
           </div>
         </header>
@@ -469,6 +482,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       </SidebarInset>
     </SidebarProvider>
     
+    {isUserAvatarModalOpen && <ProfilePictureModal isOpen={isUserAvatarModalOpen} onClose={() => setIsUserAvatarModalOpen(false)} imageUrl={currentUser?.profilePictureUrl} altText={currentUser?.name} />}
     {userImageToCropSrc && <ImageCropperModal isOpen={isUserProfileCropperOpen} onClose={() => {setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null);}} imageSrc={userImageToCropSrc} onCropSave={handleUserCropSave} aspectRatio={1/1} />}
     {appLogoLightImageToCropSrc && <ImageCropperModal isOpen={isAppLogoLightCropperOpen} onClose={() => {setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null);}} imageSrc={appLogoLightImageToCropSrc} onCropSave={handleAppLogoLightCropSave} aspectRatio={1/1} />}
     {appLogoDarkImageToCropSrc && <ImageCropperModal isOpen={isAppLogoDarkCropperOpen} onClose={() => {setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null);}} imageSrc={appLogoDarkImageToCropSrc} onCropSave={handleAppLogoDarkCropSave} aspectRatio={1/1} />}
@@ -511,4 +525,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -15,12 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, FileAttachmentMeta, User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, saveData, createNotification, getFirstInitial } from '@/lib/utils';
+import { getData, saveData, createNotification, getFirstInitial, cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ImageUp } from 'lucide-react';
-import ImageCropperModal from './ImageCropperModal'; // Import the cropper modal
+import ImageCropperModal from './ImageCropperModal';
+import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
 
 const contactDealStatusSchema = z.enum(['open', 'closed', 'missed', 'other']);
 
@@ -49,7 +50,7 @@ const customerFormSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   assignedToUserId: z.string().optional(),
-  profilePictureUrl: z.string().optional().or(z.literal('')), // Can be data URI or empty
+  profilePictureUrl: z.string().optional().or(z.literal('')),
   contactStatus: z.enum(['approved', 'pending_approval', 'pending_deletion']).optional(),
   changeProposal: z.any().optional(),
   lastModifiedByRole: z.enum(['partner', 'employee']).optional(),
@@ -72,6 +73,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
 
   const [isCropperModalOpen, setIsCropperModalOpen] = useState(false);
   const [imageToCropSrc, setImageToCropSrc] = useState<string | null>(null);
+  const [isFormAvatarModalOpen, setIsFormAvatarModalOpen] = useState(false);
 
   useEffect(() => {
     const loadedUsers = getData<User[]>(DataItemType.Users) || [];
@@ -154,7 +156,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   const handleProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 2 * 1024 * 1024) { 
         toast({
           title: "Image Too Large",
           description: "Please select an image smaller than 2MB.",
@@ -170,7 +172,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       };
       reader.readAsDataURL(file);
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // Reset file input
+        fileInputRef.current.value = ''; 
       }
     }
   };
@@ -183,7 +185,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
   };
 
   const onSubmit = (data: CustomerFormValues) => {
-    console.log("[CustomerForm] onSubmit data:", data); // DEBUG LOG
     if (!currentUser) {
         toast({ title: "Error", description: "No authenticated user found. Cannot save.", variant: "destructive" });
         return;
@@ -224,18 +225,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         if (isNewContact) {
             customerDataToSave = baseContactDetails;
         } else {
-            // For existing contacts, preserve fields not in formInputAsContactShape from originalData
-            // but overlay with the structure expected for a pending change.
             customerDataToSave = {
-                ...(initialData as Contact), // Base with all original fields
-                updatedAt: now, // Always update this
+                ...(initialData as Contact), 
+                updatedAt: now, 
                 contactStatus: 'pending_approval',
                 lastModifiedByRole: 'employee',
-                changeProposal: formInputAsContactShape, // Store just the proposed changes
+                changeProposal: formInputAsContactShape, 
             };
-             // If initialData already had a profilePictureUrl and formInputAsContactShape.profilePictureUrl is undefined (meaning user didn't change it)
-            // ensure the original is not lost in the proposal if it's part of the fields an employee can change.
-            // However, formInputAsContactShape.profilePictureUrl should contain the new one if changed, or empty string if cleared.
         }
 
         const partners = allUsers.filter(u => u.role === 'partner');
@@ -252,19 +248,18 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         });
         toast({ title: "Changes Submitted", description: "Your changes have been submitted for partner approval." });
 
-    } else { // Partner is saving
+    } else { 
         customerDataToSave = {
             id: contactId,
             ...formInputAsContactShape,
             createdAt: initialData?.createdAt || now,
             updatedAt: now,
-            attachments: initialData?.attachments || [], // Ensure attachments are carried over
+            attachments: initialData?.attachments || [], 
             contactStatus: 'approved',
             lastModifiedByRole: 'partner',
-            changeProposal: undefined, // Clear any pending proposal
+            changeProposal: undefined, 
         } as Contact;
 
-        // Ensure all fields from initialData are carried over if not present in formInputAsContactShape
         if(initialData) {
             customerDataToSave = { ...initialData, ...customerDataToSave, id: contactId, createdAt: initialData.createdAt };
         }
@@ -282,16 +277,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
       }
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       onSave?.(customerDataToSave);
-      if (!initialData && currentUser.role === 'partner') { // Only reset for new contacts added by partners
+      if (!initialData && currentUser.role === 'partner') { 
         form.reset();
         setImagePreview(null);
       } else if (initialData && currentUser.role === 'partner') {
-        // For edits by partners, update the form and preview to reflect saved data
         form.reset(customerDataToSave);
         setImagePreview(customerDataToSave.profilePictureUrl || null);
       }
-      // For employees, the form may not reset immediately, or may reflect the pending state
-      // which is handled by how `initialData` is managed by the parent page after approval.
     } catch (error) {
       console.error("Error saving customer:", error);
       toast({
@@ -306,19 +298,30 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading">{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle> {/* Removed tracking-wide */}
+          <CardTitle className="font-heading">{initialData ? 'Edit Customer' : 'Add New Customer'}</CardTitle>
           {!initialData && <CardDescription>Fill in the details to add a new customer to your records.</CardDescription>}
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
               <div className="flex flex-col items-center space-y-3 mb-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={imagePreview || undefined} alt={`${form.getValues('firstName') || ''} ${form.getValues('lastName') || ''}`} />
-                  <AvatarFallback className="text-3xl">
-                    {getFirstInitial(form.getValues('firstName')) || '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (imagePreview) {
+                            setIsFormAvatarModalOpen(true);
+                        }
+                    }}
+                    className={cn("rounded-full", imagePreview && "cursor-pointer hover:opacity-80 transition-opacity")}
+                    aria-label="View profile picture"
+                    >
+                    <Avatar className="h-24 w-24">
+                    <AvatarImage src={imagePreview || undefined} alt={`${form.getValues('firstName') || ''} ${form.getValues('lastName') || ''}`} />
+                    <AvatarFallback className="text-3xl">
+                        {getFirstInitial(form.getValues('firstName')) || '?'}
+                    </AvatarFallback>
+                    </Avatar>
+                </button>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -434,7 +437,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
                   control={form.control}
                   name="profilePictureUrl"
                   render={({ field }) => (
-                      <FormItem className="hidden"> {/* Hidden as value is set via file upload logic */}
+                      <FormItem className="hidden"> 
                           <FormControl>
                               <Input type="text" {...field} />
                           </FormControl>
@@ -504,6 +507,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
           </form>
         </Form>
       </Card>
+      {isFormAvatarModalOpen && (
+        <ProfilePictureModal
+            isOpen={isFormAvatarModalOpen}
+            onClose={() => setIsFormAvatarModalOpen(false)}
+            imageUrl={imagePreview}
+            altText={`${form.getValues('firstName') || 'Client'} ${form.getValues('lastName') || ''}`}
+        />
+      )}
       {imageToCropSrc && (
         <ImageCropperModal
           isOpen={isCropperModalOpen}
@@ -521,4 +532,3 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
 };
 
 export default CustomerForm;
-     
