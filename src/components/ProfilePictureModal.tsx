@@ -29,13 +29,6 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     }
   }, [isOpen, imageUrl]);
 
-  if (!isOpen || !imageUrl) {
-    return null;
-  }
-
-  // Make DialogContent a flex container to center the image
-  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col items-center justify-center card-tilt-container";
-
   const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const img = event.currentTarget;
     console.log(`[ProfilePictureModal] Image loaded. Natural dimensions: ${img.naturalWidth}x${img.naturalHeight}. Rendered dimensions: ${img.width}x${img.height}`);
@@ -45,6 +38,12 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     console.error('[ProfilePictureModal] Image load error:', event, 'Src:', imageUrl?.substring(0,100) + '...');
   };
 
+  if (!isOpen || !imageUrl) {
+    return null;
+  }
+
+  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col items-center justify-center card-tilt-container";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
@@ -53,12 +52,12 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
         onPointerDownOutside={onClose}
         onEscapeKeyDown={onClose}
       >
+        <DialogHeader className="sr-only"> {/* Added DialogHeader for accessibility */}
+          <DialogTitle className="sr-only">View Profile Picture</DialogTitle> {/* Visually hidden title */}
+        </DialogHeader>
         <div className="glow" />
-        {/* The DialogHeader might be redundant if we only show the image and a close button */}
-        {/* <DialogHeader className="sr-only relative z-[1]">
-          <DialogTitle>View Profile Picture</DialogTitle>
-        </DialogHeader> */}
-        <DialogClose asChild>
+        {/* Close button is part of DialogContent by default, but we can add our own if needed for styling
+         <DialogClose asChild>
             <Button
                 variant="ghost"
                 size="icon"
@@ -68,13 +67,12 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
             >
                 <X className="h-5 w-5" />
             </Button>
-        </DialogClose>
-        {/* The DialogContent is now flex and centers this image directly */}
+        </DialogClose> */}
         <img
           src={imageUrl}
           alt={altText}
-          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg border-2 border-red-500" // Max width/height accounts for padding
-          style={{ backgroundColor: 'rgba(0, 255, 0, 0.1)' }} // Temporary diagnostic bg
+          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg relative z-[1]"
+          style={{ backgroundColor: 'transparent' }} // Removed diagnostic bg
           onLoad={handleImageLoad}
           onError={handleImageError}
         />
