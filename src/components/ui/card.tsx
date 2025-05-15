@@ -9,11 +9,12 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border shadow-xl", // Increased rounding, base border, and shadow
-      "bg-card/40 dark:bg-card/40 backdrop-blur-lg", // Translucent background with blur - light mode opacity changed from /60 to /40
-      "border-white/20 dark:border-white/10", // Glass-like border
-      "transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20", // Existing hover effects
-      "hover:scale-102 hover:-translate-y-1", // Added pop-out effect
+      "rounded-xl border shadow-xl", // Base border, increased rounding
+      "bg-card/70 dark:bg-card/60", // Translucent background based on --card
+      "glass-effect", // Applies backdrop-blur-lg and existing shadow-xl
+      "border-white/20 dark:border-white/10", // Glass-like border for subtlety
+      "transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20",
+      "hover:scale-102 hover:-translate-y-1",
       className
     )}
     {...props}
@@ -40,7 +41,7 @@ const CardTitle = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none font-heading", // Removed tracking-wide
+      "text-2xl font-semibold leading-none font-heading",
       className
     )}
     {...props}

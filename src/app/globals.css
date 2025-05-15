@@ -110,9 +110,8 @@
 
 /* Glassmorphism utilities - can be applied to components */
 .glass-effect {
-  @apply backdrop-blur-lg shadow-xl; /* REMOVED border from here */
+  @apply backdrop-blur-lg shadow-xl; /* REMOVED border from here, it's handled by components */
   /* Base colors with opacity will be applied directly on components using Tailwind's opacity modifiers e.g. bg-card/70 */
-  /* Components like Card and DialogContent have their own @apply border from shadcn, which should use --border variable */
 }
 
 /* Custom styles for react-datepicker */
@@ -351,5 +350,3 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
-    
