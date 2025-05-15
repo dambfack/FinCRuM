@@ -43,7 +43,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string);
+    const dateString = formatDateTime(value as string); // DD/MM/YYYY format
     valueNode = (
       <p
         className={cn(
@@ -75,7 +75,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn("min-w-0 flex-1 overflow-hidden")}> {/* Ensures flex child can shrink and apply truncation */}
+      <div className={cn("min-w-0 flex-1 overflow-hidden")}> {/* This div is crucial for truncation */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -119,7 +119,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
   if (!contact) return null;
 
-  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 sm:rounded-lg overflow-hidden";
+  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 sm:rounded-lg overflow-hidden p-4"; // Added p-4
 
   const handleEditClick = () => {
     if (contact && onEditRequest) {
@@ -208,7 +208,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
-             {/* Removed Profile Picture URL display */}
           </TabsContent>
           <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
