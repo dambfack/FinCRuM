@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet" // Added SheetTitle import
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -74,21 +74,20 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // Initialize with defaultPinnedOpen for server and initial client render
     const [_isPinnedOpen, _setIsPinnedOpen] = React.useState(defaultPinnedOpen);
     const isPinnedOpen = pinnedOpenProp ?? _isPinnedOpen;
     const [isHoverActive, setIsHoverActive] = React.useState(false);
 
-    // Effect to read cookie and update state only on client after mount
     React.useEffect(() => {
-      if (typeof document !== "undefined") {
+      if (typeof document !== "undefined" && pinnedOpenProp === undefined) {
         const cookieValue = document.cookie
           .split("; ")
           .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
           ?.split("=")[1];
-        const initialPinnedStateFromCookie = cookieValue ? cookieValue === "true" : defaultPinnedOpen;
-        if (pinnedOpenProp === undefined) { // Only update if not controlled
-            _setIsPinnedOpen(initialPinnedStateFromCookie);
+        if (cookieValue !== undefined) {
+            _setIsPinnedOpen(cookieValue === "true");
+        } else {
+            _setIsPinnedOpen(defaultPinnedOpen);
         }
       }
     }, [defaultPinnedOpen, pinnedOpenProp]);
@@ -104,7 +103,7 @@ const SidebarProvider = React.forwardRef<
         }
         setIsHoverActive(false);
         if (typeof document !== "undefined") {
-            document.cookie = `${SIDEBAR_COOKIE_NAME}=${newPinnedState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+            document.cookie = `${SIDEBAR_COOKIE_NAME}=${newPinnedState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
         }
       },
       [setPinnedOpenProp, isPinnedOpen]
@@ -129,8 +128,9 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [toggleSidebar]);
 
-    const isEffectivelyOpen = isPinnedOpen || isHoverActive;
+    const isEffectivelyOpen = isMobile ? openMobile : (isPinnedOpen || isHoverActive);
     const effectiveState = isEffectivelyOpen ? "expanded" : "collapsed";
+
 
     const contextValue = React.useMemo<SidebarContextValue>(
       () => ({
@@ -227,7 +227,7 @@ const Sidebar = React.forwardRef<
             data-mobile="true"
             className={cn(
               "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden",
-              "bg-sidebar-background/70 dark:bg-sidebar-background/50 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5"
+              "bg-sidebar-background/70 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border-r border-white/10 dark:border-white/5"
             )}
             style={
               {
@@ -236,6 +236,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <SheetTitle className="sr-only">Main menu</SheetTitle> {/* Added for accessibility */}
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
