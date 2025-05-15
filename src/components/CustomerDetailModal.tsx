@@ -35,7 +35,7 @@ interface CustomerDetailModalProps {
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
-  const isTruncateRequested = className?.includes('truncate');
+  let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
@@ -122,9 +122,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
   if (!contact) return null;
 
-  // Ensure DialogContent itself applies its rounding and overflow hidden.
-  // The p-4 here is crucial to inset children from the rounded edges.
-  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 sm:rounded-lg overflow-hidden p-4";
+  const dialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70 rounded-lg overflow-hidden p-4";
 
   const handleEditClick = () => {
     if (contact && onEditRequest) {
@@ -203,7 +201,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full">
+          <TabsContent value="details" className="space-y-1 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <DetailItem icon={Mail} label="Email" value={contact.email} />
             {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
             {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
@@ -214,7 +212,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
-          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full">
+          <TabsContent value="attachments" className="h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
