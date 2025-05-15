@@ -40,19 +40,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to apply accent color dynamically
 const applyCustomAccentColor = (colorHex: string | null) => {
-  if (typeof window === 'undefined' || !colorHex) {
-    // Reset to default if colorHex is null
+  if (typeof window === 'undefined') return; // Guard against SSR
+  if (!colorHex) {
+    // Reset to default if colorHex is null by removing the style property
     document.documentElement.style.removeProperty('--accent');
-    // console.log('[AuthContext] applyCustomAccentColor: Reset to default theme accent.');
+    console.log('[AuthContext] applyCustomAccentColor: Reset to default theme accent.');
     return;
   }
   const hslString = hexToHslString(colorHex);
   if (hslString) {
     document.documentElement.style.setProperty('--accent', hslString);
-    // console.log(`[AuthContext] applyCustomAccentColor: Applied ${colorHex} as HSL: ${hslString}`);
+    console.log(`[AuthContext] applyCustomAccentColor: Applied ${colorHex} as HSL: ${hslString}`);
   } else {
-    console.warn(`[AuthContext] applyCustomAccentColor: Could not convert ${colorHex} to HSL.`);
-     document.documentElement.style.setProperty('--accent', '180 100% 25%'); // Fallback to default teal HSL
+    console.warn(`[AuthContext] applyCustomAccentColor: Could not convert ${colorHex} to HSL. Using default teal.`);
+    document.documentElement.style.setProperty('--accent', '180 100% 25%'); // Fallback to default teal HSL
   }
 };
 
@@ -83,10 +84,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const storedDefaultAppLogoLight = getData<string>(DataItemType.DefaultAppLogoLight);
     if (storedDefaultAppLogoLight) {
       _setDefaultAppLogoLightUrlInternal(storedDefaultAppLogoLight);
+      console.log('[AuthContext] Initial storedDefaultAppLogoLight: Length:', storedDefaultAppLogoLight.length);
+    } else {
+      console.log('[AuthContext] Initial storedDefaultAppLogoLight: null');
     }
+
     const storedDefaultAppLogoDark = getData<string>(DataItemType.DefaultAppLogoDark);
     if (storedDefaultAppLogoDark) {
       _setDefaultAppLogoDarkUrlInternal(storedDefaultAppLogoDark);
+       console.log('[AuthContext] Initial storedDefaultAppLogoDark: Length:', storedDefaultAppLogoDark.length);
+    } else {
+       console.log('[AuthContext] Initial storedDefaultAppLogoDark: null');
     }
     
     setHeaderLogoLightUrl(getData<string>(DataItemType.HeaderLogoLight));
@@ -96,6 +104,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedAccent) {
       setCustomAccentColorState(storedAccent);
       applyCustomAccentColor(storedAccent);
+    } else {
+      applyCustomAccentColor(null); // Apply default if nothing stored
     }
     
     let users = getData<User[]>(DataItemType.Users) || [];
@@ -227,7 +237,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     users[userIndex] = updatedUser;
     if (!saveData<User[]>(DataItemType.Users, users)) {
       toast({ title: "Storage Error", description: "Profile picture updated locally but could not save to storage.", variant: "destructive" });
-      // Proceed with UI update even if storage fails, but inform user
     }
     setCurrentUser(updatedUser);
 
@@ -255,10 +264,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast]);
 
-  const updateAppLogoLight = useCallback((dataUri: string | null) => updateLogoGeneric(setAppLogoLightUrl, DataItemType.AppLogoLight, dataUri, "Light App Logo", dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared."), [updateLogoGeneric]);
+  const updateAppLogoLight = useCallback((dataUri: string | null) => {
+    console.log('[AuthContext] updateAppLogoLight called. Data URI length:', dataUri?.length);
+    console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage BEFORE saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
+    const success = dataUri ? saveData<string>(DataItemType.AppLogoLight, dataUri) : (localStorage.removeItem(DataItemType.AppLogoLight), true);
+    console.log('[AuthContext] updateAppLogoLight: Saved AppLogoLight to localStorage. Success:', success, 'New AppLogoLight Length:', dataUri?.length);
+    if (success) {
+      setAppLogoLightUrl(dataUri);
+      toast({ title: "Light App Logo", description: dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not save light app logo. Storage quota exceeded.", variant: "destructive" });
+    }
+    console.log('[AuthContext] updateAppLogoLight - DefaultAppLogoLight in localStorage AFTER saving AppLogoLight:', localStorage.getItem(DataItemType.DefaultAppLogoLight)?.length);
+  }, [toast]);
+
   const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo", dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared."), [updateLogoGeneric]);
   
   const setDefaultAppLogoLight = useCallback((dataUri: string) => {
+    console.trace("[AuthContext] setDefaultAppLogoLight trace");
     if (saveData<string>(DataItemType.DefaultAppLogoLight, dataUri)) {
       _setDefaultAppLogoLightUrlInternal(dataUri);
       updateAppLogoLight(null); 
@@ -269,6 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast, updateAppLogoLight]);
 
   const setDefaultAppLogoDark = useCallback((dataUri: string) => {
+     console.trace("[AuthContext] setDefaultAppLogoDark trace");
     if (saveData<string>(DataItemType.DefaultAppLogoDark, dataUri)) {
       _setDefaultAppLogoDarkUrlInternal(dataUri);
       updateAppLogoDark(null);
@@ -282,11 +306,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo", dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared."), [updateLogoGeneric]);
   
   const updateCustomAccentColor = useCallback((newColorHex: string) => {
+    console.log(`[AuthContext] updateCustomAccentColor called with: ${newColorHex}`);
     const newHslString = hexToHslString(newColorHex);
     if (newHslString) {
-      if (saveData(DataItemType.CustomAccentColor, newColorHex)) { // Save hex
-        setCustomAccentColorState(newColorHex); // Store hex in state
-        applyCustomAccentColor(newColorHex); // Apply (will convert to HSL for CSS variable)
+      if (saveData(DataItemType.CustomAccentColor, newColorHex)) {
+        setCustomAccentColorState(newColorHex); 
+        applyCustomAccentColor(newColorHex); 
         toast({ title: "Accent Color Updated", description: `New accent color ${newColorHex} applied.` });
       } else {
         toast({ title: "Storage Full", description: "Could not save accent color. Storage quota exceeded.", variant: "destructive" });
@@ -297,30 +322,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
 
-  const contextValue = React.useMemo(() => ({
-    currentUser,
-    isAuthenticated,
-    isLoadingAuth,
-    pinSetupRequiredForUser,
-    appLogoLightUrl,
-    appLogoDarkUrl,
-    defaultAppLogoLightUrl: _defaultAppLogoLightUrlInternal,
-    defaultAppLogoDarkUrl: _defaultAppLogoDarkUrlInternal,
-    headerLogoLightUrl,
-    headerLogoDarkUrl,
-    customAccentColor,
-    login,
-    logout,
-    completePinSetupAndLogin,
-    updateUserProfilePicture,
-    updateAppLogoLight,
-    updateAppLogoDark,
-    setDefaultAppLogoLight,
-    setDefaultAppLogoDark,
-    updateHeaderLogoLight,
-    updateHeaderLogoDark,
-    updateCustomAccentColor,
-  }), [
+  const contextValue = React.useMemo(() => {
+    console.log(`[AuthContext] PROVIDING CONTEXT VALUE. appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${_defaultAppLogoLightUrlInternal?.length}`);
+    console.log(`[AuthContext] PROVIDING CONTEXT VALUE. appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${_defaultAppLogoDarkUrlInternal?.length}`);
+    console.log(`[AuthContext] PROVIDING CONTEXT VALUE. headerLogoLightUrl len: ${headerLogoLightUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
+
+    return {
+        currentUser,
+        isAuthenticated,
+        isLoadingAuth,
+        pinSetupRequiredForUser,
+        appLogoLightUrl,
+        appLogoDarkUrl,
+        defaultAppLogoLightUrl: _defaultAppLogoLightUrlInternal,
+        defaultAppLogoDarkUrl: _defaultAppLogoDarkUrlInternal,
+        headerLogoLightUrl,
+        headerLogoDarkUrl,
+        customAccentColor,
+        login,
+        logout,
+        completePinSetupAndLogin,
+        updateUserProfilePicture,
+        updateAppLogoLight,
+        updateAppLogoDark,
+        setDefaultAppLogoLight,
+        setDefaultAppLogoDark,
+        updateHeaderLogoLight,
+        updateHeaderLogoDark,
+        updateCustomAccentColor,
+    };
+  }, [
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, _defaultAppLogoLightUrlInternal, _defaultAppLogoDarkUrlInternal,
     headerLogoLightUrl, headerLogoDarkUrl, customAccentColor,

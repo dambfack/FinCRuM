@@ -65,22 +65,23 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0);
+  const [attemptCounter, setAttemptCounter] = useState(0); // To force re-render with new key
 
-  const ultimateFallbackPngLogo = "/f_logo.png";
+  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming this is in public/
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    } else {
+    } else { // light or system (defaulting to light logic)
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     
+    // Only update if the determined source is different from the current one
     if (currentSrc !== determinedSrc) {
-      setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-      setImgError(false); 
+      setCurrentSrc(determinedSrc || ultimateFallbackPngLogo); // Ensure there's always a src
+      setImgError(false); // Reset error state when src changes
       console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
     }
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo, currentSrc]);
@@ -91,13 +92,14 @@ const Logo: React.FC<{
     setImgError(true);
     let nextSrc = '';
 
+    // Simplified fallback logic: try the other theme's custom, then other theme's default, then ultimate PNG, then absolute placeholder
     if (resolvedTheme === 'dark') {
       if (currentSrc === props.appLogoDarkUrl && props.appLogoLightUrl) nextSrc = props.appLogoLightUrl;
       else if (currentSrc === props.appLogoLightUrl && props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
       else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && currentSrc !== ultimateFallbackPngLogo) nextSrc = ultimateFallbackPngLogo;
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
-    } else { 
+    } else { // Light theme
       if (currentSrc === props.appLogoLightUrl && props.appLogoDarkUrl) nextSrc = props.appLogoDarkUrl;
       else if (currentSrc === props.appLogoDarkUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
@@ -105,9 +107,13 @@ const Logo: React.FC<{
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
     }
     
+    // If no specific nextSrc was found based on theme toggle, try the generic defaults
     if (!nextSrc) {
         if (currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
-           nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl) || ultimateFallbackPngLogo;
+           // Try the default for the current theme first, then the other theme's default
+           nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl) || 
+                     (resolvedTheme === 'dark' ? props.defaultAppLogoLightUrl : props.defaultAppLogoDarkUrl) || 
+                     ultimateFallbackPngLogo;
         } else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
            nextSrc = absoluteUltimatePlaceholder;
         }
@@ -116,9 +122,10 @@ const Logo: React.FC<{
     if (currentSrc !== nextSrc && nextSrc) {
       console.log(`[Logo Component] Falling back to: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false);
-      setAttemptCounter(prev => prev + 1);
+      setImgError(false); // Important: reset imgError before trying new source
+      setAttemptCounter(prev => prev + 1); // Increment attempt counter
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+      // This means all primary and secondary fallbacks failed, go to absolute placeholder
       console.log(`[Logo Component] Falling back to absolute placeholder after exhausting options.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
@@ -136,17 +143,18 @@ const Logo: React.FC<{
   // console.log(`[Logo Component] RENDERING. displaySrc: ${displaySrc?.substring(0,30)}... unoptimized: ${unoptimized} attempt: ${attemptCounter}`);
 
   if (!displaySrc) {
+    // This case should ideally not be reached if ultimateFallbackPngLogo is set
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
   return (
       <NextImage
-        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`}
+        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} // More robust key
         src={displaySrc}
         alt="App Logo"
-        width={24}
-        height={24}
-        className="h-6 w-6 object-contain"
+        width={24} // Intrinsic width for optimization
+        height={24} // Intrinsic height for optimization
+        className="h-6 w-6 object-contain" // Tailwind controls visual size
         data-ai-hint="company app logo"
         unoptimized={unoptimized}
         onError={handleError}
@@ -160,7 +168,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const { 
     toggleSidebar, 
     openMobile: isMobileSidebarOpen 
-  } = useSidebar(); 
+  } = useSidebar(); // Call useSidebar from ui/sidebar
 
   const auth = useAuth(); // Call useAuth at the top level of the component
   const {
@@ -171,6 +179,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark, updateCustomAccentColor,
   } = auth;
+  
+  console.log(`[AppContent] Rendering. Context values - appLogoLightUrl len: ${appLogoLightUrl?.length} defaultAppLogoLightUrl len: ${defaultAppLogoLightUrl?.length} headerLogoLightUrl len: ${headerLogoLightUrl?.length}`);
+  console.log(`[AppContent] Rendering. Context values - appLogoDarkUrl len: ${appLogoDarkUrl?.length} defaultAppLogoDarkUrl len: ${defaultAppLogoDarkUrl?.length} headerLogoDarkUrl len: ${headerLogoDarkUrl?.length}`);
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -196,7 +207,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
   const [showAccentPicker, setShowAccentPicker] = useState(false);
-  const [currentPickerColor, setCurrentPickerColor] = useState(customAccentColor || '#008080');
+  const [currentPickerColor, setCurrentPickerColor] = useState(customAccentColor || '#008080'); // Default to teal
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -236,8 +247,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
+    console.log(`[AppContent] handleFileChangeGeneric triggered for: ${toastTitle}`);
     const file = event.target.files?.[0];
     if (file) {
+      console.log(`[AppContent] File selected: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
@@ -250,16 +263,22 @@ function AppContent({ children }: { children: React.ReactNode }) {
       }
 
       const reader = new FileReader();
+      reader.onloadstart = () => console.log(`[AppContent] FileReader started for ${toastTitle}`);
+      reader.onprogress = (e) => console.log(`[AppContent] FileReader progress for ${toastTitle}: ${e.loaded}/${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
+        console.log(`[AppContent] FileReader finished for ${toastTitle}. Data URI length: ${dataUri?.length}. Setting crop source and opening cropper.`);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
       reader.onerror = (e) => {
+        console.error(`[AppContent] FileReader error for ${toastTitle}:`, e);
         toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
+    } else {
+      console.log(`[AppContent] No file selected for ${toastTitle}.`);
     }
   };
 
@@ -271,6 +290,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { 
+    console.log("[AppContent] handleAppLogoLightCropSave called. CroppedDataUri length:", croppedDataUri.length);
     updateAppLogoLight(croppedDataUri); 
     setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); 
   };
@@ -319,7 +339,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
     return <PinLoginScreen />;
   }
   
-  const currentHeaderLogo = resolvedTheme === 'dark' ? (headerLogoDarkUrl || headerLogoLightUrl) : (headerLogoLightUrl || headerLogoDarkUrl);
+  const currentHeaderLogo = resolvedTheme === 'dark' 
+    ? (headerLogoDarkUrl || headerLogoLightUrl) 
+    : (headerLogoLightUrl || headerLogoDarkUrl);
 
   return (
     <>
@@ -424,7 +446,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
               >
                   <div className="flex items-center font-heading">
                     {currentHeaderLogo ? (
-                      <img src={currentHeaderLogo} alt="Header Logo" className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" />
+                      <NextImage src={currentHeaderLogo} alt="Header Logo" width={100} height={28} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" unoptimized />
                     ) : (
                       <span className="mr-1">Finsculpt</span>
                     )}
@@ -435,7 +457,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading">
             {currentHeaderLogo ? (
-              <img src={currentHeaderLogo} alt="Header Logo" className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" />
+              <NextImage src={currentHeaderLogo} alt="Header Logo" width={150} height={32} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" unoptimized/>
             ) : (
               <span className="mr-1">Finsculpt</span>
             )}
@@ -545,7 +567,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className={cn("flex-1 overflow-y-auto p-4 md:p-6")}>
+        <main className={cn("flex-1 overflow-y-auto p-4 md:p-6 overflow-x-hidden")}>
           {children}
         </main>
         <Toaster />
@@ -598,7 +620,3 @@ export default function RootLayout({
     </html>
   );
 }
-    
-    
-  
-      

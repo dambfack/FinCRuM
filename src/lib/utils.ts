@@ -42,8 +42,7 @@ export function saveData<T>(key: DataItemType, data: T): boolean {
     } catch (e) {
       console.error(`Failed to save local data for ${key}:`, e);
       if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-        // Specific handling for quota exceeded, though the caller (AuthContext) will also handle this.
-        console.error("LocalStorage quota exceeded.");
+        console.error("LocalStorage quota exceeded when trying to save:", key);
       }
       return false;
     }
