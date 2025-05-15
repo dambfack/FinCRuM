@@ -2,12 +2,12 @@
 // src/components/CustomerDetailModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react'; // Added useState, useEffect
-import type { Contact, User } from '@/lib/types'; // Added User
+import React, { useState, useEffect } from 'react';
+import type { Contact, User } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { formatDateTime, cn, saveData, getData, getFirstInitial } from '@/lib/utils'; // Added getFirstInitial
-import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase, Image as ImageIcon } from 'lucide-react'; // Renamed User to UserIcon, added Briefcase, ImageIcon
+import { formatDateTime, cn, saveData, getData, getFirstInitial } from '@/lib/utils';
+import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase, Image as ImageIcon } from 'lucide-react';
 import { DataItemType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileAttachmentManager from './FileAttachmentManager';
-import { Badge } from './ui/badge'; // Added Badge
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -34,30 +34,25 @@ interface CustomerDetailModalProps {
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | null | Date | React.ReactNode; className?: string }> = ({ icon: Icon, label, value, className }) => {
   if (!value && typeof value !== 'number' && typeof value !== 'boolean') return null;
 
-  let valueNode: React.ReactNode;
   const isTruncateRequested = className?.includes('truncate');
+  // Remove 'truncate' from outerDivClassName as it's handled internally for the value
+  const outerDivClassName = className?.replace('truncate', '').trim();
+
+  let valueNode: React.ReactNode;
 
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
     const dateString = formatDateTime(value as string);
-    const pClasses = ["text-sm", "text-foreground"];
-    if (isTruncateRequested) {
-      pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
-    }
     valueNode = (
-      <p className={cn(pClasses)} title={isTruncateRequested ? dateString : undefined}>
+      <p className={cn("text-sm text-foreground", isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full")} title={isTruncateRequested ? dateString : undefined}>
         {dateString}
       </p>
     );
   } else if (value !== null && value !== undefined) {
     const valueString = String(value);
-    const pClasses = ["text-sm", "text-foreground"];
-    if (isTruncateRequested) {
-      pClasses.push("overflow-hidden", "text-ellipsis", "whitespace-nowrap");
-    }
     valueNode = (
-      <p className={cn(pClasses)} title={isTruncateRequested ? valueString : undefined}>
+      <p className={cn("text-sm text-foreground", isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full")} title={isTruncateRequested ? valueString : undefined}>
         {valueString}
       </p>
     );
@@ -65,13 +60,10 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
     return null;
   }
 
-  // Remove 'truncate' from the outer div's className if it was intended for the value
-  const outerDivClassName = className?.replace('truncate', '').trim();
-
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className="min-w-0 flex-1"> {/* This div is crucial for allowing its children to be truncated */}
+      <div className="min-w-0 flex-1 overflow-hidden"> {/* Added overflow-hidden here */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -99,7 +91,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    if (isOpen) { // Only load users if modal is open
+    if (isOpen) {
       const loadedUsers = getData<User[]>(DataItemType.Users) || [];
       setAllUsers(loadedUsers);
     }
