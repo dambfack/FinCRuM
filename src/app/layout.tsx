@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 
 const interBlack = Inter_Tight({
   subsets: ['latin'],
-  weight: ['900'], // Only 900 for Inter Black
+  weight: ['900'], 
   variable: '--font-inter-black',
 });
 
@@ -65,9 +65,9 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // To force re-render on error with same fallback
+  const [attemptCounter, setAttemptCounter] = useState(0); 
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Assuming f_logo.png is in public folder
+  const ultimateFallbackPngLogo = "/f_logo.png"; 
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
 
@@ -81,7 +81,7 @@ const Logo: React.FC<{
     
     if (currentSrc !== determinedSrc || imgError) {
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-      setImgError(false); // Reset error state when a new src is determined
+      setImgError(false); 
     }
   }, [
       props.appLogoLightUrl, 
@@ -89,8 +89,8 @@ const Logo: React.FC<{
       props.defaultAppLogoLightUrl, 
       props.defaultAppLogoDarkUrl, 
       resolvedTheme,
-      currentSrc, // Re-evaluate if currentSrc changes (e.g., due to error handling)
-      imgError    // Re-evaluate if an error occurred
+      currentSrc, 
+      imgError    
   ]);
   
   const handleError = useCallback(() => {
@@ -105,8 +105,8 @@ const Logo: React.FC<{
 
     if (currentSrc !== nextSrc && nextSrc) {
       setCurrentSrc(nextSrc);
-      setImgError(false); // Important: Reset error before attempting next fallback
-      setAttemptCounter(prev => prev + 1); // Force key change for next/image
+      setImgError(false); 
+      setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
@@ -126,7 +126,7 @@ const Logo: React.FC<{
   
   return (
       <NextImage
-        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} // Force re-render if src or attempt changes
+        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} 
         src={displaySrc}
         alt="Finsculpt CRM Logo"
         width={24} 
@@ -185,9 +185,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const chartColorConfig: {
     label: string;
-    stateValue: string | null | undefined; // Can be undefined from currentUserThemeSettings
+    stateValue: string | null | undefined; 
     updateFn: (hex: string | null) => void;
-    dataItemType: keyof UserThemeSettings; // To access from currentUserThemeSettings
+    dataItemType: keyof UserThemeSettings; 
   }[] = [
     { label: 'Open Status Color', stateValue: currentUserThemeSettings?.chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: 'chartPieColorOpen' },
     { label: 'Closed Status Color', stateValue: currentUserThemeSettings?.chartPieColorClosed, updateFn: updateChartPieColorClosed, dataItemType: 'chartPieColorClosed' },
@@ -294,6 +294,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   if (pinSetupRequiredForUser) return <SetPinScreen userToSetupPinFor={pinSetupRequiredForUser} />;
   if (!isAuthenticated) return <PinLoginScreen />;
   
+  const spanClasses = "inline-block group-data-[state=collapsed]:hidden group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0 group-data-[state=collapsed]:overflow-hidden";
+
   return (
     <>
     <SidebarProvider defaultPinnedOpen={true}>
@@ -310,13 +312,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Dashboard"><Link href="/"><LayoutDashboard /><span>Dashboard</span></Link></SidebarMenuButton></SidebarMenuItem>
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="All Customers"><Link href="/customers"><Users /><span>All Customers</span></Link></SidebarMenuButton></SidebarMenuItem>
-            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Team Management"><Link href="/users"><Users2 /><span>Team Management</span></Link></SidebarMenuButton></SidebarMenuItem>}
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Data Grid"><Link href="/data-grid"><Table /><span>Data Grid</span></Link></SidebarMenuButton></SidebarMenuItem>
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Add Customer"><Link href="/add-customer"><UserPlusIcon /><span>Add Customer</span></Link></SidebarMenuButton></SidebarMenuItem>
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Import Data"><Link href="/import"><Upload /><span>Import Data</span></Link></SidebarMenuButton></SidebarMenuItem>
-            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><Download /><span>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Dashboard"><Link href="/"><LayoutDashboard /><span className={spanClasses}>Dashboard</span></Link></SidebarMenuButton></SidebarMenuItem>
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="All Customers"><Link href="/customers"><Users /><span className={spanClasses}>All Customers</span></Link></SidebarMenuButton></SidebarMenuItem>
+            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Team Management"><Link href="/users"><Users2 /><span className={spanClasses}>Team Management</span></Link></SidebarMenuButton></SidebarMenuItem>}
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Data Grid"><Link href="/data-grid"><Table /><span className={spanClasses}>Data Grid</span></Link></SidebarMenuButton></SidebarMenuItem>
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Add Customer"><Link href="/add-customer"><UserPlusIcon /><span className={spanClasses}>Add Customer</span></Link></SidebarMenuButton></SidebarMenuItem>
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Import Data"><Link href="/import"><Upload /><span className={spanClasses}>Import Data</span></Link></SidebarMenuButton></SidebarMenuItem>
+            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><Download /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
@@ -388,7 +390,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
                         <div className="space-y-1">
                           <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
-                          {(currentUserThemeSettings?.accentColor || auth.customAccentColor) && ( // Check both to ensure reset is available even if only app default custom accent is set
+                          {(currentUserThemeSettings?.accentColor || auth.customAccentColor) && ( 
                             <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive h-8" onClick={handleAccentColorReset}><Trash2 className="mr-1.5 h-3 w-3" />Reset Accent Color</Button>
                           )}
                         </div>
@@ -465,3 +467,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
+
+    
