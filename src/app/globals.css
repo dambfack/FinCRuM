@@ -26,15 +26,15 @@
     --secondary-foreground: 220 10% 10%;
     --muted: 220 10% 92%;
     --muted-foreground: 220 10% 45%; /* Muted dark gray */
-    --accent: 180 100% 25%; /* Teal */
+    --accent: 180 100% 25%; /* Teal - THIS IS DYNAMICALLY UPDATED */
     --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 90%; /* Lighter Gray border - general border */
     --glass-border: 255 100% 100%; /* White for glass borders */
     --input: 220 10% 90%; /* Lighter Gray input */
-    --ring: 180 100% 25%; /* Teal ring */
-    --chart-1: 180 100% 25%; /* Teal chart color */
+    --ring: hsl(var(--accent)); /* Teal ring - DERIVED FROM ACCENT */
+    --chart-1: hsl(var(--accent)); /* DERIVED FROM ACCENT */
     --chart-2: 180 80% 35%;
     --chart-3: 180 60% 45%;
     --chart-4: 180 40% 55%;
@@ -48,12 +48,12 @@
     /* Light Theme Sidebar */
     --sidebar-background: 0 0% 100%; /* White background for light theme sidebar */
     --sidebar-foreground: 220 10% 20%; /* Dark Gray text for light theme sidebar */
-    --sidebar-primary: 180 100% 25%; /* Teal for primary sidebar elements (active items) */
-    --sidebar-primary-foreground: 0 0% 98%; /* Light text on teal primary elements */
+    --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
+    --sidebar-primary-foreground: 0 0% 98%; /* Light text on accent primary elements */
     --sidebar-accent: 220 15% 92%; /* Light gray for hover/accent on light sidebar */
     --sidebar-accent-foreground: 220 10% 15%; /* Dark text on light gray hover/accent */
     --sidebar-border: 220 10% 85%;
-    --sidebar-ring: 180 100% 25%;
+    --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
   }
   .dark {
     --background: 220 10% 10%; /* Dark Gray - base for content area background */
@@ -68,15 +68,15 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 220 10% 20%;
     --muted-foreground: 220 10% 65%; /* Muted light gray */
-    --accent: 180 100% 35%; /* Lighter Teal */
+    --accent: 180 100% 35%; /* Lighter Teal - THIS IS DYNAMICALLY UPDATED */
     --accent-foreground: 0 0% 98%; /* White/Light Gray text on accent */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 220 10% 25%; /* Darker Gray border - general border */
     --glass-border: 255 100% 100%; /* White for glass borders */
     --input: 220 10% 18%; /* Darker gray input - slightly darker than card */
-    --ring: 180 100% 35%; /* Lighter Teal ring */
-    --chart-1: 180 100% 35%; /* Teal chart color */
+    --ring: hsl(var(--accent)); /* Lighter Teal ring - DERIVED FROM ACCENT */
+    --chart-1: hsl(var(--accent)); /* DERIVED FROM ACCENT */
     --chart-2: 180 80% 45%;
     --chart-3: 180 60% 55%;
     --chart-4: 180 40% 65%;
@@ -89,12 +89,12 @@
     /* Dark Theme Sidebar */
     --sidebar-background: 220 10% 10%; /* Match main dark background base */
     --sidebar-foreground: 0 0% 98%; /* Light text for dark theme sidebar */
-    --sidebar-primary: 180 100% 35%; /* Lighter Teal for primary sidebar elements */
-    --sidebar-primary-foreground: 220 10% 10%; /* Dark text on lighter teal primary elements */
+    --sidebar-primary: hsl(var(--accent)); /* DERIVED FROM ACCENT */
+    --sidebar-primary-foreground: 220 10% 10%; /* Dark text on lighter accent primary elements */
     --sidebar-accent: 220 10% 20%; /* Darker gray for hover/accent on dark sidebar */
     --sidebar-accent-foreground: 0 0% 98%; /* Light text on dark gray hover/accent */
     --sidebar-border: 220 10% 30%;
-    --sidebar-ring: 180 100% 35%;
+    --sidebar-ring: hsl(var(--accent)); /* DERIVED FROM ACCENT */
   }
 }
 
@@ -357,6 +357,5 @@
 .react-datepicker__triangle {
   @apply hidden; /* Hiding default triangle for a cleaner glassmorphic look */
 }
-
 
     
