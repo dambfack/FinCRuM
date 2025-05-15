@@ -1,4 +1,3 @@
-
 // src/components/CustomerDetailModal.tsx
 'use client';
 
@@ -38,13 +37,15 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden";
+  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; // Ensure this container can shrink and clip
 
   const isTruncateRequested = outerDivClassName.includes('truncate');
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
+    // Apply truncation styles directly to the <p> tag that renders the string
     pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full");
   }
+
 
   let valueNode: React.ReactNode;
 
@@ -71,7 +72,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={cn(valueContainerClasses, "overflow-hidden")}> {/* Added overflow-hidden here */}
+      <div className={cn(valueContainerClasses, "overflow-hidden")}> {/* Added overflow-hidden to the value container */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -142,11 +143,13 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   };
 
   const handleAttachmentsUpdate = (updatedContactWithNewAttachments: Contact) => {
+    // Save the contact data to localStorage (or your preferred storage)
     const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
     const contactIndex = contacts.findIndex(c => c.id === updatedContactWithNewAttachments.id);
     if (contactIndex > -1) {
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
+      // Notify parent component about the update
       if (onContactUpdate) {
         onContactUpdate(updatedContactWithNewAttachments);
       }
@@ -179,8 +182,8 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
             </Avatar>
           </button>
-          <div className="text-center min-w-0 flex-1">
-            <DialogTitle className="text-2xl font-heading truncate">
+          <div className="text-center min-w-0 flex-1"> {/* Added min-w-0 flex-1 here */}
+            <DialogTitle className="text-2xl font-heading truncate"> {/* Added truncate */}
               {contact.firstName} {contact.lastName}
             </DialogTitle>
             <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -194,7 +197,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               <Paperclip className="mr-2 h-4 w-4" /> Attachments ({contact.attachments?.length || 0})
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full overflow-hidden">
+          <TabsContent value="details" className="pt-4 h-[55vh] overflow-y-auto px-1 w-full overflow-hidden">
             <Card className="w-full bg-card/60 dark:bg-card/50 backdrop-blur-md">
               <CardContent className="space-y-1 p-4">
                 <DetailItem icon={Mail} label="Email" value={contact.email} />
@@ -209,7 +212,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="attachments" className="pt-4 h-[55vh] overflow-y-auto pr-2 w-full">
+          <TabsContent value="attachments" className="pt-4 h-[55vh] overflow-y-auto px-1 w-full">
             <FileAttachmentManager contact={contact} onAttachmentsUpdate={handleAttachmentsUpdate} />
           </TabsContent>
         </Tabs>
