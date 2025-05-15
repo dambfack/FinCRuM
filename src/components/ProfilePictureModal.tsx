@@ -33,7 +33,8 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
     return null;
   }
 
-  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col card-tilt-container"; // Ensure background
+  // Make DialogContent a flex container to center the image
+  const dialogContentClassName = "sm:max-w-3xl w-[90vw] sm:w-auto h-auto max-h-[90vh] p-4 glass-effect bg-card/90 dark:bg-card/80 flex flex-col items-center justify-center card-tilt-container";
 
   const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const img = event.currentTarget;
@@ -42,21 +43,21 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
 
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.error('[ProfilePictureModal] Image load error:', event, 'Src:', imageUrl?.substring(0,100) + '...');
-    // Optionally, you could try to show a fallback image here or close the modal
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent 
+      <DialogContent
         ref={dialogContentRef}
-        className={dialogContentClassName} 
-        onPointerDownOutside={onClose} 
+        className={dialogContentClassName}
+        onPointerDownOutside={onClose}
         onEscapeKeyDown={onClose}
       >
         <div className="glow" />
-        <DialogHeader className="sr-only relative z-[1]">
+        {/* The DialogHeader might be redundant if we only show the image and a close button */}
+        {/* <DialogHeader className="sr-only relative z-[1]">
           <DialogTitle>View Profile Picture</DialogTitle>
-        </DialogHeader>
+        </DialogHeader> */}
         <DialogClose asChild>
             <Button
                 variant="ghost"
@@ -68,20 +69,19 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
                 <X className="h-5 w-5" />
             </Button>
         </DialogClose>
-        <div className="flex-grow flex items-center justify-center p-4 overflow-hidden relative z-[1]">
-          {/* Diagnostic styling below */}
-          <img
-            src={imageUrl}
-            alt={altText}
-            className="block max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain rounded-md shadow-lg border-2 border-red-500" // Added red border for visibility
-            style={{ backgroundColor: 'rgba(0, 255, 0, 0.1)' }} // Added light green background
-            onLoad={handleImageLoad}
-            onError={handleImageError} 
-          />
-        </div>
+        {/* The DialogContent is now flex and centers this image directly */}
+        <img
+          src={imageUrl}
+          alt={altText}
+          className="block max-w-[calc(100%-2rem)] max-h-[calc(100%-2rem)] w-auto h-auto object-contain rounded-md shadow-lg border-2 border-red-500" // Max width/height accounts for padding
+          style={{ backgroundColor: 'rgba(0, 255, 0, 0.1)' }} // Temporary diagnostic bg
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
       </DialogContent>
     </Dialog>
   );
 };
 
 export default ProfilePictureModal;
+    
