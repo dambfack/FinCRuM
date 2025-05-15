@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from 'next-themes';
-import { useAuth } from '@/contexts/AuthContext'; 
+import { useAuth } from '@/contexts/AuthContext';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -48,12 +48,15 @@ const initialStats: DashboardStats = {
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-const FALLBACK_PIE_COLORS = [
-  'rgba(0, 128, 128, 0.8)',   // Teal
-  'rgba(0, 0, 255, 0.8)',    // Blue
-  'rgba(255, 165, 0, 0.8)',  // Orange
-  'rgba(128, 128, 128, 0.8)'  // Gray
+// Fallback colors for pie chart if CSS variables cannot be read or custom colors not set
+// These are direct HSL strings for the CSS variables.
+const PIE_CHART_CSS_VARS_FALLBACK = [
+  'hsl(var(--chart-pie-1))', // Open
+  'hsl(var(--chart-pie-2))', // Closed
+  'hsl(var(--chart-pie-3))', // Missed
+  'hsl(var(--chart-pie-4))', // Other
 ];
+
 
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
@@ -72,7 +75,13 @@ const Dashboard: FC = () => {
     
     const { resolvedTheme } = useTheme();
     const auth = useAuth(); 
-    const { customAccentColor } = auth;
+    const { 
+      customAccentColor,
+      chartPieColorOpen,
+      chartPieColorClosed,
+      chartPieColorMissed,
+      chartPieColorOther
+    } = auth;
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -97,8 +106,6 @@ const Dashboard: FC = () => {
     const [todaysTasksList, setTodaysTasksList] = useState<TaskType[]>([]);
     const [isTodaysAppointmentsModalOpen, setTodaysAppointmentsModalOpen] = useState(false);
     const [todaysAppointmentsList, setTodaysAppointmentsList] = useState<AppointmentType[]>([]);
-
-    const [computedPieChartColors, setComputedPieChartColors] = useState<string[]>([]);
 
 
     const loadDashboardData = useCallback(() => {
@@ -159,13 +166,15 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined >)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
+                 if (status !== 'approached' && statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined | 'approached'>)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
+                } else if (status === 'approached'){
+                     statusCounts.other++; // Group 'approached' into 'other'
                 } else {
-                    statusCounts.other++;
+                     statusCounts.other++;
                 }
             });
 
@@ -205,54 +214,25 @@ const Dashboard: FC = () => {
     }, [loadDashboardData]);
 
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
-        console.log(`[Dashboard] Computing pie chart colors for theme: ${resolvedTheme}, Labels count: ${dealStatusLabels.length}`);
-        const colors: string[] = [];
-        const cssVarNames = ['--chart-pie-1', '--chart-pie-2', '--chart-pie-3', '--chart-pie-4'];
-        
-        cssVarNames.forEach((varName, index) => {
-            try {
-                const hslValue = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-                console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
-                if (hslValue && hslValue.match(/(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%/)) {
-                    const color = `hsla(${hslValue}, 0.8)`;
-                    colors.push(color);
-                    console.log(`[Dashboard] Using HSLA value for ${varName}: ${hslValue} -> ${color}`);
-                } else {
-                    console.warn(`[Dashboard] Could not parse HSL value for ${varName} ("${hslValue}"). Using fallback.`);
-                    colors.push(FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]);
-                }
-            } catch (e) {
-                console.warn(`[Dashboard] Error accessing CSS variable ${varName}:`, e, ". Using fallback.");
-                colors.push(FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]);
-            }
-        });
-        console.log('[Dashboard] Updated computedPieChartColors state:', colors);
-        setComputedPieChartColors(colors);
-    } else if (dealStatusLabels.length === 0) {
-        console.log("[Dashboard] dealStatusLabels is empty, setting empty computedPieChartColors.");
-        setComputedPieChartColors([]);
-    }
-  }, [resolvedTheme, dealStatusLabels]);
-
-
-  const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
+    const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
       const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
-      let currentChartColors = computedPieChartColors;
+      
+      const currentPieColors: string[] = [];
+      const customHexColors = [chartPieColorOpen, chartPieColorClosed, chartPieColorMissed, chartPieColorOther];
 
-      if (currentChartColors.length === 0 && dealStatusLabels.length > 0 && totalClients > 0) {
-          console.warn("[Dashboard] Apex Pie: computedPieChartColors is empty but labels/series exist. Using FALLBACK_PIE_COLORS.");
-          currentChartColors = FALLBACK_PIE_COLORS.slice(0, dealStatusLabels.length);
-      } else if (totalClients === 0) {
-           console.log("[Dashboard] Apex Pie: Total clients is 0. Using single gray color.");
-          currentChartColors = ['#555555'];
-      } else if (currentChartColors.length !== dealStatusLabels.length && dealStatusLabels.length > 0) {
-          console.warn(`[Dashboard] Apex Pie: Mismatch between computed colors (${currentChartColors.length}) and labels (${dealStatusLabels.length}). Using fallbacks.`);
-          currentChartColors = FALLBACK_PIE_COLORS.slice(0, dealStatusLabels.length);
+      dealStatusLabels.forEach((_label, index) => {
+        if (customHexColors[index]) {
+          currentPieColors.push(customHexColors[index] as string); // Use custom hex color from AuthContext
+        } else {
+          currentPieColors.push(PIE_CHART_CSS_VARS_FALLBACK[index]); // Fallback to CSS HSL variable string
+        }
+      });
+      
+      if (dealStatusLabels.length === 0 && totalClients === 0) {
+        currentPieColors.push(resolvedTheme === 'dark' ? '#555555' : '#AAAAAA'); // Default for no data
       }
       
-      console.log("[Dashboard] apexPieChartOptions using colors:", currentChartColors);
+      console.log("[Dashboard] apexPieChartOptions using colors:", currentPieColors);
 
       return {
           chart: {
@@ -262,8 +242,8 @@ const Dashboard: FC = () => {
               toolbar: { show: false }
           },
           labels: totalClients > 0 ? dealStatusLabels : (dealStatusSeries.length > 0 ? ['No Data Available'] : []),
-          colors: currentChartColors.length > 0 ? currentChartColors : ['#555555'], 
-          fill: { opacity: 1 }, 
+          colors: currentPieColors, 
+          fill: { opacity: 0.8 }, // Apply opacity globally
           stroke: { show: true, width: 2, colors: ['transparent'] },
           legend: {
               position: 'bottom',
@@ -329,7 +309,20 @@ const Dashboard: FC = () => {
               options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
           }]
       };
-  }, [computedPieChartColors, resolvedTheme, dealStatusLabels, dealStatusSeries]);
+  }, [
+    resolvedTheme, 
+    dealStatusLabels, 
+    dealStatusSeries,
+    chartPieColorOpen,
+    chartPieColorClosed,
+    chartPieColorMissed,
+    chartPieColorOther
+  ]);
+
+    const chartKey = useMemo(() => {
+      // Using JSON.stringify on the colors array ensures the key changes if the array content changes.
+      return `${resolvedTheme}-${JSON.stringify(apexPieChartOptions.colors)}`;
+    }, [resolvedTheme, apexPieChartOptions.colors]);
 
 
     const handleGoogleCalendarAuth = useCallback(async () => {
@@ -550,7 +543,7 @@ const Dashboard: FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? <Skeleton className="h-[300px] w-full" /> : customerGrowthChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300} key={`${resolvedTheme}-${customAccentColor}`}>
+                <ResponsiveContainer width="100%" height={300} key={resolvedTheme}>
                   <RechartsBarChart data={customerGrowthChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
                     <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tick={RECHARTS_FONT_STYLE}/>
@@ -584,7 +577,7 @@ const Dashboard: FC = () => {
             {loading ? <Skeleton className="h-[300px] w-full" /> : (dealStatusLabels.length > 0 && dealStatusSeries.some(s => s > 0)) ? (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
-                    key={`${resolvedTheme}-${JSON.stringify(apexPieChartOptions.colors)}`}
+                    key={chartKey}
                     options={apexPieChartOptions}
                     series={(dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) ? dealStatusSeries : [1]}
                     type="donut"
@@ -863,3 +856,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
