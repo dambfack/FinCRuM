@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { Inter, Montserrat } from 'next/font/google';
 import './globals.css';
-import { cn, getFirstInitial, getData, saveData } from '@/lib/utils';
+import { cn, getFirstInitial, getData, saveData, hexToHslString } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import PinLoginScreen from '@/components/PinLoginScreen';
@@ -25,7 +26,7 @@ import {
   useSidebar, 
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -36,10 +37,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Corrected import alias
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
+import { SketchPicker, type ColorResult } from 'react-color';
 
 
 const interBlack = Inter({
@@ -63,23 +65,25 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // To force re-render on error retry
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Ensure this file exists in public/
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
-    console.log("[Logo Component] useEffect running. Theme:", resolvedTheme, "Props:", props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
     } else {
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
-    setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-    setImgError(false); // Reset error state when source changes
-    console.log(`[Logo Component] useEffect - Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
-  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo]);
+    
+    if (currentSrc !== determinedSrc) {
+      setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
+      setImgError(false); 
+      console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
+    }
+  }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo, currentSrc]);
 
 
   const handleError = useCallback(() => {
@@ -87,14 +91,13 @@ const Logo: React.FC<{
     setImgError(true);
     let nextSrc = '';
 
-    // Simplified fallback logic: try the other theme's override, then the other theme's default, then the ultimate PNG, then the placeholder.
     if (resolvedTheme === 'dark') {
       if (currentSrc === props.appLogoDarkUrl && props.appLogoLightUrl) nextSrc = props.appLogoLightUrl;
       else if (currentSrc === props.appLogoLightUrl && props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
       else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && currentSrc !== ultimateFallbackPngLogo) nextSrc = ultimateFallbackPngLogo;
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
-    } else { // Light theme or system (defaulting to light behavior)
+    } else { 
       if (currentSrc === props.appLogoLightUrl && props.appLogoDarkUrl) nextSrc = props.appLogoDarkUrl;
       else if (currentSrc === props.appLogoDarkUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
       else if (currentSrc === props.defaultAppLogoLightUrl && props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoDarkUrl;
@@ -102,7 +105,6 @@ const Logo: React.FC<{
       else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
     }
     
-    // If no specific nextSrc determined by above, but current isn't the ultimate fallback or placeholder
     if (!nextSrc) {
         if (currentSrc !== ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) {
            nextSrc = (resolvedTheme === 'dark' ? props.defaultAppLogoDarkUrl : props.defaultAppLogoLightUrl) || ultimateFallbackPngLogo;
@@ -111,47 +113,42 @@ const Logo: React.FC<{
         }
     }
 
-
     if (currentSrc !== nextSrc && nextSrc) {
       console.log(`[Logo Component] Falling back to: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false); // Reset error for the new source
-      setAttemptCounter(prev => prev + 1); // Increment counter to change key
+      setImgError(false);
+      setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-      console.log(`[Logo Component] Falling back to absolute placeholder.`);
+      console.log(`[Logo Component] Falling back to absolute placeholder after exhausting options.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     } else {
-        console.log("[Logo Component] No more valid fallbacks or stuck on placeholder.");
+        console.log("[Logo Component] No more valid fallbacks or already on absolute placeholder.");
     }
   }, [currentSrc, props, resolvedTheme, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
+  
+  const displaySrc = currentSrc || (imgError ? absoluteUltimatePlaceholder : ultimateFallbackPngLogo);
+  const isDataUri = typeof displaySrc === 'string' && displaySrc.startsWith('data:');
+  const isPlaceholderCo = typeof displaySrc === 'string' && displaySrc.startsWith('https://placehold.co');
+  const unoptimized = isDataUri || isPlaceholderCo;
 
-  console.log(`[Logo Component] RENDERING. currentSrc: ${currentSrc}, imgError: ${imgError}, attempt: ${attemptCounter}`);
+  // console.log(`[Logo Component] RENDERING. displaySrc: ${displaySrc?.substring(0,30)}... unoptimized: ${unoptimized} attempt: ${attemptCounter}`);
 
-  if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    console.log("[Logo Component] Rendering fallback div due to error or no src.");
-    // Simple text fallback if all image attempts fail
+  if (!displaySrc) {
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
-  const isDataUri = typeof currentSrc === 'string' && currentSrc.startsWith('data:');
-  const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
-  const unoptimized = isDataUri || isPlaceholderCo;
-
-  // Using NextImage for optimized image handling
-  console.log(`[Logo Component] Using next/image with src: ${currentSrc} (isDataUri: ${isDataUri}, isPlaceholder: ${isPlaceholderCo}, unoptimized: ${unoptimized})`);
-  
   return (
-      <NextImage // Use NextImage alias
-        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Unique key for re-renders
-        src={currentSrc}
+      <NextImage
+        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`}
+        src={displaySrc}
         alt="App Logo"
-        width={24} // Intrinsic width for optimization
-        height={24} // Intrinsic height for optimization
-        className="h-6 w-6 object-contain" // Tailwind for display size
+        width={24}
+        height={24}
+        className="h-6 w-6 object-contain"
         data-ai-hint="company app logo"
-        unoptimized={unoptimized} // Important for data URIs and external placeholders
+        unoptimized={unoptimized}
         onError={handleError}
       />
   );
@@ -159,20 +156,20 @@ const Logo: React.FC<{
 
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const auth = useAuth();
   const { resolvedTheme } = useTheme();
   const { 
     toggleSidebar, 
     openMobile: isMobileSidebarOpen 
   } = useSidebar(); 
 
+  const auth = useAuth(); // Call useAuth at the top level of the component
   const {
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl,
-    headerLogoLightUrl, headerLogoDarkUrl,
+    headerLogoLightUrl, headerLogoDarkUrl, customAccentColor,
     logout, updateUserProfilePicture,
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
-    updateHeaderLogoLight, updateHeaderLogoDark,
+    updateHeaderLogoLight, updateHeaderLogoDark, updateCustomAccentColor,
   } = auth;
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +195,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [headerLogoDarkImageToCropSrc, setHeaderLogoDarkImageToCropSrc] = useState<string | null>(null);
 
   const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
+  const [showAccentPicker, setShowAccentPicker] = useState(false);
+  const [currentPickerColor, setCurrentPickerColor] = useState(customAccentColor || '#008080');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -225,6 +224,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
     }
   }, []); 
 
+  useEffect(() => {
+    setCurrentPickerColor(customAccentColor || '#008080');
+  }, [customAccentColor]);
+
   const handleFileChangeGeneric = (
     event: React.ChangeEvent<HTMLInputElement>, 
     setCropSrc: (src: string | null) => void, 
@@ -233,10 +236,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     toastTitle: string,
     inputRef: React.RefObject<HTMLInputElement>
   ) => {
-    console.log(`[AppContent] ${toastTitle} - handleFileChangeGeneric triggered`);
     const file = event.target.files?.[0];
     if (file) {
-      console.log(`[AppContent] ${toastTitle} - File selected: ${file.name}, Type: ${file.type}, Size: ${file.size}`);
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
         if (inputRef.current) inputRef.current.value = '';
@@ -249,23 +250,16 @@ function AppContent({ children }: { children: React.ReactNode }) {
       }
 
       const reader = new FileReader();
-      reader.onloadstart = () => console.log(`[AppContent] ${toastTitle} - FileReader onloadstart`);
-      reader.onprogress = (e) => console.log(`[AppContent] ${toastTitle} - FileReader onprogress: ${e.loaded}/${e.total}`);
       reader.onloadend = () => {
         const dataUri = reader.result as string;
-        console.log(`[AppContent] ${toastTitle} - FileReader onloadend. Data URI length:`, dataUri?.length);
         setCropSrc(dataUri);
         setCropperOpen(true);
-        console.log(`[AppContent] ${toastTitle} - Cropper modal should open now.`);
       };
       reader.onerror = (e) => {
-        console.error(`[AppContent] ${toastTitle} - FileReader error:`, e);
         toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
       };
       reader.readAsDataURL(file);
       if (inputRef.current) inputRef.current.value = '';
-    } else {
-      console.log(`[AppContent] ${toastTitle} - No file selected or event.target.files is null.`);
     }
   };
 
@@ -277,14 +271,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { 
-    console.log("[AppContent] handleAppLogoLightCropSave called. CroppedDataUri length:", croppedDataUri?.length);
     updateAppLogoLight(croppedDataUri); 
     setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); 
   };
   
   const handleAppLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoDarkImageToCropSrc, setIsAppLogoDarkCropperOpen, 1, "Dark App Logo", appLogoDarkInputRef);
   const handleAppLogoDarkCropSave = (croppedDataUri: string) => { 
-    console.log("[AppContent] handleAppLogoDarkCropSave called. CroppedDataUri length:", croppedDataUri?.length);
     updateAppLogoDark(croppedDataUri); 
     setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null); 
   };
@@ -298,11 +290,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
   const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
 
-  useEffect(() => {
-    console.log("[AppContent] Rendering. Context values - appLogoLightUrl len:", appLogoLightUrl?.length, "defaultAppLogoLightUrl len:", defaultAppLogoLightUrl?.length, "headerLogoLightUrl len:", headerLogoLightUrl?.length);
-    console.log("[AppContent] Rendering. Context values - appLogoDarkUrl len:", appLogoDarkUrl?.length, "defaultAppLogoDarkUrl len:", defaultAppLogoDarkUrl?.length, "headerLogoDarkUrl len:", headerLogoDarkUrl?.length);
-  }, [appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl]);
+  const handleAccentColorChange = (color: ColorResult) => {
+    setCurrentPickerColor(color.hex);
+  };
 
+  const handleAccentColorSave = () => {
+    updateCustomAccentColor(currentPickerColor);
+    setShowAccentPicker(false);
+  };
 
   if (isLoadingAuth) {
     return (
@@ -487,22 +482,39 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {currentUser?.role === 'partner' && (
-                  <div className="p-1 mt-2 border-t border-border/20 pt-3">
-                    <h4 className="font-medium leading-none text-sm font-heading mb-2">App & Header Logos</h4>
+                  <div className="p-1 mt-2 border-t border-border/20 pt-3 space-y-2">
+                    <h4 className="font-medium leading-none text-sm font-heading mb-1">App & Header Logos</h4>
                     
                     <input type="file" ref={appLogoLightInputRef} onChange={handleAppLogoLightFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full mb-1" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
-                    <Button variant="outline" size="sm" className="w-full mb-1" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light App Logo </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> App Logo (Light) </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentLightLogoAsDefault} disabled={!appLogoLightUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Light App Logo </Button>
 
                     <input type="file" ref={appLogoDarkInputRef} onChange={handleAppLogoDarkFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
-                    <Button variant="outline" size="sm" className="w-full mb-3" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark App Logo </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => appLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> App Logo (Dark) </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={handleSetCurrentDarkLogoAsDefault} disabled={!appLogoDarkUrl}> <CheckCircle className="mr-2 h-4 w-4" /> Set as Default Dark App Logo </Button>
 
                     <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full mb-1 mt-2" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoLightInputRef.current?.click()}> <Sun className="mr-2 h-4 w-4" /> Header Logo (Light) </Button>
                     
                     <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
-                    <Button variant="outline" size="sm" className="w-full mb-3" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => headerLogoDarkInputRef.current?.click()}> <Moon className="mr-2 h-4 w-4" /> Header Logo (Dark) </Button>
+                  
+                    <div className="p-1 mt-2 border-t border-border/20 pt-3">
+                      <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
+                      <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => setShowAccentPicker(!showAccentPicker)}>
+                        <Palette className="mr-2 h-4 w-4" /> {showAccentPicker ? "Hide" : "Change"} Accent Color
+                      </Button>
+                      {showAccentPicker && (
+                        <div className="flex flex-col items-center space-y-2">
+                          <SketchPicker
+                            color={currentPickerColor}
+                            onChangeComplete={handleAccentColorChange}
+                            disableAlpha={true}
+                          />
+                          <Button size="sm" onClick={handleAccentColorSave} className="w-full">Apply Accent Color</Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

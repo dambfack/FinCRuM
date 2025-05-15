@@ -1,4 +1,5 @@
 
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { DataItemType, type Notification } from "./types"; // Added Notification type
@@ -30,18 +31,26 @@ export function getData<T>(key: DataItemType): T | null {
  * Saves data to localStorage and dispatches a 'dataChanged' event.
  * @param key The DataItemType key for the data.
  * @param data The data to save.
+ * @returns True if successful, false otherwise.
  */
-export function saveData<T>(key: DataItemType, data: T): void {
+export function saveData<T>(key: DataItemType, data: T): boolean {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(key, JSON.stringify(data));
-      // Dispatch custom event to notify components of data change
       window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: key, data } }));
+      return true;
     } catch (e) {
       console.error(`Failed to save local data for ${key}:`, e);
+      if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+        // Specific handling for quota exceeded, though the caller (AuthContext) will also handle this.
+        console.error("LocalStorage quota exceeded.");
+      }
+      return false;
     }
   }
+  return false;
 }
+
 
 /**
  * Deletes an item from an array in localStorage by its ID.
@@ -142,4 +151,54 @@ export function createNotification(notificationData: Omit<Notification, 'id' | '
 export function getFirstInitial(name?: string, fallback: string = '?'): string {
   if (!name || name.trim() === '') return fallback;
   return name.trim().charAt(0).toUpperCase();
+}
+
+/**
+ * Converts a HEX color string to an HSL string "H S% L%".
+ * @param hex The hex color string (e.g., "#RRGGBB" or "#RGB").
+ * @returns HSL string or null if conversion fails.
+ */
+export function hexToHslString(hex: string): string | null {
+  if (!hex) return null;
+
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 4) { // #RGB
+    r = parseInt(hex[1] + hex[1], 16);
+    g = parseInt(hex[2] + hex[2], 16);
+    b = parseInt(hex[3] + hex[3], 16);
+  } else if (hex.length === 7) { // #RRGGBB
+    r = parseInt(hex.substring(1, 3), 16);
+    g = parseInt(hex.substring(3, 5), 16);
+    b = parseInt(hex.substring(5, 7), 16);
+  } else {
+    return null; // Invalid hex format
+  }
+
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0; // achromatic
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  const hDisplay = Math.round(h * 360);
+  const sDisplay = Math.round(s * 100);
+  const lDisplay = Math.round(l * 100);
+
+  return `${hDisplay} ${sDisplay}% ${lDisplay}%`;
 }

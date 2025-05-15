@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
-import { getData, saveData } from '@/lib/utils';
+import { getData, saveData, hexToHslString } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ interface AuthContextType {
   defaultAppLogoDarkUrl: string | null;
   headerLogoLightUrl: string | null;
   headerLogoDarkUrl: string | null;
+  customAccentColor: string | null;
 
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => void;
@@ -31,9 +33,29 @@ interface AuthContextType {
   setDefaultAppLogoDark: (dataUri: string) => void;
   updateHeaderLogoLight: (dataUri: string | null) => void;
   updateHeaderLogoDark: (dataUri: string | null) => void;
+  updateCustomAccentColor: (newColor: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper function to apply accent color dynamically
+const applyCustomAccentColor = (colorHex: string | null) => {
+  if (typeof window === 'undefined' || !colorHex) {
+    // Reset to default if colorHex is null
+    document.documentElement.style.removeProperty('--accent');
+    // console.log('[AuthContext] applyCustomAccentColor: Reset to default theme accent.');
+    return;
+  }
+  const hslString = hexToHslString(colorHex);
+  if (hslString) {
+    document.documentElement.style.setProperty('--accent', hslString);
+    // console.log(`[AuthContext] applyCustomAccentColor: Applied ${colorHex} as HSL: ${hslString}`);
+  } else {
+    console.warn(`[AuthContext] applyCustomAccentColor: Could not convert ${colorHex} to HSL.`);
+     document.documentElement.style.setProperty('--accent', '180 100% 25%'); // Fallback to default teal HSL
+  }
+};
+
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -43,10 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const [appLogoLightUrl, setAppLogoLightUrl] = useState<string | null>(null);
   const [appLogoDarkUrl, setAppLogoDarkUrl] = useState<string | null>(null);
-  const [defaultAppLogoLightUrl, setDefaultAppLogoLightUrl] = useState<string | null>(null);
-  const [defaultAppLogoDarkUrl, setDefaultAppLogoDarkUrl] = useState<string | null>(null);
+  const [_defaultAppLogoLightUrlInternal, _setDefaultAppLogoLightUrlInternal] = useState<string | null>(null);
+  const [_defaultAppLogoDarkUrlInternal, _setDefaultAppLogoDarkUrlInternal] = useState<string | null>(null);
   const [headerLogoLightUrl, setHeaderLogoLightUrl] = useState<string | null>(null);
   const [headerLogoDarkUrl, setHeaderLogoDarkUrl] = useState<string | null>(null);
+  const [customAccentColor, setCustomAccentColorState] = useState<string | null>(null);
   
   const { toast } = useToast();
 
@@ -56,10 +79,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setAppLogoLightUrl(getData<string>(DataItemType.AppLogoLight));
     setAppLogoDarkUrl(getData<string>(DataItemType.AppLogoDark));
-    setDefaultAppLogoLightUrl(getData<string>(DataItemType.DefaultAppLogoLight));
-    setDefaultAppLogoDarkUrl(getData<string>(DataItemType.DefaultAppLogoDark));
+    
+    const storedDefaultAppLogoLight = getData<string>(DataItemType.DefaultAppLogoLight);
+    if (storedDefaultAppLogoLight) {
+      _setDefaultAppLogoLightUrlInternal(storedDefaultAppLogoLight);
+    }
+    const storedDefaultAppLogoDark = getData<string>(DataItemType.DefaultAppLogoDark);
+    if (storedDefaultAppLogoDark) {
+      _setDefaultAppLogoDarkUrlInternal(storedDefaultAppLogoDark);
+    }
+    
     setHeaderLogoLightUrl(getData<string>(DataItemType.HeaderLogoLight));
     setHeaderLogoDarkUrl(getData<string>(DataItemType.HeaderLogoDark));
+
+    const storedAccent = getData<string>(DataItemType.CustomAccentColor);
+    if (storedAccent) {
+      setCustomAccentColorState(storedAccent);
+      applyCustomAccentColor(storedAccent);
+    }
     
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
@@ -72,18 +109,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profilePictureUrl: `https://placehold.co/128x128.png?text=A`,
       };
       users = [defaultAdmin];
-      saveData<User[]>(DataItemType.Users, users);
-      toast({
-        title: "Default Admin Created",
-        description: "No users found. Default 'Admin' (partner) created with PIN 0000.",
-        duration: 7000,
-      });
+      if(saveData<User[]>(DataItemType.Users, users)){
+        toast({
+          title: "Default Admin Created",
+          description: "No users found. Default 'Admin' (partner) created with PIN 0000.",
+          duration: 7000,
+        });
+      }
       window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: DataItemType.Users, data: users } }));
     }
 
     const storedUserId = getData<string>(DataItemType.CurrentUserId);
     if (storedUserId) {
-      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || [];
+      const currentUsersOnLoad = getData<User[]>(DataItemType.Users) || []; // Fetch again in case default was just created
       const user = currentUsersOnLoad.find(u => u.id === storedUserId);
       if (user) {
         setCurrentUser(user);
@@ -155,7 +193,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     users[userIndex] = { ...users[userIndex], pin: newPin };
-    saveData<User[]>(DataItemType.Users, users);
+    if (!saveData<User[]>(DataItemType.Users, users)) {
+      toast({ title: "Storage Error", description: "Could not save PIN due to storage limitations.", variant: "destructive" });
+      setIsLoadingAuth(false);
+      return false;
+    }
 
     setCurrentUser(users[userIndex]);
     setIsAuthenticated(true);
@@ -183,7 +225,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const updatedUser = { ...users[userIndex], profilePictureUrl: dataUri };
     users[userIndex] = updatedUser;
-    saveData<User[]>(DataItemType.Users, users);
+    if (!saveData<User[]>(DataItemType.Users, users)) {
+      toast({ title: "Storage Error", description: "Profile picture updated locally but could not save to storage.", variant: "destructive" });
+      // Proceed with UI update even if storage fails, but inform user
+    }
     setCurrentUser(updatedUser);
 
     toast({ title: "Profile Picture Updated", description: "Your profile picture has been changed." });
@@ -191,35 +236,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  const updateLogo = useCallback((setter: React.Dispatch<React.SetStateAction<string | null>>, key: DataItemType, dataUri: string | null, toastTitle: string, toastDescription: string) => {
-    setter(dataUri);
-    if (dataUri) {
-      saveData<string>(key, dataUri);
+  const updateLogoGeneric = useCallback((
+    setter: React.Dispatch<React.SetStateAction<string | null>>, 
+    key: DataItemType, 
+    dataUri: string | null, 
+    toastTitle: string, 
+    toastDescription: string
+  ) => {
+    console.log(`[AuthContext] updateLogoGeneric for ${key}. Data URI length:`, dataUri?.length);
+    
+    const success = dataUri ? saveData<string>(key, dataUri) : (localStorage.removeItem(key), true);
+
+    if (success) {
+      setter(dataUri);
+      toast({ title: toastTitle, description: toastDescription });
     } else {
-      if (typeof window !== 'undefined') localStorage.removeItem(key);
+      toast({ title: "Storage Full", description: `Could not save ${toastTitle.toLowerCase()}. Local storage quota exceeded.`, variant: "destructive" });
     }
-    toast({ title: toastTitle, description: toastDescription });
   }, [toast]);
 
-  const updateAppLogoLight = useCallback((dataUri: string | null) => updateLogo(setAppLogoLightUrl, DataItemType.AppLogoLight, dataUri, "Light App Logo Updated", dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared."), [updateLogo]);
-  const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogo(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo Updated", dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared."), [updateLogo]);
+  const updateAppLogoLight = useCallback((dataUri: string | null) => updateLogoGeneric(setAppLogoLightUrl, DataItemType.AppLogoLight, dataUri, "Light App Logo", dataUri ? "Light mode app logo override changed." : "Light mode app logo override cleared."), [updateLogoGeneric]);
+  const updateAppLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setAppLogoDarkUrl, DataItemType.AppLogoDark, dataUri, "Dark App Logo", dataUri ? "Dark mode app logo override changed." : "Dark mode app logo override cleared."), [updateLogoGeneric]);
   
   const setDefaultAppLogoLight = useCallback((dataUri: string) => {
-    setDefaultAppLogoLightUrl(dataUri);
-    saveData<string>(DataItemType.DefaultAppLogoLight, dataUri);
-    updateAppLogoLight(null); // Clear override
-    toast({ title: "Default Light App Logo Set", description: "The new default light mode app logo has been set." });
+    if (saveData<string>(DataItemType.DefaultAppLogoLight, dataUri)) {
+      _setDefaultAppLogoLightUrlInternal(dataUri);
+      updateAppLogoLight(null); 
+      toast({ title: "Default Light App Logo Set", description: "The new default light mode app logo has been set." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not set default light app logo. Storage quota exceeded.", variant: "destructive" });
+    }
   }, [toast, updateAppLogoLight]);
 
   const setDefaultAppLogoDark = useCallback((dataUri: string) => {
-    setDefaultAppLogoDarkUrl(dataUri);
-    saveData<string>(DataItemType.DefaultAppLogoDark, dataUri);
-    updateAppLogoDark(null); // Clear override
-    toast({ title: "Default Dark App Logo Set", description: "The new default dark mode app logo has been set." });
+    if (saveData<string>(DataItemType.DefaultAppLogoDark, dataUri)) {
+      _setDefaultAppLogoDarkUrlInternal(dataUri);
+      updateAppLogoDark(null);
+      toast({ title: "Default Dark App Logo Set", description: "The new default dark mode app logo has been set." });
+    } else {
+      toast({ title: "Storage Full", description: "Could not set default dark app logo. Storage quota exceeded.", variant: "destructive" });
+    }
   }, [toast, updateAppLogoDark]);
 
-  const updateHeaderLogoLight = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoLightUrl, DataItemType.HeaderLogoLight, dataUri, "Light Header Logo Updated", dataUri ? "Light mode header logo changed." : "Light mode header logo cleared."), [updateLogo]);
-  const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogo(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo Updated", dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared."), [updateLogo]);
+  const updateHeaderLogoLight = useCallback((dataUri: string | null) => updateLogoGeneric(setHeaderLogoLightUrl, DataItemType.HeaderLogoLight, dataUri, "Light Header Logo", dataUri ? "Light mode header logo changed." : "Light mode header logo cleared."), [updateLogoGeneric]);
+  const updateHeaderLogoDark = useCallback((dataUri: string | null) => updateLogoGeneric(setHeaderLogoDarkUrl, DataItemType.HeaderLogoDark, dataUri, "Dark Header Logo", dataUri ? "Dark mode header logo changed." : "Dark mode header logo cleared."), [updateLogoGeneric]);
+  
+  const updateCustomAccentColor = useCallback((newColorHex: string) => {
+    const newHslString = hexToHslString(newColorHex);
+    if (newHslString) {
+      if (saveData(DataItemType.CustomAccentColor, newColorHex)) { // Save hex
+        setCustomAccentColorState(newColorHex); // Store hex in state
+        applyCustomAccentColor(newColorHex); // Apply (will convert to HSL for CSS variable)
+        toast({ title: "Accent Color Updated", description: `New accent color ${newColorHex} applied.` });
+      } else {
+        toast({ title: "Storage Full", description: "Could not save accent color. Storage quota exceeded.", variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Invalid Color", description: "The selected color format was not valid.", variant: "destructive" });
+    }
+  }, [toast]);
 
 
   const contextValue = React.useMemo(() => ({
@@ -229,10 +304,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     pinSetupRequiredForUser,
     appLogoLightUrl,
     appLogoDarkUrl,
-    defaultAppLogoLightUrl,
-    defaultAppLogoDarkUrl,
+    defaultAppLogoLightUrl: _defaultAppLogoLightUrlInternal,
+    defaultAppLogoDarkUrl: _defaultAppLogoDarkUrlInternal,
     headerLogoLightUrl,
     headerLogoDarkUrl,
+    customAccentColor,
     login,
     logout,
     completePinSetupAndLogin,
@@ -243,20 +319,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setDefaultAppLogoDark,
     updateHeaderLogoLight,
     updateHeaderLogoDark,
+    updateCustomAccentColor,
   }), [
-    currentUser, 
-    isAuthenticated, 
-    isLoadingAuth, 
-    pinSetupRequiredForUser, 
-    appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl, headerLogoLightUrl, headerLogoDarkUrl,
-    logout, login, completePinSetupAndLogin, updateUserProfilePicture,
-    updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark, updateHeaderLogoLight, updateHeaderLogoDark,
+    currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
+    appLogoLightUrl, appLogoDarkUrl, _defaultAppLogoLightUrlInternal, _defaultAppLogoDarkUrlInternal,
+    headerLogoLightUrl, headerLogoDarkUrl, customAccentColor,
+    login, logout, completePinSetupAndLogin, updateUserProfilePicture,
+    updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
+    updateHeaderLogoLight, updateHeaderLogoDark, updateCustomAccentColor,
   ]);
   
-  if (typeof window !== 'undefined') { 
-    // console.log('[AuthContext] PROVIDING CONTEXT VALUE. appLogoUrl len:', appLogoUrl?.length, 'defaultAppLogoUrl len:', _defaultAppLogoUrlInternal?.length, 'headerLogoUrl len:', headerLogoUrl?.length);
-  }
-
   return (
     <AuthContext.Provider value={contextValue}>
       {children}

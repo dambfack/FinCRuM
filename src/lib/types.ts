@@ -1,4 +1,5 @@
 
+
 /**
  * Represents data extracted from an Excel or CSV file.
  */
@@ -195,9 +196,6 @@ export enum DataItemType {
   Users = 'users',
   CurrentUserId = 'currentUserId', // Added for storing logged-in user ID
   Notifications = 'notifications', // For notifications
-  AppLogo = 'appLogo', // For storing custom app logo data URI (current override) - DEPRECATED
-  DefaultAppLogo = 'defaultAppLogo', // For storing the user-set default app logo - DEPRECATED
-  HeaderLogo = 'headerLogo', // For storing custom header text logo - DEPRECATED
   AppLogoLight = 'appLogoLight',
   AppLogoDark = 'appLogoDark',
   DefaultAppLogoLight = 'defaultAppLogoLight',
@@ -206,6 +204,7 @@ export enum DataItemType {
   HeaderLogoDark = 'headerLogoDark',
   BackgroundImage = 'backgroundImage', // For current custom background override
   DefaultBackgroundImage = 'defaultBackgroundImage', // For user-set default background
+  CustomAccentColor = 'customAccentColor', // For user-defined accent color
 }
 
 /**
@@ -230,6 +229,7 @@ export interface LocalData {
   headerLogoDark?: string;
   backgroundImage?: string; // Data URI for current custom background
   defaultBackgroundImage?: string; // Data URI for user-set default background
+  customAccentColor?: string; // Hex string for custom accent
 }
 
 /**
