@@ -65,23 +65,25 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0);
+  const [attemptCounter, setAttemptCounter] = useState(0); // Prevents infinite loops on error
 
-  const ultimateFallbackPngLogo = "/f_logo.png";
+  const ultimateFallbackPngLogo = "/f_logo.png"; // Your local fallback
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
+
 
   useEffect(() => {
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    } else {
+    } else { // light or system (assuming system might default to light)
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     
+    // Only update if the source actually changes, or if there was an error and we're trying a new source
     if (currentSrc !== determinedSrc || imgError) {
-      setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-      setImgError(false); 
-      setAttemptCounter(0);
+      setCurrentSrc(determinedSrc || ultimateFallbackPngLogo); // Ensure currentSrc is never null after initial determination if possible
+      setImgError(false); // Reset error state when trying a new src
+      setAttemptCounter(0); // Reset attempt counter when primary source logic changes
     }
   }, [
       props.appLogoLightUrl, 
@@ -89,50 +91,64 @@ const Logo: React.FC<{
       props.defaultAppLogoLightUrl, 
       props.defaultAppLogoDarkUrl, 
       resolvedTheme,
-      currentSrc, 
-      imgError,
+      currentSrc, // Re-evaluate if currentSrc changes externally (less likely for this component)
+      imgError, // Re-evaluate if an error occurred
       ultimateFallbackPngLogo
   ]);
   
   const handleError = useCallback(() => {
     setImgError(true);
     let nextSrc = '';
-    const currentAttemptSrc = currentSrc; 
+    const currentAttemptSrc = currentSrc; // Use the src that just failed
+
+    // Fallback logic:
+    // 1. Try the other theme's custom logo (if applicable and different)
+    // 2. Try the other theme's default logo (if applicable and different)
+    // 3. Try the ultimateFallbackPngLogo
+    // 4. Try the absoluteUltimatePlaceholder
+    // This explicit chain can be complex; simplifying to main fallback for now.
 
     if (currentAttemptSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
+        console.log(`[LogoComponent] Error with ${currentAttemptSrc}, falling back to ${ultimateFallbackPngLogo}`);
         nextSrc = ultimateFallbackPngLogo;
     } else if (currentAttemptSrc !== absoluteUltimatePlaceholder) {
+        console.log(`[LogoComponent] Error with ${currentAttemptSrc} (and possibly ${ultimateFallbackPngLogo}), falling back to ${absoluteUltimatePlaceholder}`);
         nextSrc = absoluteUltimatePlaceholder;
     }
 
     if (currentAttemptSrc !== nextSrc && nextSrc) {
       setCurrentSrc(nextSrc);
-      setImgError(false); 
-      setAttemptCounter(prev => prev + 1); 
+      setImgError(false); // Reset error for the new attempt
+      setAttemptCounter(prev => prev + 1); // Increment counter for this specific fallback attempt
     } else if (!nextSrc && currentAttemptSrc !== absoluteUltimatePlaceholder) {
+      // This case means ultimateFallbackPngLogo was already tried and failed, or wasn't defined
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
   }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
+
   const logoToDisplay = imgError && attemptCounter > 2 ? absoluteUltimatePlaceholder : (currentSrc || ultimateFallbackPngLogo);
+
+  // Determine if next/image optimizations should be disabled
   const isDataUri = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('data:');
   const isPlaceholderCo = typeof logoToDisplay === 'string' && logoToDisplay.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
   
   if (!logoToDisplay || (imgError && logoToDisplay === absoluteUltimatePlaceholder && attemptCounter > 2)) {
+    // Render a very simple fallback if all sources fail after multiple attempts
     return <div className="h-6 w-6 bg-muted/20 flex items-center justify-center text-destructive text-xs rounded-full">F</div>;
   }
   
   return (
       <NextImage
-        key={`${logoToDisplay}-${attemptCounter}-${resolvedTheme}`} 
+        key={`${logoToDisplay}-${attemptCounter}-${resolvedTheme}`} // Force re-render on src change or retry
         src={logoToDisplay}
         alt="Finsculpt CRM Logo"
         width={24} 
         height={24} 
-        className="h-6 w-6 object-contain" 
+        className="h-6 w-6 object-contain" // Tailwind classes to control displayed size
         data-ai-hint="company app logo"
         unoptimized={unoptimized}
         onError={handleError}
@@ -179,7 +195,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const [isUserAvatarModalOpen, setIsUserAvatarModalOpen] = useState(false);
   
   const [showAccentPicker, setShowAccentPicker] = useState(false);
-  const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState('#008080');
+  const [currentAccentPickerColor, setCurrentAccentPickerColor] = useState('#008080'); // Default to teal
 
   const [showChartColorPicker, setShowChartColorPicker] = useState<keyof UserThemeSettings | null>(null);
   const [currentChartPickerColor, setCurrentChartPickerColor] = useState('#000000');
@@ -188,8 +204,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     label: string;
     stateValue: string | null | undefined;
     updateFn: (hex: string | null) => void;
-    dataItemType: keyof UserThemeSettings;
-    pickerKey: keyof UserThemeSettings;
+    dataItemType: keyof UserThemeSettings; // Keep this if it's used elsewhere or for consistency
+    pickerKey: keyof UserThemeSettings;   // Key for managing which picker is open
   }[] = [
     { label: 'Open Status Color', stateValue: currentUserThemeSettings?.chartPieColorOpen, updateFn: updateChartPieColorOpen, dataItemType: 'chartPieColorOpen', pickerKey: 'chartPieColorOpen' },
     { label: 'Closed Status Color', stateValue: currentUserThemeSettings?.chartPieColorClosed, updateFn: updateChartPieColorClosed, dataItemType: 'chartPieColorClosed', pickerKey: 'chartPieColorClosed' },
@@ -198,22 +214,31 @@ function AppContent({ children }: { children: React.ReactNode }) {
   ];
   
   useEffect(() => {
+    // Ensure this runs only on the client side
     if (typeof window !== 'undefined') {
-      const APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT = 'https://placehold.co/1920x1080.png';
+      const APP_HARDCODED_DEFAULT_BACKGROUND = 'https://placehold.co/1920x1080.png'; // Example default
+      
       const applyInitialBackground = (url: string | null) => {
-        document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT}')`;
+        document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND}')`;
         document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'abstract gradient');
       };
+
       const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
       const storedDefaultBg = getData<string>(DataItemType.DefaultBackgroundImage);
-      if (storedCustomBg) applyInitialBackground(storedCustomBg);
-      else if (storedDefaultBg) applyInitialBackground(storedDefaultBg);
-      else applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND_LAYOUT);
+
+      if (storedCustomBg) {
+        applyInitialBackground(storedCustomBg);
+      } else if (storedDefaultBg) {
+        applyInitialBackground(storedDefaultBg);
+      } else {
+        applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND); // Apply hardcoded default if nothing stored
+      }
     }
-  }, []);
+  }, []); // Empty dependency array: runs once on mount client-side
+
 
   useEffect(() => {
-    setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080');
+    setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080'); // Default to teal if no custom accent
   }, [currentUserThemeSettings?.accentColor]);
 
   const handleFileChangeGeneric = (
@@ -222,34 +247,43 @@ function AppContent({ children }: { children: React.ReactNode }) {
     setCropperOpen: (open: boolean) => void, 
     maxSizeMB: number, 
     toastTitle: string,
-    inputRef: React.RefObject<HTMLInputElement>
+    inputRef: React.RefObject<HTMLInputElement> // Added ref for resetting
   ) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({ title: "Image Too Large", description: `Please select an image smaller than ${maxSizeMB}MB.`, variant: "destructive" });
-        if (inputRef.current) inputRef.current.value = ''; return;
+        if (inputRef.current) inputRef.current.value = ''; // Reset file input
+        return;
       }
+      // For logos, ensure it's PNG
       if (toastTitle.toLowerCase().includes("logo") && !file.type.startsWith('image/png')) {
          toast({ title: "Invalid File Type", description: "Please upload a PNG file for logos.", variant: "destructive" });
-         if (inputRef.current) inputRef.current.value = ''; return;
+         if (inputRef.current) inputRef.current.value = ''; // Reset file input
+         return;
       }
+
       const reader = new FileReader();
       reader.onloadend = () => { 
         setCropSrc(reader.result as string); 
         setCropperOpen(true); 
       };
       reader.onerror = (e) => {
-        toast({ title: "File Read Error", variant: "destructive" });
+        console.error("FileReader error:", e);
+        toast({ title: "File Read Error", description: "Could not read the selected file.", variant: "destructive" });
       };
       reader.readAsDataURL(file);
-      if (inputRef.current) inputRef.current.value = '';
+      if (inputRef.current) { // Reset file input after processing
+        inputRef.current.value = '';
+      }
     }
   };
 
+  // Profile Picture Handlers
   const handleUserProfilePictureFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setUserImageToCropSrc, setIsUserProfileCropperOpen, 2, "User Profile Picture", userProfilePicInputRef);
   const handleUserCropSave = (croppedImageUrl: string) => { if (currentUser) updateUserProfilePicture(croppedImageUrl); setIsUserProfileCropperOpen(false); setUserImageToCropSrc(null); };
   
+  // App Logo Handlers
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
   const handleAppLogoLightCropSave = (croppedDataUri: string) => { updateAppLogoLight(croppedDataUri); setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); };
   const handleAppLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoDarkImageToCropSrc, setIsAppLogoDarkCropperOpen, 1, "Dark App Logo", appLogoDarkInputRef);
@@ -258,6 +292,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", description: "No light theme logo is currently set.", variant: "default"}); };
   const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", description: "No dark theme logo is currently set.", variant: "default"}); };
   
+  // Header Logo Handlers
   const handleHeaderLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoLightImageToCropSrc, setIsHeaderLogoLightCropperOpen, 0.5, "Light Header Logo", headerLogoLightInputRef);
   const handleHeaderLogoLightCropSave = (croppedDataUri: string) => { updateHeaderLogoLight(croppedDataUri); setIsHeaderLogoLightCropperOpen(false); setHeaderLogoLightImageToCropSrc(null); };
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
@@ -270,7 +305,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleChartColorPickerToggle = (pickerKey: keyof UserThemeSettings) => {
     const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
     if (config) {
-      setCurrentChartPickerColor(config.stateValue || '#000000');
+      setCurrentChartPickerColor(config.stateValue || '#000000'); // Default to black if no color set
     }
     setShowChartColorPicker(prev => prev === pickerKey ? null : pickerKey);
   };
@@ -280,17 +315,19 @@ function AppContent({ children }: { children: React.ReactNode }) {
         const config = chartColorConfig.find(c => c.pickerKey === showChartColorPicker);
         if (config) config.updateFn(currentChartPickerColor);
     }
-    setShowChartColorPicker(null);
+    setShowChartColorPicker(null); // Close picker after save
   };
   const handleChartColorReset = (pickerKey: keyof UserThemeSettings) => {
     const config = chartColorConfig.find(c => c.pickerKey === pickerKey);
     if (config) config.updateFn(null);
-    if (showChartColorPicker === pickerKey) setShowChartColorPicker(null);
+    if (showChartColorPicker === pickerKey) setShowChartColorPicker(null); // Close if this was the active picker
   };
 
+
   const currentHeaderLogoToDisplay = resolvedTheme === 'dark' 
-    ? (headerLogoDarkUrl || headerLogoLightUrl) 
-    : (headerLogoLightUrl || headerLogoDarkUrl);
+    ? (headerLogoDarkUrl || headerLogoLightUrl) // Fallback to light if dark specific not set
+    : (headerLogoLightUrl || headerLogoDarkUrl); // Fallback to dark if light specific not set
+
 
   if (isLoadingAuth) {
     return (
@@ -344,14 +381,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
             {!isMobileSidebarOpen && ( 
               <Link href="/" className="font-semibold text-lg flex items-center gap-2 text-foreground hover:text-primary transition-colors" aria-label="View dashboard">
                 <div className="flex items-center font-heading">
-                  {currentHeaderLogoToDisplay ? <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={256} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" unoptimized/> : <span className="mr-1">Finsculpt</span>}
+                  {currentHeaderLogoToDisplay ? <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={256} height={44} className="h-11 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" unoptimized/> : <span className="mr-1">Finsculpt</span>}
                   <span>CRM</span>
                 </div>
               </Link>
             )}
           </div>
           <div className="hidden md:flex items-center text-xl font-semibold font-heading">
-            {currentHeaderLogoToDisplay ? <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={256} height={40} className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" unoptimized/> : <span className="mr-1">Finsculpt</span>}
+            {currentHeaderLogoToDisplay ? <NextImage src={currentHeaderLogoToDisplay} alt="Header Logo" width={256} height={44} className="h-11 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo" unoptimized/> : <span className="mr-1">Finsculpt</span>}
             <span>CRM</span>
           </div>
           <div className="flex items-center gap-3">
@@ -383,7 +420,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <Separator className="my-4" />
                 {/* Bottom Section - Two Columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-2 px-3 pb-3">
-                   {/* Left Column */}
+                   {/* Left Column: App/Header Logos & Theme Customization (Partner Only for Logos) */}
                    <div className="space-y-6">
                     {currentUser?.role === 'partner' && (
                       <div className="space-y-3">
@@ -400,7 +437,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoDarkInputRef.current?.click()}><Moon className="mr-2 h-4 w-4" />Header Logo (Dark)</Button>
                       </div>
                     )}
-                     <div className="space-y-3"> 
+                     <div className="space-y-3"> {/* Theme Customization - For All Users */}
                         <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
                         <div className="space-y-1">
                           <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
@@ -433,7 +470,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         ))}
                       </div>
                   </div>
-                  {/* Right Column */}
+                  {/* Right Column: App Background - For All Users */}
                   <div className="space-y-6">
                     <BackgroundImageSwitcher />
                   </div>
