@@ -38,23 +38,23 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   let isTruncateRequested = className?.includes('truncate');
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
+  let valueContainerClasses = "min-w-0 flex-1"; // Default for the value container
 
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
     // Apply truncation styles directly to the p tag
     pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap");
+    // The value container needs overflow-hidden for its children to truncate effectively.
+    valueContainerClasses = cn(valueContainerClasses, "overflow-hidden");
   }
   
-  // This div is a flex child and needs min-w-0 to allow its children to truncate
-  const valueContainerClasses = "min-w-0 flex-1 overflow-hidden";
-
 
   let valueNode: React.ReactNode;
 
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string); // Assuming formatDateTime takes string
+    const dateString = formatDateTime(value as string); 
     valueNode = (
       <p className={pTagClasses} title={isTruncateRequested ? dateString : undefined}>
         {dateString}
@@ -151,7 +151,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       contacts[contactIndex] = updatedContactWithNewAttachments;
       saveData<Contact[]>(DataItemType.Contacts, contacts);
       if (onContactUpdate) {
-        // Ensure this prop signature matches in parent components
         onContactUpdate(updatedContactWithNewAttachments);
       }
     }
@@ -168,7 +167,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className={dialogContentClassName}>
-        <DialogHeader className="mb-4 flex flex-col items-center space-y-3"> {/* Updated classes */}
+        <DialogHeader className="pt-4 mb-4 flex flex-col items-center space-y-3"> {/* Added pt-4 here */}
           <button
             onClick={() => {
               if (contact.profilePictureUrl) {
@@ -178,12 +177,12 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             className={cn("rounded-full", contact.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")}
             aria-label="View profile picture"
           >
-            <Avatar className="h-28 w-28"> {/* Increased size */}
+            <Avatar className="h-28 w-28"> 
               <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
-              <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback> {/* Increased text size */}
+              <AvatarFallback className="text-4xl">{getFirstInitial(contact.firstName)}</AvatarFallback> 
             </Avatar>
           </button>
-          <div className="text-center"> {/* Wrapper for centering text */}
+          <div className="text-center min-w-0 flex-1"> 
             <DialogTitle className="text-2xl font-heading truncate">
               {contact.firstName} {contact.lastName}
             </DialogTitle>
@@ -206,6 +205,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
             {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
+            
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
           </TabsContent>
@@ -269,3 +269,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
 export default CustomerDetailModal;
     
+
