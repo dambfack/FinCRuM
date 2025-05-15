@@ -112,7 +112,7 @@ export default function ExportDataPage() {
         AssignedToUserID: contact.assignedToUserId || '',
         CreatedAt: contact.createdAt ? formatDateTime(contact.createdAt as string) : '', // Format dates
         UpdatedAt: contact.updatedAt ? formatDateTime(contact.updatedAt as string) : '', // Format dates
-        ProfilePictureURL: contact.profilePictureUrl || '',
+        // ProfilePictureURL: contact.profilePictureUrl || '', // Excluded as per request
         ContactRecordStatus: contact.contactStatus || 'approved',
       }));
 
