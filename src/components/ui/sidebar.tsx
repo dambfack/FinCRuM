@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu as MenuIcon } from "lucide-react"; // Ensure MenuIcon is imported if used as default mobile
+import { PanelLeft, Menu as MenuIcon } from "lucide-react"; 
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -209,7 +209,7 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground",
-            "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-white/10 dark:border-white/5",
+            "bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-sidebar-border",
             className
           )}
           ref={ref}
@@ -310,8 +310,8 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button>
->(({ className, onClick, children, ...props }, ref) => { // Added children prop
+  React.ComponentProps<typeof Button> & { children?: React.ReactNode }
+>(({ className, onClick, children, ...props }, ref) => { 
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -327,7 +327,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      {children || <PanelLeft />} {/* Use children if provided, else default to PanelLeft */}
+      {children || <PanelLeft />} 
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -563,7 +563,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-lg p-2.5 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding,color,background-color] hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent/80 data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:items-center [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
+  "peer/menu-button text-sidebar-foreground flex w-full items-center gap-2.5 overflow-hidden rounded-lg p-2.5 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding,color,background-color] hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-primary-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent/80 data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:items-center [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -813,6 +813,8 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
 
     
 
