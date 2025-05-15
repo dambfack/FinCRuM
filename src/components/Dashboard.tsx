@@ -9,7 +9,7 @@ import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle,
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User } from '@/lib/types';
+import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User, UserThemeSettings } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataSync } from '@/hooks/use-data-sync';
@@ -48,16 +48,6 @@ const initialStats: DashboardStats = {
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-// Fallback colors for pie chart if CSS variables cannot be read or custom colors not set
-// These are direct HSL strings for the CSS variables.
-const PIE_CHART_CSS_VARS_FALLBACK = [
-  'hsl(var(--chart-pie-1))', // Open
-  'hsl(var(--chart-pie-2))', // Closed
-  'hsl(var(--chart-pie-3))', // Missed
-  'hsl(var(--chart-pie-4))', // Other
-];
-
-
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
     const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
@@ -73,11 +63,8 @@ const Dashboard: FC = () => {
     const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
     
-    const { resolvedTheme } = useTheme();
-    const auth = useAuth(); 
-    const { 
-      currentUserThemeSettings
-    } = auth;
+    const { resolvedTheme, theme } = useTheme();
+    const { currentUser, currentUserThemeSettings } = useAuth();
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -211,42 +198,15 @@ const Dashboard: FC = () => {
 
     const apexPieChartOptions = useMemo(() => {
         const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
-        let currentPieColors: string[] = [];
-
-        // Prioritize user-set theme colors from AuthContext
-        const userColors = [
-          currentUserThemeSettings?.chartPieColorOpen,
-          currentUserThemeSettings?.chartPieColorClosed,
-          currentUserThemeSettings?.chartPieColorMissed,
-          currentUserThemeSettings?.chartPieColorOther,
+        
+        const currentThemeKey = resolvedTheme === 'dark' ? 'dark' : 'light';
+        
+        const pieColors = [
+            currentUserThemeSettings?.chartPieColorOpen || (currentThemeKey === 'dark' ? 'rgba(56, 189, 248, 0.8)' : 'rgba(14, 165, 233, 0.8)'), // Open - Teal/Sky
+            currentUserThemeSettings?.chartPieColorClosed || (currentThemeKey === 'dark' ? 'rgba(74, 222, 128, 0.8)' : 'rgba(34, 197, 94, 0.8)'), // Closed - Green
+            currentUserThemeSettings?.chartPieColorMissed || (currentThemeKey === 'dark' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(245, 158, 11, 0.8)'), // Missed - Amber/Yellow
+            currentUserThemeSettings?.chartPieColorOther || (currentThemeKey === 'dark' ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.8)'), // Other - Gray
         ];
-
-        if (dealStatusLabels.length > 0 && totalClients > 0) {
-            currentPieColors = dealStatusLabels.map((_label, index) => {
-              if (userColors[index]) { // User has set a custom color for this slice
-                  const hex = userColors[index] as string;
-                  // Convert hex to rgba for opacity
-                  let r = 0, g = 0, b = 0;
-                  if (hex.length === 4) {
-                    r = parseInt(hex[1] + hex[1], 16);
-                    g = parseInt(hex[2] + hex[2], 16);
-                    b = parseInt(hex[3] + hex[3], 16);
-                  } else if (hex.length === 7) {
-                    r = parseInt(hex.substring(1, 2), 16);
-                    g = parseInt(hex.substring(3, 4), 16);
-                    b = parseInt(hex.substring(5, 6), 16);
-                  }
-                  return `rgba(${r},${g},${b},0.8)`;
-              }
-              // Fallback to CSS variables if no user-specific color
-              return `hsla(var(--chart-pie-${index + 1}), 0.8)`;
-            });
-        } else if (dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) {
-            // Fallback if labels are missing but series data exists (less likely)
-            currentPieColors = dealStatusSeries.map((_, index) => `hsla(var(--chart-pie-${index + 1}), 0.8)`);
-        } else {
-            currentPieColors = [resolvedTheme === 'dark' ? 'rgba(85,85,85,0.8)' : 'rgba(170,170,170,0.8)']; // Default gray for no data
-        }
 
         return {
             chart: {
@@ -256,7 +216,7 @@ const Dashboard: FC = () => {
                 toolbar: { show: false }
             },
             labels: (dealStatusLabels.length > 0 && totalClients > 0) ? dealStatusLabels : ['No Data Available'],
-            colors: currentPieColors,
+            colors: (dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0)) ? pieColors : [resolvedTheme === 'dark' ? 'rgba(85,85,85,0.8)' : 'rgba(170,170,170,0.8)'],
             fill: { opacity: 1 }, // Opacity is now part of the color strings
             stroke: { show: true, width: 2, colors: ['transparent'] },
             legend: {
@@ -291,7 +251,13 @@ const Dashboard: FC = () => {
                             }
                         }
                     },
-                    dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
+                    dropShadow: { 
+                        enabled: false, // Disabled to remove potential dark overlay
+                        // top: 3, 
+                        // left: 0, 
+                        // blur: 3, 
+                        // opacity: 0.15 // Reduced opacity if re-enabled
+                    }, 
                     states: { hover: { filter: { type: 'lighten', value: 0.25 } } }
                 }
             },
@@ -346,7 +312,7 @@ const Dashboard: FC = () => {
             toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
-      loadDashboardData();
+      loadDashboardData(); // Reload to reflect connection status change
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
@@ -862,3 +828,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
