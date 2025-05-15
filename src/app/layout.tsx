@@ -22,7 +22,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
-  useSidebar,
+  useSidebar, // Import useSidebar here
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2 } from 'lucide-react';
@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 
 const interBlack = Inter_Tight({
   subsets: ['latin'],
-  weight: ['800', '900'], // Added 900 for Inter Black
+  weight: ['800', '900'],
   variable: '--font-inter-black',
 });
 
@@ -65,27 +65,26 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // To force re-render on error cycles
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Local fallback in public folder
-  const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F"; // Absolute fallback
+  const ultimateFallbackPngLogo = "/f_logo.png";
+  const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
   useEffect(() => {
-    console.log(`[Logo Component] useEffect running. Theme: ${resolvedTheme} Props: `, props);
+    console.log(`[Logo Component] useEffect running. Theme: ${resolvedTheme}`);
     let determinedSrc: string | null = null;
 
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    } else { // 'light' or system (defaulting to light behavior for src preference)
+    } else {
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     
-    console.log("[Logo Component] useEffect - Determined Src:", determinedSrc ? `Exists (len ${determinedSrc.length})` : determinedSrc);
+    console.log("[Logo Component] useEffect - Determined Src:", determinedSrc ? `Exists (len ${determinedSrc?.length})` : determinedSrc);
 
-    // Only update if the source has genuinely changed or if there was an error previously
     if (currentSrc !== determinedSrc || imgError) {
       setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-      setImgError(false); // Reset error state on new src attempt
+      setImgError(false); 
     }
 
   }, [
@@ -94,39 +93,33 @@ const Logo: React.FC<{
       props.defaultAppLogoLightUrl, 
       props.defaultAppLogoDarkUrl, 
       resolvedTheme,
-      currentSrc, // Added to re-evaluate if currentSrc changes through error handling
-      imgError    // Added to re-evaluate if imgError changes
+      currentSrc, 
+      imgError    
   ]);
   
-
   const handleError = useCallback(() => {
     console.error(`[Logo Component] Error loading image. Attempt: ${attemptCounter + 1}. Current src: ${currentSrc}`);
     setImgError(true);
     let nextSrc = '';
 
-    // Simplified fallback logic for now
     if (currentSrc !== ultimateFallbackPngLogo && ultimateFallbackPngLogo) {
         nextSrc = ultimateFallbackPngLogo;
     } else if (currentSrc !== absoluteUltimatePlaceholder) {
         nextSrc = absoluteUltimatePlaceholder;
     }
-    // If nextSrc is still the same as currentSrc, it means we've exhausted fallbacks, or the last fallback also failed.
-    // In a real scenario, you might want to stop trying after a few attempts.
 
     if (currentSrc !== nextSrc && nextSrc) {
       console.log(`[Logo Component] Error fallback: Attempting to load ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false); // Reset error for the new attempt
-      setAttemptCounter(prev => prev + 1); // Increment attempt counter to change key
+      setImgError(false); 
+      setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-      // This case might happen if ultimateFallbackPngLogo was null/undefined
       console.log(`[Logo Component] Error fallback: No next fallback, trying absolute placeholder.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     } else if (currentSrc === absoluteUltimatePlaceholder && attemptCounter > 5) {
       console.error("[Logo Component] All fallbacks failed. Displaying nothing or a placeholder div.");
-      // Allow rendering the placeholder div
     }
   }, [currentSrc, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
@@ -146,7 +139,7 @@ const Logo: React.FC<{
   
   return (
       <NextImage
-        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`} // More robust key
+        key={`${displaySrc}-${attemptCounter}-${resolvedTheme}`}
         src={displaySrc}
         alt="Finsculpt CRM Logo"
         width={24} 
@@ -550,12 +543,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
                   {/* Bottom Section - Two Columns */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-2">
-                    {/* Left Column */}
-                    <div className="space-y-6">
-                       <BackgroundImageSwitcher />
-                    </div>
-
-                    {/* Right Column (Partner Only) */}
+                    {/* Left Column (Partner Only) */}
                     {currentUser?.role === 'partner' && (
                       <div className="space-y-6">
                         <div className="space-y-2">
@@ -629,6 +617,12 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         </div>
                       </div>
                     )}
+
+                    {/* Right Column */}
+                     <div className="space-y-6">
+                       <BackgroundImageSwitcher />
+                    </div>
+
                   </div>
                   
                   {/* Logout Button (Spanning below the grid) */}
@@ -717,3 +711,4 @@ export default function RootLayout({
   );
 }
     
+
