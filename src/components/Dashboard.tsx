@@ -6,7 +6,7 @@ import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive } from 'lucide-react';
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'; // Added PieChart, Pie, Cell
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User } from '@/lib/types';
@@ -108,7 +108,7 @@ const Dashboard: FC = () => {
             setAllUsersState(loadedUsers);
 
             if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') {
-                loadedContacts = mockContacts;
+                // loadedContacts = mockContacts; // No longer using mock contacts by default
                  // saveData<Contact[]>(DataItemType.Contacts, mockContacts); // Optionally save mocks for persistence
             }
             setAllContactsState(loadedContacts);
@@ -183,7 +183,8 @@ const Dashboard: FC = () => {
             console.error("Error loading dashboard data:", error);
             toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
             setStats(initialStats);
-            setRecentContacts(mockContacts.slice(0,5));
+            // setRecentContacts(mockContacts.slice(0,5)); // Do not fall back to mock data
+            setRecentContacts([]);
             setCustomerGrowthChartData([]);
             setDealStatusSeries([]);
             setDealStatusLabels([]);
@@ -194,7 +195,20 @@ const Dashboard: FC = () => {
 
     useEffect(() => {
         loadDashboardData();
+        const handleDataChange = (event: Event) => {
+          const customEvent = event as CustomEvent;
+          if (customEvent.detail?.type === DataItemType.Contacts ||
+              customEvent.detail?.type === DataItemType.Tasks ||
+              customEvent.detail?.type === DataItemType.Appointments ||
+              customEvent.detail?.type === DataItemType.Reminders ||
+              customEvent.detail?.type === DataItemType.Users) {
+            loadDashboardData();
+          }
+        };
+        window.addEventListener('dataChanged', handleDataChange);
+        return () => window.removeEventListener('dataChanged', handleDataChange);
     }, [loadDashboardData]);
+
 
     const PIE_CHART_CSS_VAR_NAMES = [
         '--chart-pie-1',
@@ -203,20 +217,32 @@ const Dashboard: FC = () => {
         '--chart-pie-4',
     ];
 
+    const fallbackPieColors = [ // Fallback colors if CSS variables fail to load
+        'rgba(255, 99, 132, 0.8)', // Reddish
+        'rgba(54, 162, 235, 0.8)', // Blueish
+        'rgba(255, 206, 86, 0.8)', // Yellowish
+        'rgba(153, 102, 255, 0.8)', // Purplish
+    ];
+
+
      useEffect(() => {
         if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
             const rootStyle = getComputedStyle(document.documentElement);
+            console.log('[Dashboard] Computing pie chart colors. Theme:', resolvedTheme, 'Labels:', dealStatusLabels);
             const colors = PIE_CHART_CSS_VAR_NAMES.map((varName, index) => {
                 const hslValue = rootStyle.getPropertyValue(varName).trim();
-                 if (hslValue) {
-                    // HSL values are like 'H S% L%'
-                    return `hsla(${hslValue}, 0.8)`; // Add 80% alpha
+                 console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
+                 if (hslValue && hslValue.split(' ').length === 3) { // Expecting "H S% L%"
+                    console.log(`[Dashboard] Using HSL value for ${varName}: ${hslValue} -> hsla(${hslValue}, 0.8)`);
+                    return `hsla(${hslValue}, 0.8)`;
                 }
-                console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} not found or empty. Using fallback.`);
-                return `hsla(${(index * 70 + 30) % 360}, 70%, 50%, 0.8)`; // Fallback with alpha
-            }).slice(0, dealStatusLabels.length); // Ensure we only take as many colors as labels
+                console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} ("${hslValue}") not valid HSL. Using fallback ${fallbackPieColors[index % fallbackPieColors.length]}.`);
+                return fallbackPieColors[index % fallbackPieColors.length];
+            }).slice(0, dealStatusLabels.length);
+            console.log('[Dashboard] Computed pie colors:', colors);
             setComputedPieChartColors(colors);
         } else if (dealStatusLabels.length === 0) {
+            console.log('[Dashboard] dealStatusLabels is empty, setting empty computedPieChartColors.');
             setComputedPieChartColors([]);
         }
     }, [resolvedTheme, dealStatusLabels]);
@@ -373,9 +399,9 @@ const Dashboard: FC = () => {
         }
       },
       labels: dealStatusLabels,
-      colors: computedPieChartColors.length > 0 ? computedPieChartColors : ['rgba(128,128,128,0.8)', 'rgba(150,150,150,0.8)', 'rgba(170,170,170,0.8)', 'rgba(190,190,190,0.8)'],
+      colors: computedPieChartColors.length > 0 ? computedPieChartColors : fallbackPieColors.slice(0, dealStatusLabels.length),
       fill: {
-        opacity: 1, // Opacity is now part of the hsla color string
+        opacity: 1, 
       },
       stroke: {
         show: true,
@@ -488,7 +514,7 @@ const Dashboard: FC = () => {
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1> {/* Removed tracking-wide */}
+          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -515,7 +541,7 @@ const Dashboard: FC = () => {
                 <Link href={stat.link} passHref legacyBehavior>
                   <a className="block h-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
+                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
                       <stat.icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -527,7 +553,7 @@ const Dashboard: FC = () => {
               ) : (
                 <>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
+                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -544,7 +570,7 @@ const Dashboard: FC = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <CardTitle className="font-heading">Customer Growth</CardTitle> {/* Removed tracking-wide */}
+                <CardTitle className="font-heading">Customer Growth</CardTitle>
                 <Select value={barChartTimeRange} onValueChange={(value: BarChartTimeRange) => setBarChartTimeRange(value)}>
                     <SelectTrigger className="w-full sm:w-[180px] h-9">
                         <SelectValue placeholder="Select time range" />
@@ -588,14 +614,14 @@ const Dashboard: FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-heading">Client Deal Status</CardTitle> {/* Removed tracking-wide */}
+            <CardTitle className="font-heading">Client Deal Status</CardTitle>
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusSeries.length > 0 && computedPieChartColors.length > 0 ? (
+            {loading ? <Skeleton className="h-[300px] w-full" /> : dealStatusLabels.length > 0 ? (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
-                    key={resolvedTheme} 
+                    key={`${resolvedTheme}-${computedPieChartColors.join(',')}`} 
                     options={apexPieChartOptions}
                     series={dealStatusSeries}
                     type="donut"
@@ -603,7 +629,7 @@ const Dashboard: FC = () => {
                     width="100%"
                   />
                 </div>
-             ) : <p className="text-sm text-muted-foreground text-center py-10">No deal status data or theme colors loaded.</p>}
+             ) : <p className="text-sm text-muted-foreground text-center py-10">No deal status data to display.</p>}
           </CardContent>
         </Card>
       </div>
@@ -611,7 +637,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
@@ -653,7 +679,7 @@ const Dashboard: FC = () => {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
@@ -668,7 +694,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+            <CardTitle className="flex items-center space-x-2 font-heading">
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
@@ -683,7 +709,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
+          <CardTitle className="flex items-center space-x-2 font-heading">
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
@@ -700,7 +726,7 @@ const Dashboard: FC = () => {
     <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Customers Added Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Customers Added Today</DialogTitle>
             </DialogHeader>
             {newCustomersTodayList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -718,7 +744,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysTasksModalOpen} onOpenChange={setTodaysTasksModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Tasks for Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Tasks for Today</DialogTitle>
             </DialogHeader>
             {todaysTasksList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -765,7 +791,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysAppointmentsModalOpen} onOpenChange={setTodaysAppointmentsModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Appointments for Today</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Appointments for Today</DialogTitle>
             </DialogHeader>
             {todaysAppointmentsList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -797,7 +823,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTaskFormOpen} onOpenChange={(open) => { if(!open) {setEditingTask(undefined); setContactForNewActivity(null);} setIsTaskFormOpen(open);}}>
         <DialogContent className={taskDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                 {contactForNewActivity && !editingTask && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
             </DialogHeader>
             <TaskForm
@@ -811,7 +837,7 @@ const Dashboard: FC = () => {
     <Dialog open={isReminderFormOpen} onOpenChange={(open) => { if(!open) {setEditingReminder(undefined); setContactForNewActivity(null);} setIsReminderFormOpen(open);}}>
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
-                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle> {/* Removed tracking-wide */}
+                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
                     {contactForNewActivity && !editingReminder && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
@@ -825,7 +851,7 @@ const Dashboard: FC = () => {
     <Dialog open={isAppointmentFormOpen} onOpenChange={(open) => { if(!open) {setEditingAppointment(undefined); setContactForNewActivity(null);} setIsAppointmentFormOpen(open);}}>
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
-                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle> {/* Removed tracking-wide */}
+                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
                   {contactForNewActivity && !editingAppointment && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
@@ -857,7 +883,7 @@ const Dashboard: FC = () => {
     }}>
         <DialogContent className={customerEditDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Edit Customer</DialogTitle> {/* Removed tracking-wide */}
+                <DialogTitle className="font-heading">Edit Customer</DialogTitle>
                 <DialogDescription>Update the customer's details below.</DialogDescription>
             </DialogHeader>
             {customerToEdit && (
@@ -874,3 +900,4 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
+
