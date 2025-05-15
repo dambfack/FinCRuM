@@ -233,10 +233,10 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                    <TableHead className="w-[35%] px-2 text-xs sm:text-sm truncate">Name</TableHead>
-                    <TableHead className="w-[20%] px-2 text-xs sm:text-sm truncate">Type</TableHead>
+                    <TableHead className="w-[35%] px-2 text-xs sm:text-sm whitespace-normal break-words">Name</TableHead>
+                    <TableHead className="w-[20%] px-2 text-xs sm:text-sm whitespace-normal break-words">Type</TableHead>
                     <TableHead className="w-[15%] px-2 text-xs sm:text-sm">Size</TableHead>
-                    <TableHead className="w-[15%] px-2 text-xs sm:text-sm">Attached On</TableHead>
+                    <TableHead className="w-[15%] px-2 text-xs sm:text-sm whitespace-normal break-words">Attached On</TableHead>
                     <TableHead className="text-right w-[15%] px-2 text-xs sm:text-sm">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -255,7 +255,7 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
                       <TableCell className="px-2 text-xs sm:text-sm break-all overflow-hidden" title={att.type}>{att.type || 'N/A'}</TableCell>
                       <TableCell className="px-2 text-xs sm:text-sm">{formatFileSize(att.size)}</TableCell>
                       <TableCell className="px-2 text-xs sm:text-sm break-all overflow-hidden">{formatDateTime(att.createdAt).split(',')[0]}</TableCell>
-                      <TableCell className="text-right space-x-0.5 px-2"> {/* Reduced space-x for tighter buttons */}
+                      <TableCell className="text-right space-x-0.5 px-2">
                         <Button variant="ghost" size="icon" onClick={() => handleDownloadAttachment(att)} title="Download File" className="h-7 w-7">
                           <Download className="h-4 w-4" />
                         </Button>
@@ -303,4 +303,3 @@ const FileAttachmentManager: React.FC<FileAttachmentManagerProps> = ({ contact, 
 };
 
 export default FileAttachmentManager;
-
