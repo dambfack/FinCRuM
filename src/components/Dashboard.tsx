@@ -6,7 +6,7 @@ import React, { FC, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive } from 'lucide-react';
-import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts'; // Removed Pie, PieChart, Cell from recharts
+import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { ExcelData, Contact, Task as TaskType, Reminder as ReminderType, Appointment as AppointmentType, User } from '@/lib/types';
@@ -46,22 +46,14 @@ const initialStats: DashboardStats = {
 };
 
 const mockContacts: Contact[] = [
-  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString()  },
-  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString() },
-  { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString() },
-  { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString() },
+  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', phone: '123-456-7890', company: 'Acme Corp', status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=JD' },
+  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', phone: '987-654-3210', company: 'Beta LLC', status: 'closed', createdAt: subMonths(new Date(), 1).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=JS'  },
+  { id: '3', firstName: 'Alice', lastName: 'Wonder', email: 'alice.wonder@example.com', phone: '555-123-4567', company: 'Gamma Inc', status: 'open', createdAt: subMonths(new Date(), 2).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=AW' },
+  { id: '4', firstName: 'Bob', lastName: 'Builder', email: 'bob.builder@example.com', phone: '555-987-6543', company: 'Delta Co', status: 'missed', createdAt: subMonths(new Date(), 3).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=BB' },
+  { id: '5', firstName: 'Eve', lastName: 'Future', email: 'eve.future@example.com', phone: '555-456-7890', company: 'Epsilon Ltd', status: 'open', createdAt: subMonths(new Date(), 5).toISOString(), updatedAt: new Date().toISOString(), profilePictureUrl: 'https://placehold.co/128x128.png?text=EF' },
 ];
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
-
-const PIE_CHART_CSS_VAR_NAMES = [
-  '--chart-pie-1',
-  '--chart-pie-2',
-  '--chart-pie-3',
-  '--chart-pie-4',
-];
-
 
 const Dashboard: FC = () => {
     const [stats, setStats] = useState<DashboardStats>(initialStats);
@@ -117,6 +109,7 @@ const Dashboard: FC = () => {
 
             if (loadedContacts.length === 0 && process.env.NODE_ENV === 'development') {
                 loadedContacts = mockContacts;
+                 // saveData<Contact[]>(DataItemType.Contacts, mockContacts); // Optionally save mocks for persistence
             }
             setAllContactsState(loadedContacts);
 
@@ -170,19 +163,17 @@ const Dashboard: FC = () => {
             });
             setCustomerGrowthChartData(growthChartData);
 
-            const statusCounts: Record<Exclude<Contact['status'], undefined | 'approached'> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
+            const statusCounts: Record<Exclude<Contact['status'], undefined> | 'other', number> = { open: 0, closed: 0, missed: 0, other: 0 };
             loadedContacts.forEach(contact => {
                 const status = contact.status || 'other';
-                 if (status === 'approached') { // Group 'approached' into 'other' if it still exists in data
-                     statusCounts.other++;
-                 } else if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined | 'approached'>)) {
-                    statusCounts[status as Exclude<Contact['status'], undefined | 'approached'>]++;
+                 if (statusCounts.hasOwnProperty(status as Exclude<Contact['status'], undefined>)) {
+                    statusCounts[status as Exclude<Contact['status'], undefined>]++;
                 } else {
                     statusCounts.other++;
                 }
             });
             const pieDataForApex = Object.entries(statusCounts)
-                .filter(([, value]) => value > 0 || Object.keys(statusCounts).length === 1) // Ensure at least one slice if all are zero
+                .filter(([, value]) => value > 0 || Object.keys(statusCounts).length === 1) 
                 .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
             setDealStatusSeries(pieDataForApex.map(item => item.value));
@@ -205,25 +196,25 @@ const Dashboard: FC = () => {
         loadDashboardData();
     }, [loadDashboardData]);
 
+    const PIE_CHART_CSS_VAR_NAMES = [
+        '--chart-pie-1',
+        '--chart-pie-2',
+        '--chart-pie-3',
+        '--chart-pie-4',
+    ];
 
      useEffect(() => {
         if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
             const rootStyle = getComputedStyle(document.documentElement);
             const colors = PIE_CHART_CSS_VAR_NAMES.map((varName, index) => {
                 const hslValue = rootStyle.getPropertyValue(varName).trim();
-                if (hslValue) {
-                    // Ensure hslValue is just 'H S% L%'
-                    const hslParts = hslValue.match(/(\d+)\s*(\d+%?)\s*(\d+%?)/);
-                    if (hslParts && hslParts.length === 4) {
-                         return `hsla(${hslParts[1]}, ${hslParts[2]}, ${hslParts[3]}, 0.8)`;
-                    } else {
-                        console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName}: HSL value '${hslValue}' could not be parsed. Using fallback.`);
-                        return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`;
-                    }
+                 if (hslValue) {
+                    // HSL values are like 'H S% L%'
+                    return `hsla(${hslValue}, 0.8)`; // Add 80% alpha
                 }
                 console.warn(`[Dashboard] Pie Chart Color: CSS Var ${varName} not found or empty. Using fallback.`);
-                return `hsla(${(index * 60) % 360}, 70%, 50%, 0.8)`;
-            }).slice(0, dealStatusLabels.length);
+                return `hsla(${(index * 70 + 30) % 360}, 70%, 50%, 0.8)`; // Fallback with alpha
+            }).slice(0, dealStatusLabels.length); // Ensure we only take as many colors as labels
             setComputedPieChartColors(colors);
         } else if (dealStatusLabels.length === 0) {
             setComputedPieChartColors([]);
@@ -314,7 +305,6 @@ const Dashboard: FC = () => {
     const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
-
     const handleShowNewCustomersToday = () => {
       const allContacts = getData<Contact[]>(DataItemType.Contacts) || [];
       const todayString = new Date().toISOString().split('T')[0];
@@ -371,11 +361,13 @@ const Dashboard: FC = () => {
       { title: "Appointments Today", value: stats.appointmentsTodayCount, icon: Calendar, note: "Scheduled for today", action: handleShowTodaysAppointments }
     ];
 
+    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
 
     const apexPieChartOptions: ApexCharts.ApexOptions = {
       chart: {
         type: 'donut',
         background: 'transparent',
+        fontFamily: MONTSERRAT_FONT_STACK,
         toolbar: {
             show: false,
         }
@@ -383,7 +375,7 @@ const Dashboard: FC = () => {
       labels: dealStatusLabels,
       colors: computedPieChartColors.length > 0 ? computedPieChartColors : ['rgba(128,128,128,0.8)', 'rgba(150,150,150,0.8)', 'rgba(170,170,170,0.8)', 'rgba(190,190,190,0.8)'],
       fill: {
-        opacity: 1, 
+        opacity: 1, // Opacity is now part of the hsla color string
       },
       stroke: {
         show: true,
@@ -395,6 +387,7 @@ const Dashboard: FC = () => {
         horizontalAlign: 'center',
         floating: false,
         fontSize: '12px',
+        fontFamily: MONTSERRAT_FONT_STACK,
         labels: {
             colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333'
         },
@@ -417,10 +410,12 @@ const Dashboard: FC = () => {
               total: {
                 show: true,
                 label: 'Total Clients',
+                fontFamily: MONTSERRAT_FONT_STACK,
                 color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
                 formatter: (w) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0).toString()
               },
               value: {
+                fontFamily: MONTSERRAT_FONT_STACK,
                 color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
                 offsetY: 8,
                  formatter: (val: string) => `${val}`
@@ -458,6 +453,7 @@ const Dashboard: FC = () => {
         },
         style: {
           fontSize: '12px',
+          fontFamily: MONTSERRAT_FONT_STACK,
           colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
         },
         dropShadow: {
@@ -467,6 +463,9 @@ const Dashboard: FC = () => {
       tooltip: {
         theme: resolvedTheme === 'dark' ? 'dark' : 'light',
         fillSeriesColor: false,
+        style: {
+            fontFamily: MONTSERRAT_FONT_STACK,
+        },
         y: {
             formatter: (val: number) => `${val} client(s)`
         }
@@ -484,11 +483,12 @@ const Dashboard: FC = () => {
       }]
     };
 
+    const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
 
     return (
       <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
+          <h1 className="text-3xl font-bold font-heading">Dashboard</h1> {/* Removed tracking-wide */}
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
@@ -506,7 +506,7 @@ const Dashboard: FC = () => {
             <Card
               key={stat.title}
               onClick={stat.action ? stat.action : undefined}
-              className={cn("hover:scale-102 hover:-translate-y-1", stat.link || stat.action ? "cursor-pointer" : "")}
+              className={cn(stat.link || stat.action ? "cursor-pointer" : "")}
               role={stat.action ? "button" : undefined}
               tabIndex={stat.action ? 0 : undefined}
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && stat.action) stat.action(); }}
@@ -515,7 +515,7 @@ const Dashboard: FC = () => {
                 <Link href={stat.link} passHref legacyBehavior>
                   <a className="block h-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
+                      <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
                       <stat.icon className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -527,7 +527,7 @@ const Dashboard: FC = () => {
               ) : (
                 <>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle>
+                    <CardTitle className="text-sm font-medium font-heading">{stat.title}</CardTitle> {/* Removed tracking-wide */}
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -544,7 +544,7 @@ const Dashboard: FC = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <CardTitle className="font-heading">Customer Growth</CardTitle>
+                <CardTitle className="font-heading">Customer Growth</CardTitle> {/* Removed tracking-wide */}
                 <Select value={barChartTimeRange} onValueChange={(value: BarChartTimeRange) => setBarChartTimeRange(value)}>
                     <SelectTrigger className="w-full sm:w-[180px] h-9">
                         <SelectValue placeholder="Select time range" />
@@ -564,8 +564,8 @@ const Dashboard: FC = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <RechartsBarChart data={customerGrowthChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
-                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} />
-                    <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false}/>
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tick={RECHARTS_FONT_STYLE}/>
+                    <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tickFormatter={(value) => `${value}`} allowDecimals={false} tick={RECHARTS_FONT_STYLE}/>
                     <Tooltip
                        contentStyle={{
                         backgroundColor: 'hsla(var(--popover)/0.7)',
@@ -574,10 +574,11 @@ const Dashboard: FC = () => {
                         borderRadius: 'var(--radius)',
                         boxShadow: 'var(--shadow-lg)',
                         backdropFilter: 'blur(8px)',
+                        fontFamily: MONTSERRAT_FONT_STACK,
                       }}
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
-                    <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px' }}/>
+                    <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px', ...RECHARTS_FONT_STYLE }}/>
                     <Bar dataKey="customers" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                   </RechartsBarChart>
                 </ResponsiveContainer>
@@ -587,7 +588,7 @@ const Dashboard: FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-heading">Client Deal Status</CardTitle>
+            <CardTitle className="font-heading">Client Deal Status</CardTitle> {/* Removed tracking-wide */}
             <CardDescription>Distribution of clients by their current deal status.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -610,7 +611,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <Users className="h-5 w-5" />
             <span>Recent Contacts</span>
           </CardTitle>
@@ -652,7 +653,7 @@ const Dashboard: FC = () => {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <ListTodo className="h-5 w-5" />
             <span>Tasks</span>
           </CardTitle>
@@ -667,7 +668,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center space-x-2 font-heading">
+            <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
                 <Clock className="h-5 w-5" />
                 <span>Reminders</span>
             </CardTitle>
@@ -682,7 +683,7 @@ const Dashboard: FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 font-heading">
+          <CardTitle className="flex items-center space-x-2 font-heading"> {/* Removed tracking-wide */}
             <Calendar className="h-5 w-5" />
             <span>Appointments</span>
           </CardTitle>
@@ -699,7 +700,7 @@ const Dashboard: FC = () => {
     <Dialog open={isNewCustomersModalOpen} onOpenChange={setNewCustomersModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Customers Added Today</DialogTitle>
+                <DialogTitle className="font-heading">Customers Added Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {newCustomersTodayList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -717,7 +718,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysTasksModalOpen} onOpenChange={setTodaysTasksModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Tasks for Today</DialogTitle>
+                <DialogTitle className="font-heading">Tasks for Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {todaysTasksList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -764,7 +765,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTodaysAppointmentsModalOpen} onOpenChange={setTodaysAppointmentsModalOpen}>
         <DialogContent className={listModalContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Appointments for Today</DialogTitle>
+                <DialogTitle className="font-heading">Appointments for Today</DialogTitle> {/* Removed tracking-wide */}
             </DialogHeader>
             {todaysAppointmentsList.length > 0 ? (
                 <ul className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -796,7 +797,7 @@ const Dashboard: FC = () => {
     <Dialog open={isTaskFormOpen} onOpenChange={(open) => { if(!open) {setEditingTask(undefined); setContactForNewActivity(null);} setIsTaskFormOpen(open);}}>
         <DialogContent className={taskDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                <DialogTitle className="font-heading">{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle> {/* Removed tracking-wide */}
                 {contactForNewActivity && !editingTask && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
             </DialogHeader>
             <TaskForm
@@ -810,7 +811,7 @@ const Dashboard: FC = () => {
     <Dialog open={isReminderFormOpen} onOpenChange={(open) => { if(!open) {setEditingReminder(undefined); setContactForNewActivity(null);} setIsReminderFormOpen(open);}}>
             <DialogContent className={dialogContentClassName}>
                 <DialogHeader>
-                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle>
+                    <DialogTitle className="font-heading">{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</DialogTitle> {/* Removed tracking-wide */}
                     {contactForNewActivity && !editingReminder && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
                 </DialogHeader>
                 <ReminderForm
@@ -824,7 +825,7 @@ const Dashboard: FC = () => {
     <Dialog open={isAppointmentFormOpen} onOpenChange={(open) => { if(!open) {setEditingAppointment(undefined); setContactForNewActivity(null);} setIsAppointmentFormOpen(open);}}>
           <DialogContent className={dialogContentClassName}>
               <DialogHeader>
-                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
+                  <DialogTitle className="font-heading">{editingAppointment ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle> {/* Removed tracking-wide */}
                   {contactForNewActivity && !editingAppointment && <DialogDescription>For: {contactForNewActivity.firstName} {contactForNewActivity.lastName}</DialogDescription>}
               </DialogHeader>
               <AppointmentForm
@@ -856,7 +857,7 @@ const Dashboard: FC = () => {
     }}>
         <DialogContent className={customerEditDialogContentClassName}>
             <DialogHeader>
-                <DialogTitle className="font-heading">Edit Customer</DialogTitle>
+                <DialogTitle className="font-heading">Edit Customer</DialogTitle> {/* Removed tracking-wide */}
                 <DialogDescription>Update the customer's details below.</DialogDescription>
             </DialogHeader>
             {customerToEdit && (
@@ -873,4 +874,3 @@ const Dashboard: FC = () => {
 };
 
 export default Dashboard;
-
