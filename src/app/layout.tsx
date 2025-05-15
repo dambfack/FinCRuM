@@ -334,14 +334,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultPinnedOpen={true}>
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center h-full w-full transition-all duration-300 ease-in-out group-data-[state=expanded]:justify-center group-data-[state=collapsed]:justify-center">
-            <Logo 
-              appLogoLightUrl={appLogoLightUrl} 
-              appLogoDarkUrl={appLogoDarkUrl}
-              defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
-              defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
-            />
-          </div>
+          {/* Logo removed from here */}
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
@@ -351,7 +344,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Data Grid"><Link href="/data-grid"><Table /><span className={spanClasses}>Data Grid</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Add Customer"><Link href="/add-customer"><UserPlusIcon /><span className={spanClasses}>Add Customer</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Import Data"><Link href="/import"><Upload /><span className={spanClasses}>Import Data</span></Link></SidebarMenuButton></SidebarMenuItem>
-            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><Download /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
+            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><FileArchive /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
@@ -500,4 +493,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
