@@ -7,7 +7,7 @@ import type { Contact, User } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, cn, saveData, getData, getFirstInitial } from '@/lib/utils';
-import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase, Image as ImageIcon } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, Building, FileText as NotesIcon, Tag, CalendarDays, Edit, CalendarPlus, BellPlus, ListPlus, EllipsisVertical, Paperclip, Briefcase } from 'lucide-react';
 import { DataItemType } from '@/lib/types';
 import {
   DropdownMenu,
@@ -20,8 +20,8 @@ import FileAttachmentManager from './FileAttachmentManager';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ProfilePictureModal from './ProfilePictureModal'; // Import ProfilePictureModal
-import { Card, CardContent } from '@/components/ui/card'; // Import Card and CardContent
-import { useTiltEffect } from '@/hooks/useTiltEffect'; // Import the custom hook
+import { Card, CardContent } from '@/components/ui/card';
+import { useTiltEffect } from '@/hooks/useTiltEffect';
 
 interface CustomerDetailModalProps {
   contact: Contact | null;
@@ -39,11 +39,12 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 
   let outerDivClassName = className || "";
   let pTagClasses = "text-sm text-foreground";
-  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; 
+  let valueContainerClasses = "min-w-0 flex-1 overflow-hidden"; // Added overflow-hidden here
 
   const isTruncateRequested = outerDivClassName.includes('truncate');
   if (isTruncateRequested) {
     outerDivClassName = outerDivClassName.replace('truncate', '').trim();
+    // Apply truncation styles directly to the <p> tag that renders the value
     pTagClasses = cn(pTagClasses, "overflow-hidden text-ellipsis whitespace-nowrap max-w-full");
   }
 
@@ -73,7 +74,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   return (
     <div className={cn("flex items-start space-x-3 py-2", outerDivClassName)}>
       <Icon className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-      <div className={valueContainerClasses}>
+      <div className={valueContainerClasses}> {/* This div already has min-w-0 flex-1 */}
         <p className="text-xs text-muted-foreground">{label}</p>
         {valueNode}
       </div>
@@ -207,7 +208,7 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
                 <DetailItem icon={Mail} label="Email" value={contact.email} />
                 {contact.phone && <DetailItem icon={Phone} label="Phone" value={contact.phone} />}
                 {contact.company && <DetailItem icon={Building} label="Company" value={contact.company} />}
-                {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
+                {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} className="whitespace-pre-wrap"/>}
                 {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
                 {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
                 {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}

@@ -9,8 +9,8 @@ export function useTiltEffect(cardRef: RefObject<HTMLElement>) {
     (e: MouseEvent, cardElement: HTMLElement, bounds: DOMRect) => {
       const mouseX = e.clientX;
       const mouseY = e.clientY;
-      const leftX = mouseX - bounds.left; // Corrected from bounds.x
-      const topY = mouseY - bounds.top; // Corrected from bounds.y
+      const leftX = mouseX - bounds.left;
+      const topY = mouseY - bounds.top;
       const center = {
         x: leftX - bounds.width / 2,
         y: topY - bounds.height / 2,
@@ -19,12 +19,12 @@ export function useTiltEffect(cardRef: RefObject<HTMLElement>) {
       const distance = Math.sqrt(center.x ** 2 + center.y ** 2) + 1;
 
       cardElement.style.transform = `
-        scale3d(1.05, 1.05, 1.05) /* Slightly reduced scale for less jarring effect */
+        scale3d(1.03, 1.03, 1.03) /* Reduced scale for subtlety */
         rotate3d(
-          ${center.y / 100},
-          ${-center.x / 100},
+          ${center.y / 150}, /* Increased divisor for less tilt */
+          ${-center.x / 150}, /* Increased divisor for less tilt */
           0,
-          ${Math.min(Math.log(distance) * 2, 30)}deg /* Capped max rotation */
+          ${Math.min(Math.log(distance) * 1.5, 20)}deg /* Reduced angle and cap */
         )
       `;
 
@@ -35,8 +35,8 @@ export function useTiltEffect(cardRef: RefObject<HTMLElement>) {
             circle at
             ${center.x * 2 + bounds.width / 2}px
             ${center.y * 2 + bounds.height / 2}px,
-            hsla(var(--card-foreground) / 0.07), /* Adjusted glow color to use theme variable */
-            hsla(var(--card-foreground) / 0.01) /* Adjusted glow color to use theme variable */
+            hsla(var(--card-foreground) / 0.05), /* Reduced glow opacity */
+            hsla(var(--card-foreground) / 0.005) /* Reduced glow opacity */
           )
         `;
       }

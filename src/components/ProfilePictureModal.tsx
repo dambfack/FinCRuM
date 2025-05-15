@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useRef } from 'react'; // Added useRef
+import React, { useRef, useEffect } from 'react'; // Added useEffect
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -22,6 +22,12 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
 }) => {
   const dialogContentRef = useRef<HTMLDivElement>(null);
   useTiltEffect(dialogContentRef);
+
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[ProfilePictureModal] Rendering. isOpen: true, imageUrl:', imageUrl ? `Exists (len: ${imageUrl.length})` : imageUrl);
+    }
+  }, [isOpen, imageUrl]);
 
   if (!isOpen || !imageUrl) {
     return null;
@@ -57,6 +63,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
             src={imageUrl}
             alt={altText}
             className="block max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain rounded-md shadow-lg"
+            onError={(e) => console.error('[ProfilePictureModal] Image load error:', e, 'Src:', imageUrl?.substring(0,100) + '...')}
           />
         </div>
       </DialogContent>
