@@ -44,14 +44,26 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   } else if (value instanceof Date) {
     const dateString = formatDateTime(value as string);
     valueNode = (
-      <p className={cn("text-sm text-foreground", isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full")} title={isTruncateRequested ? dateString : undefined}>
+      <p
+        className={cn(
+          "text-sm text-foreground",
+          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+        )}
+        title={isTruncateRequested ? dateString : undefined}
+      >
         {dateString}
       </p>
     );
   } else if (value !== null && value !== undefined) {
     const valueString = String(value);
     valueNode = (
-      <p className={cn("text-sm text-foreground", isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full")} title={isTruncateRequested ? valueString : undefined}>
+      <p
+        className={cn(
+          "text-sm text-foreground",
+          isTruncateRequested && "overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
+        )}
+        title={isTruncateRequested ? valueString : undefined}
+      >
         {valueString}
       </p>
     );
@@ -157,8 +169,8 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             <AvatarImage src={contact.profilePictureUrl} alt={`${contact.firstName} ${contact.lastName}`} />
             <AvatarFallback className="text-2xl">{getFirstInitial(contact.firstName)}</AvatarFallback>
           </Avatar>
-          <div>
-            <DialogTitle className="text-2xl font-heading">
+          <div className="min-w-0 flex-1"> {/* Added min-w-0 and flex-1 here */}
+            <DialogTitle className="text-2xl font-heading truncate"> {/* Added truncate */}
               {contact.firstName} {contact.lastName}
             </DialogTitle>
             <DialogDescription>Detailed information and attachments for this customer.</DialogDescription>
@@ -179,7 +191,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             {contact.address && <DetailItem icon={NotesIcon} label="Address" value={contact.address} />}
             {contact.status && <DetailItem icon={Tag} label="Deal Status" value={statusDisplay[contact.status] || contact.status} />}
             {contact.assignedToUserId && <DetailItem icon={Briefcase} label="Assigned To" value={assignedUserDisplay} />}
-            {/* Profile Picture URL is no longer displayed here */}
             {contact.notes && <DetailItem icon={NotesIcon} label="Notes" value={contact.notes} className="whitespace-pre-wrap" />}
             <DetailItem icon={CalendarDays} label="Created At" value={contact.createdAt ? formatDateTime(contact.createdAt as string) : 'N/A'} />
             <DetailItem icon={CalendarDays} label="Last Updated" value={contact.updatedAt ? formatDateTime(contact.updatedAt as string) : 'N/A'} />
@@ -234,3 +245,4 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 };
 
 export default CustomerDetailModal;
+
