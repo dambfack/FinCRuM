@@ -22,7 +22,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
-  useSidebar, // Added import for useSidebar
+  useSidebar, 
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft } from 'lucide-react';
@@ -36,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Corrected import to NextImage
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -63,13 +63,13 @@ const Logo: React.FC<{
   const { resolvedTheme } = useTheme();
   const [currentSrc, setCurrentSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const [attemptCounter, setAttemptCounter] = useState(0); // Used to force re-render on error fallback
+  const [attemptCounter, setAttemptCounter] = useState(0);
 
-  const ultimateFallbackPngLogo = "/f_logo.png"; // Assumes f_logo.png is in public folder
+  const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
-
   useEffect(() => {
+    console.log("[Logo Component] useEffect running. Theme:", resolvedTheme, "Props:", props);
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
       determinedSrc = props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || props.appLogoLightUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
@@ -77,44 +77,43 @@ const Logo: React.FC<{
       determinedSrc = props.appLogoLightUrl || props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
-    setImgError(false); // Reset error state when props or theme change
-    // console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
+    setImgError(false); 
+    console.log(`[Logo Component] useEffect - Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo]);
 
 
   const handleError = useCallback(() => {
-    // console.error(`[Logo Component] Image load error for: ${currentSrc}. Attempt: ${attemptCounter}`);
+    console.error(`[Logo Component] Image load error for: ${currentSrc}. Attempt: ${attemptCounter}`);
     setImgError(true);
     let nextSrc = '';
 
-    // Determine next fallback based on current source and theme
-    // This logic prioritizes theme-specific fallbacks before cross-theme or absolute fallbacks
-    if (currentSrc === props.appLogoDarkUrl && props.appLogoDarkUrl !== props.appLogoLightUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoDarkUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    else if (currentSrc === props.appLogoLightUrl && props.appLogoLightUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
-    else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoDarkUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+    if (currentSrc === props.appLogoDarkUrl && props.appLogoDarkUrl !== props.appLogoLightUrl && props.appLogoLightUrl) nextSrc = props.appLogoLightUrl;
+    else if (currentSrc === props.appLogoLightUrl && props.appLogoLightUrl !== props.defaultAppLogoLightUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
+    else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoDarkUrl !== props.defaultAppLogoLightUrl && props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl;
     else if (currentSrc === props.defaultAppLogoLightUrl && currentSrc !== ultimateFallbackPngLogo) nextSrc = ultimateFallbackPngLogo;
     else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
     else {
-      // console.log("[Logo Component] No more fallbacks.");
-      return; // No more fallbacks
+      console.log("[Logo Component] No more fallbacks or stuck on placeholder.");
+      return; 
     }
     
     if (currentSrc !== nextSrc && nextSrc) {
-      // console.log(`[Logo Component] Falling back to: ${nextSrc}`);
+      console.log(`[Logo Component] Falling back to: ${nextSrc}`);
       setCurrentSrc(nextSrc);
-      setImgError(false); // Reset error for the new attempt
-      setAttemptCounter(prev => prev + 1); // Increment attempt counter to change key
+      setImgError(false); 
+      setAttemptCounter(prev => prev + 1); 
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
-      // console.log(`[Logo Component] Falling back to absolute placeholder.`);
+      console.log(`[Logo Component] Falling back to absolute placeholder.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
-  }, [currentSrc, props, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]); // Added attemptCounter
+  }, [currentSrc, props, ultimateFallbackPngLogo, absoluteUltimatePlaceholder, attemptCounter]);
 
+  console.log(`[Logo Component] RENDERING. currentSrc: ${currentSrc}, imgError: ${imgError}, attempt: ${attemptCounter}`);
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
-    // console.log("[Logo Component] Rendering fallback div due to error or no src.");
+    console.log("[Logo Component] Rendering fallback div due to error or no src.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -122,12 +121,11 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
-  // console.log(`[Logo Component] Rendering with. Source: ${currentSrc} (isDataUri: ${isDataUri}, isPlaceholder: ${isPlaceholderCo}, attempt: ${attemptCounter})`);
-  // console.log(`[Logo Component] IMAGE PROPS - unoptimized: ${unoptimized}`);
+  console.log(`[Logo Component] Using next/image with src: ${currentSrc} (isDataUri: ${isDataUri}, isPlaceholder: ${isPlaceholderCo}, unoptimized: ${unoptimized})`);
   
   return (
       <NextImage
-        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`} // Key includes attemptCounter to force re-render on error/fallback
+        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`}
         src={currentSrc}
         alt="App Logo"
         width={24}
@@ -144,6 +142,11 @@ const Logo: React.FC<{
 function AppContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const { resolvedTheme } = useTheme();
+   const {
+    toggleSidebar, 
+    openMobile: isMobileSidebarOpen 
+  } = useSidebar(); 
+
   const {
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     appLogoLightUrl, appLogoDarkUrl, defaultAppLogoLightUrl, defaultAppLogoDarkUrl,
@@ -152,8 +155,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark,
   } = auth;
-  
-  const { toggleSidebar, openMobile: isMobileSidebarOpen } = useSidebar(); 
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -229,6 +230,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUri = reader.result as string;
+        console.log(`[AppContent] ${toastTitle} - File read. Data URI length:`, dataUri?.length);
         setCropSrc(dataUri);
         setCropperOpen(true);
       };
@@ -247,10 +249,18 @@ function AppContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAppLogoLightFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoLightImageToCropSrc, setIsAppLogoLightCropperOpen, 1, "Light App Logo", appLogoLightInputRef);
-  const handleAppLogoLightCropSave = (croppedDataUri: string) => { updateAppLogoLight(croppedDataUri); setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); };
+  const handleAppLogoLightCropSave = (croppedDataUri: string) => { 
+    console.log("[AppContent] handleAppLogoLightCropSave called. CroppedDataUri length:", croppedDataUri?.length);
+    updateAppLogoLight(croppedDataUri); 
+    setIsAppLogoLightCropperOpen(false); setAppLogoLightImageToCropSrc(null); 
+  };
   
   const handleAppLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setAppLogoDarkImageToCropSrc, setIsAppLogoDarkCropperOpen, 1, "Dark App Logo", appLogoDarkInputRef);
-  const handleAppLogoDarkCropSave = (croppedDataUri: string) => { updateAppLogoDark(croppedDataUri); setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null); };
+  const handleAppLogoDarkCropSave = (croppedDataUri: string) => { 
+    console.log("[AppContent] handleAppLogoDarkCropSave called. CroppedDataUri length:", croppedDataUri?.length);
+    updateAppLogoDark(croppedDataUri); 
+    setIsAppLogoDarkCropperOpen(false); setAppLogoDarkImageToCropSrc(null); 
+  };
 
   const handleSetCurrentLightLogoAsDefault = () => { if (appLogoLightUrl && currentUser?.role === 'partner') setDefaultAppLogoLight(appLogoLightUrl); else toast({ title: "Action Not Available", description: "No custom light app logo is currently set, or insufficient permissions.", variant: "default"}); };
   const handleSetCurrentDarkLogoAsDefault = () => { if (appLogoDarkUrl && currentUser?.role === 'partner') setDefaultAppLogoDark(appLogoDarkUrl); else toast({ title: "Action Not Available", description: "No custom dark app logo is currently set, or insufficient permissions.", variant: "default"}); };
@@ -260,6 +270,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const handleHeaderLogoDarkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => handleFileChangeGeneric(event, setHeaderLogoDarkImageToCropSrc, setIsHeaderLogoDarkCropperOpen, 0.5, "Dark Header Logo", headerLogoDarkInputRef);
   const handleHeaderLogoDarkCropSave = (croppedDataUri: string) => { updateHeaderLogoDark(croppedDataUri); setIsHeaderLogoDarkCropperOpen(false); setHeaderLogoDarkImageToCropSrc(null); };
+
+  useEffect(() => {
+    console.log("[AppContent] Rendering. Context values - appLogoUrl: len:", appLogoLightUrl?.length, "defaultAppLogoUrl: len:", defaultAppLogoLightUrl?.length);
+  }, [appLogoLightUrl, defaultAppLogoLightUrl]);
 
 
   if (isLoadingAuth) {
@@ -385,12 +399,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 className="font-semibold text-lg flex items-center gap-2 text-foreground hover:text-primary transition-colors"
                 aria-label="Open sidebar and view dashboard"
               >
-                <Logo 
-                  appLogoLightUrl={appLogoLightUrl} 
-                  appLogoDarkUrl={appLogoDarkUrl}
-                  defaultAppLogoLightUrl={defaultAppLogoLightUrl} 
-                  defaultAppLogoDarkUrl={defaultAppLogoDarkUrl}
-                />
+                {/* The <Logo /> component (F icon) is removed from here */}
                 <div className="flex items-center font-heading">
                   {currentHeaderLogo ? (
                     <img src={currentHeaderLogo} alt="Header Logo" className="h-10 w-auto max-w-xs mr-1 object-contain" data-ai-hint="custom header logo mobile" />
@@ -552,3 +561,4 @@ export default function RootLayout({
 }
     
     
+  
