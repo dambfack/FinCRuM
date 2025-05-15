@@ -1,4 +1,3 @@
-
 // src/components/Dashboard.tsx
 'use client';
 
@@ -28,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import dynamic from 'next/dynamic';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from 'next-themes';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -63,6 +63,7 @@ const Dashboard: FC = () => {
     const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
     
     const { resolvedTheme } = useTheme();
+    const { customAccentColor } = useAuth(); // Get customAccentColor
 
     const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
     const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
@@ -87,6 +88,14 @@ const Dashboard: FC = () => {
     const [todaysTasksList, setTodaysTasksList] = useState<TaskType[]>([]);
     const [isTodaysAppointmentsModalOpen, setTodaysAppointmentsModalOpen] = useState(false);
     const [todaysAppointmentsList, setTodaysAppointmentsList] = useState<AppointmentType[]>([]);
+
+    const [computedPieChartColors, setComputedPieChartColors] = useState<string[]>([]);
+    const FALLBACK_PIE_COLORS = [
+        'rgba(0, 128, 128, 0.8)',   // Teal
+        'rgba(0, 0, 255, 0.8)',    // Blue
+        'rgba(255, 165, 0, 0.8)',  // Orange
+        'rgba(128, 128, 128, 0.8)'  // Gray
+    ];
 
 
     const loadDashboardData = useCallback(() => {
@@ -192,98 +201,115 @@ const Dashboard: FC = () => {
         return () => window.removeEventListener('dataChanged', handleDataChange);
     }, [loadDashboardData]);
 
-    const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
-        const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
 
-        // Define hardcoded color sets for light and dark themes
-        const lightThemeColors = [
-            'rgba(0, 128, 128, 0.8)',   // Teal for 'Open'
-            'rgba(0, 0, 255, 0.8)',    // Blue for 'Closed'
-            'rgba(255, 165, 0, 0.8)',  // Orange for 'Missed'
-            'rgba(128, 128, 128, 0.8)', // Gray for 'Other'
-        ];
-        const darkThemeColors = [
-            'rgba(26, 188, 156, 0.8)',  // Lighter Teal
-            'rgba(52, 152, 219, 0.8)',  // Lighter Blue
-            'rgba(243, 156, 18, 0.8)',   // Lighter Orange
-            'rgba(149, 165, 166, 0.8)' // Lighter Gray
-        ];
+    useEffect(() => {
+      if (typeof window !== 'undefined' && dealStatusLabels.length > 0) {
+          console.log(`[Dashboard] Computing pie chart colors for theme: ${resolvedTheme}`);
+          const newComputedColors = dealStatusLabels.map((_, index) => {
+              const varName = `--chart-pie-${index + 1}`;
+              const hslValue = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+              console.log(`[Dashboard] CSS Var ${varName}: raw value = "${hslValue}"`);
+              if (hslValue && hslValue.match(/(\d{1,3})\s+(\d{1,3})%\s+(\d{1,3})%/)) {
+                  const color = `hsla(${hslValue}, 0.8)`;
+                  console.log(`[Dashboard] Using HSLA value for ${varName}: "${color}"`);
+                  return color;
+              }
+              console.warn(`[Dashboard] Could not parse HSL value for ${varName} ("${hslValue}"). Using fallback.`);
+              return FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length];
+          });
+          console.log('[Dashboard] Updated pieChartColors state:', newComputedColors);
+          setComputedPieChartColors(newComputedColors);
+      } else if (dealStatusLabels.length === 0) {
+          setComputedPieChartColors([]);
+      }
+  }, [resolvedTheme, dealStatusLabels, FALLBACK_PIE_COLORS]);
 
-        const currentChartColors = resolvedTheme === 'dark' ? darkThemeColors : lightThemeColors;
 
-        return {
-            chart: {
-                type: 'donut',
-                background: 'transparent',
-                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                toolbar: { show: false }
-            },
-            labels: dealStatusLabels,
-            colors: totalClients > 0 ? currentChartColors : ['#555555'],
-            fill: { opacity: 1 }, // Opacity is now part of the RGBA color string
-            stroke: { show: true, width: 2, colors: ['transparent'] },
-            legend: {
-                position: 'bottom',
-                horizontalAlign: 'center',
-                floating: false,
-                fontSize: '12px',
-                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
-                markers: { width: 10, height: 10 },
-                itemMargin: { horizontal: 5, vertical: 2 }
-            },
-            plotOptions: {
-                pie: {
-                    expandOnClick: true,
-                    donut: {
-                        size: '65%',
-                        labels: {
-                            show: totalClients > 0,
-                            total: {
-                                show: true,
-                                label: 'Total Clients',
-                                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                                color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
-                                formatter: (w) => totalClients.toString()
-                            },
-                            value: {
-                                fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                                color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
-                                offsetY: 8,
-                                formatter: (val: string) => val
-                            }
-                        }
-                    },
-                    dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
-                    states: { hover: { filter: { type: 'lighten', value: 0.25 } }, active: { filter: { type: 'none' } } }
-                }
-            },
-            dataLabels: {
-                enabled: totalClients > 0,
-                formatter: (val: number, opts: any) => {
-                    if (totalClients === 0) return '';
-                    const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100).toFixed(0);
-                    return `${percentage}%`;
-                },
-                style: {
-                    fontSize: '12px',
-                    fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
-                    colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
-                },
-                dropShadow: { enabled: false }
-            },
-            tooltip: {
-                theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-                fillSeriesColor: false,
-                style: { fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif' },
-                y: { formatter: (val: number) => `${val} client(s)` }
-            },
-            responsive: [{
-                breakpoint: 480,
-                options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
-            }]
-        };
-    }, [dealStatusLabels, dealStatusSeries, resolvedTheme]);
+  const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
+      const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
+      let currentChartColors = computedPieChartColors;
+
+      if (currentChartColors.length === 0 && totalClients > 0) {
+          currentChartColors = FALLBACK_PIE_COLORS.slice(0, dealStatusLabels.length);
+      } else if (totalClients === 0) {
+          currentChartColors = ['#555555']; // Single color for empty state
+      }
+      
+      console.log("[Dashboard] apexPieChartOptions using colors:", currentChartColors);
+
+      return {
+          chart: {
+              type: 'donut',
+              background: 'transparent',
+              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+              toolbar: { show: false }
+          },
+          labels: totalClients > 0 ? dealStatusLabels : (dealStatusSeries.length > 0 ? ['No Data'] : []),
+          colors: currentChartColors,
+          fill: { opacity: 1 }, // Opacity is handled by hsla in computed colors
+          stroke: { show: true, width: 2, colors: ['transparent'] },
+          legend: {
+              position: 'bottom',
+              horizontalAlign: 'center',
+              floating: false,
+              fontSize: '12px',
+              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+              labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
+              markers: { width: 10, height: 10 },
+              itemMargin: { horizontal: 5, vertical: 2 }
+          },
+          plotOptions: {
+              pie: {
+                  expandOnClick: true,
+                  donut: {
+                      size: '65%',
+                      labels: {
+                          show: totalClients > 0,
+                          total: {
+                              show: true,
+                              label: 'Total Clients',
+                              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                              color: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333',
+                              formatter: (w) => totalClients.toString()
+                          },
+                          value: {
+                              fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                              color: resolvedTheme === 'dark' ? '#ffffff' : '#111111',
+                              offsetY: 8,
+                              formatter: (val: string) => val
+                          }
+                      }
+                  },
+                  dropShadow: { enabled: true, top: 3, left: 0, blur: 3, opacity: 0.3 },
+                  states: { hover: { filter: { type: 'lighten', value: 0.25 } } }
+              }
+          },
+          dataLabels: {
+              enabled: totalClients > 0,
+              formatter: (val: number, opts: any) => {
+                  if (totalClients === 0) return '';
+                  const percentage = (opts.w.globals.series[opts.seriesIndex] / totalClients * 100).toFixed(0);
+                  return `${percentage}%`;
+              },
+              style: {
+                  fontSize: '12px',
+                  fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif',
+                  colors: [resolvedTheme === 'dark' ? '#f0f0f0' : '#333333']
+              },
+              dropShadow: { enabled: false }
+          },
+          tooltip: {
+              theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+              fillSeriesColor: false,
+              style: { fontFamily: 'var(--font-montserrat), var(--font-geist-sans), sans-serif' },
+              y: { formatter: (val: number) => `${val} client(s)` }
+          },
+          responsive: [{
+              breakpoint: 480,
+              options: { chart: { width: '100%' }, legend: { position: 'bottom' } }
+          }]
+      };
+  }, [computedPieChartColors, resolvedTheme, dealStatusLabels, dealStatusSeries, FALLBACK_PIE_COLORS]);
 
 
     const handleGoogleCalendarAuth = useCallback(async () => {
@@ -504,7 +530,7 @@ const Dashboard: FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? <Skeleton className="h-[300px] w-full" /> : customerGrowthChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={300} key={`${resolvedTheme}-${customAccentColor}`}>
                   <RechartsBarChart data={customerGrowthChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.5)" />
                     <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={{stroke: "hsl(var(--border))"}} tick={RECHARTS_FONT_STYLE}/>
@@ -522,7 +548,7 @@ const Dashboard: FC = () => {
                       cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                     />
                     <Legend wrapperStyle={{ color: 'hsl(var(--foreground))', paddingTop: '10px', ...RECHARTS_FONT_STYLE }}/>
-                    <Bar dataKey="customers" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="customers" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                   </RechartsBarChart>
                 </ResponsiveContainer>
             ) : <p className="text-sm text-muted-foreground text-center py-10">No customer data available for the selected period.</p>}
@@ -538,9 +564,9 @@ const Dashboard: FC = () => {
             {loading ? <Skeleton className="h-[300px] w-full" /> : (dealStatusLabels.length > 0 && dealStatusSeries.some(s => s > 0)) ? (
                 <div className="h-[300px] w-full">
                    <ReactApexChart
-                    key={resolvedTheme} // Force re-render on theme change
+                    key={`${resolvedTheme}-${computedPieChartColors.join(',')}`}
                     options={apexPieChartOptions}
-                    series={dealStatusSeries}
+                    series={dealStatusSeries.length > 0 && dealStatusSeries.some(s => s > 0) ? dealStatusSeries : [1]}
                     type="donut"
                     height="100%"
                     width="100%"
