@@ -3,7 +3,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { Inter, Montserrat, Anton } from 'next/font/google'; // Keep Anton if still used elsewhere, or remove
+import { Inter, Montserrat } from 'next/font/google'; // Removed Anton
 import './globals.css';
 import { cn, getFirstInitial, getData, saveData } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -22,9 +22,10 @@ import {
   SidebarInset,
   SidebarTrigger,
   SidebarFooter,
+  useSidebar, // Added import for useSidebar
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon } from 'lucide-react'; // Added MenuIcon
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -35,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ImageCropperModal from '@/components/ImageCropperModal';
-import NextImage from 'next/image'; // Renamed to avoid conflict with window.Image
+import NextImage from 'next/image';
 import { useTheme } from 'next-themes';
 import { DataItemType } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
@@ -67,6 +68,7 @@ const Logo: React.FC<{
   const ultimateFallbackPngLogo = "/f_logo.png";
   const absoluteUltimatePlaceholder = "https://placehold.co/64x64.png?text=F";
 
+
   useEffect(() => {
     let determinedSrc: string | null = null;
     if (resolvedTheme === 'dark') {
@@ -76,30 +78,41 @@ const Logo: React.FC<{
     }
     setCurrentSrc(determinedSrc || ultimateFallbackPngLogo);
     setImgError(false);
+    // console.log(`[Logo Component] useEffect - Theme: ${resolvedTheme}, Chosen Src: ${determinedSrc || ultimateFallbackPngLogo}`);
   }, [props.appLogoLightUrl, props.appLogoDarkUrl, props.defaultAppLogoLightUrl, props.defaultAppLogoDarkUrl, resolvedTheme, ultimateFallbackPngLogo]);
 
+
   const handleError = useCallback(() => {
+    // console.error(`[Logo Component] Image load error for: ${currentSrc}. Attempt: ${attemptCounter}`);
     setImgError(true);
     let nextSrc = '';
-    if (currentSrc === props.appLogoDarkUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoDarkUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    else if (currentSrc === props.appLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
-    else if (currentSrc === props.defaultAppLogoDarkUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
-    else if (currentSrc === props.defaultAppLogoLightUrl) nextSrc = ultimateFallbackPngLogo;
+
+    if (currentSrc === props.appLogoDarkUrl && props.appLogoDarkUrl !== props.appLogoLightUrl) nextSrc = props.appLogoLightUrl || props.defaultAppLogoDarkUrl || props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+    else if (currentSrc === props.appLogoLightUrl && props.appLogoLightUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || props.appLogoDarkUrl || props.defaultAppLogoDarkUrl || ultimateFallbackPngLogo;
+    else if (currentSrc === props.defaultAppLogoDarkUrl && props.defaultAppLogoDarkUrl !== props.defaultAppLogoLightUrl) nextSrc = props.defaultAppLogoLightUrl || ultimateFallbackPngLogo;
+    else if (currentSrc === props.defaultAppLogoLightUrl && currentSrc !== ultimateFallbackPngLogo) nextSrc = ultimateFallbackPngLogo;
     else if (currentSrc === ultimateFallbackPngLogo && currentSrc !== absoluteUltimatePlaceholder) nextSrc = absoluteUltimatePlaceholder;
-    else return;
+    else {
+      // console.log("[Logo Component] No more fallbacks.");
+      return;
+    }
 
     if (currentSrc !== nextSrc && nextSrc) {
+      // console.log(`[Logo Component] Falling back to: ${nextSrc}`);
       setCurrentSrc(nextSrc);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     } else if (!nextSrc && currentSrc !== absoluteUltimatePlaceholder) {
+      // console.log(`[Logo Component] Falling back to absolute placeholder.`);
       setCurrentSrc(absoluteUltimatePlaceholder);
       setImgError(false);
       setAttemptCounter(prev => prev + 1);
     }
-  }, [currentSrc, props, attemptCounter, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
+  }, [currentSrc, props, ultimateFallbackPngLogo, absoluteUltimatePlaceholder]);
+
 
   if (!currentSrc || (imgError && currentSrc === absoluteUltimatePlaceholder)) {
+    // console.log("[Logo Component] Rendering fallback div due to error or no src.");
     return <div className="h-6 w-6 bg-destructive/20 flex items-center justify-center text-destructive text-xs rounded-full">!</div>;
   }
   
@@ -107,18 +120,21 @@ const Logo: React.FC<{
   const isPlaceholderCo = typeof currentSrc === 'string' && currentSrc.startsWith('https://placehold.co');
   const unoptimized = isDataUri || isPlaceholderCo;
 
+  // console.log(`[Logo Component] Rendering with. Source: ${currentSrc} (isDataUri: ${isDataUri}, isPlaceholder: ${isPlaceholderCo}, attempt: ${attemptCounter})`);
+  // console.log(`[Logo Component] IMAGE PROPS - unoptimized: ${unoptimized}`);
+  
   return (
-    <NextImage
-      key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`}
-      src={currentSrc}
-      alt="App Logo"
-      width={24}
-      height={24}
-      className="h-6 w-6 object-contain"
-      data-ai-hint="company app logo"
-      unoptimized={unoptimized}
-      onError={handleError}
-    />
+      <NextImage
+        key={`${currentSrc}-${attemptCounter}-${resolvedTheme}`}
+        src={currentSrc}
+        alt="App Logo"
+        width={24}
+        height={24}
+        className="h-6 w-6 object-contain"
+        data-ai-hint="company app logo"
+        unoptimized={unoptimized}
+        onError={handleError}
+      />
   );
 };
 
@@ -133,12 +149,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
     logout, updateUserProfilePicture,
     updateAppLogoLight, updateAppLogoDark, setDefaultAppLogoLight, setDefaultAppLogoDark,
     updateHeaderLogoLight, updateHeaderLogoDark,
-    openMobile, // Get openMobile state from useSidebar via AuthContext or pass useSidebar here
-  } = auth; // Assuming useAuth now exposes openMobile or we call useSidebar here. For now, let's assume useAuth gives us this.
-                // If not, useSidebar() hook would need to be called directly in AppContent for openMobile.
-                // For this change, I will assume useAuth is updated or we'd call useSidebar() directly in AppContent
-                // Let's call useSidebar() for clarity:
-  const { openMobile: isMobileSidebarOpen } = useSidebar(); // Call useSidebar from ui/sidebar
+  } = auth;
+  
+  const { openMobile: isMobileSidebarOpen } = useSidebar(); 
   
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -341,7 +354,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip="Export Data">
                     <Link href="/export-data">
-                        <FileArchive /> {/* Changed icon for Export */}
+                        <FileArchive /> 
                         <span className="group-data-[state=collapsed]:hidden">Export Data</span>
                     </Link>
                     </SidebarMenuButton>
@@ -351,7 +364,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">
            <SidebarTrigger>
-             <PanelLeft /> {/* Default Desktop Trigger Icon */}
+             <PanelLeft /> 
            </SidebarTrigger>
         </SidebarFooter>
       </Sidebar>
@@ -364,9 +377,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
         )}>
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger>
-              <MenuIcon /> {/* Hamburger icon for mobile */}
+              <MenuIcon /> 
             </SidebarTrigger>
-            {!isMobileSidebarOpen && ( /* Conditionally render logo and text if mobile sidebar is closed */
+            {!isMobileSidebarOpen && ( 
               <Link href="/" className="font-semibold text-lg flex items-center gap-2">
                 <Logo 
                   appLogoLightUrl={appLogoLightUrl} 
@@ -524,8 +537,6 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {/* useSidebar needs to be within SidebarProvider, 
-                so AppContent needs to be a child of SidebarProvider if it uses useSidebar */}
             <SidebarProvider defaultPinnedOpen={true}> 
               <AppContent>{children}</AppContent>
             </SidebarProvider>
@@ -535,13 +546,5 @@ export default function RootLayout({
     </html>
   );
 }
-// Removed SidebarProvider from inside AuthProvider in RootLayout
-// and wrapped AppContent with SidebarProvider instead.
-// This ensures useSidebar() inside AppContent has access to its context.
-
-// Also had to ensure PanelLeft is imported for the desktop sidebar trigger.
-// It might have been unintentionally removed earlier.
-// Added MenuIcon to imports as well for the mobile trigger.
-
-
+    
     
