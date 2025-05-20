@@ -1,0 +1,36 @@
+[2025-05-19 16:45:21.964] [info]  [FinCRuM] Electron log file location: D:\Local_Git\FinCRuM\electron-improved.log
+[2025-05-19 16:45:21.972] [info]  [FinCRuM] Application starting
+[2025-05-19 16:45:21.973] [info]  [FinCRuM] Main process initialized, event listeners attached.
+[2025-05-19 16:45:22.008] [info]  [FinCRuM] App is ready
+[2025-05-19 16:45:22.010] [info]  [FinCRuM] Creating main window
+[2025-05-19 16:45:22.011] [info]  [FinCRuM] Process type: browser
+[2025-05-19 16:45:22.012] [info]  [FinCRuM] Process platform: win32
+[2025-05-19 16:45:22.013] [info]  [FinCRuM] Node version: 22.14.0
+[2025-05-19 16:45:22.014] [info]  [FinCRuM] Electron version: 35.1.4
+[2025-05-19 16:45:22.015] [info]  [FinCRuM] Chrome version: 134.0.6998.179
+[2025-05-19 16:45:22.017] [info]  [FinCRuM] Initializing BrowserWindow
+[2025-05-19 16:45:22.107] [info]  [FinCRuM] BrowserWindow created successfully
+[2025-05-19 16:45:22.110] [info]  [FinCRuM] Initial window visible: true
+[2025-05-19 16:45:22.111] [info]  [FinCRuM] Initial window focused: true
+[2025-05-19 16:45:22.136] [info]  [FinCRuM] Loaded test HTML content
+[2025-05-19 16:45:22.137] [info]  [FinCRuM] Window created successfully
+[2025-05-19 16:45:22.157] [info]  [FinCRuM] Window focus event fired
+[2025-05-19 16:45:22.309] [info]  [FinCRuM] Window ready to show
+[2025-05-19 16:45:22.311] [info]  [FinCRuM] Window bounds: {"x":680,"y":296,"width":1200,"height":800}
+[2025-05-19 16:45:22.312] [info]  [FinCRuM] Window visible: true
+[2025-05-19 16:45:22.313] [info]  [FinCRuM] Window focused: true
+[2025-05-19 16:45:22.314] [info]  [FinCRuM] Window show event fired
+[2025-05-19 16:45:22.315] [info]  [FinCRuM] Window shown, now visible: true
+[2025-05-19 16:45:24.146] [info]  [FinCRuM] Found app directory index at: D:\Local_Git\FinCRuM\.next\server\app\index.html
+[2025-05-19 16:45:24.147] [info]  [FinCRuM] Primary URL: http://localhost:9002, Fallback: file://D:\Local_Git\FinCRuM\.next\server\app\index.html
+[2025-05-19 16:45:24.158] [info]  [FinCRuM] Attempting to load actual content: http://localhost:9002
+[2025-05-19 16:45:25.127] [info]  [FinCRuM] Disabled always on top
+[2025-05-19 16:45:26.600] [error] [FinCRuM] Failed to load URL: ERR_CONNECTION_REFUSED (-102)
+[2025-05-19 16:45:26.601] [info]  [FinCRuM] Development server not available, trying static file
+[2025-05-19 16:45:26.602] [info]  [FinCRuM] Error details - Code: -102, Description: ERR_CONNECTION_REFUSED
+[2025-05-19 16:45:26.603] [info]  [FinCRuM] Attempting to load static file: file://D:\Local_Git\FinCRuM\.next\server\app\index.html
+[2025-05-19 16:45:26.604] [info]  [FinCRuM] Static file exists, loading: D:\Local_Git\FinCRuM\.next\server\app\index.html
+[2025-05-19 16:45:26.669] [info]  [FinCRuM] Page loaded successfully
+[2025-05-19 16:45:26.869] [info]  [FinCRuM] Page loaded successfully
+[2025-05-19 16:59:21.007] [info]  [FinCRuM] Window blur event fired
+[2025-05-19 17:14:56.383] [info]  [FinCRuM] Window focus event fired
