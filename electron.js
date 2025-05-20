@@ -1,19 +1,66 @@
-const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process'); // For startNextDevServer
+
+// IMPORTANT: electron modules should be required AFTER initial fs logging if they interfere.
+// For now, keeping them here, but if issues persist, move app/BrowserWindow require after initial log block.
+const { app, BrowserWindow, dialog } = require('electron');
+
+const SCRIPT_VERSION = "V4_UPDATE_RETRY"; // New version marker
+const logFilePath = path.join(__dirname, 'electron-main.log'); // logFilePath is defined here
+
+// Enhanced initial logging and log file reset, MUST HAPPEN BEFORE 'electron-log' is required.
+try {
+  const initialNodeEnv = process.env.NODE_ENV;
+  let initLogContent = `[${new Date().toISOString()}] [FinCRuM_INIT] ${SCRIPT_VERSION} starting.\n`;
+  initLogContent += `[${new Date().toISOString()}] [FinCRuM_INIT] Initial process.env.NODE_ENV: '${initialNodeEnv}' (type: ${typeof initialNodeEnv}).\n`;
+
+  if (fs.existsSync(logFilePath)) {
+    fs.unlinkSync(logFilePath);
+    initLogContent += `[${new Date().toISOString()}] [FinCRuM_INIT] Old log file ${logFilePath} deleted.\n`;
+  } else {
+    initLogContent += `[${new Date().toISOString()}] [FinCRuM_INIT] Log file ${logFilePath} did not exist, no deletion needed.\n`;
+  }
+  fs.writeFileSync(logFilePath, initLogContent, 'utf8');
+  console.log(`[FinCRuM_DEBUG] ${SCRIPT_VERSION} started. Initial NODE_ENV: '${initialNodeEnv}'. Log file reset and initial content written to: ${logFilePath}`);
+} catch (err) {
+  console.error(`[FinCRuM_DEBUG] CRITICAL ERROR during initial log setup for ${SCRIPT_VERSION} (log file path: ${logFilePath}):`, err);
+  try { 
+    const criticalErrorLogPath = path.join(__dirname, 'electron-critical-error.log');
+    fs.appendFileSync(criticalErrorLogPath, `[${new Date().toISOString()}] [${SCRIPT_VERSION}] Failed initial log setup for ${logFilePath}: ${err.message || err}\nStack: ${err.stack || 'N/A'}\n`, 'utf8'); 
+  } catch (secondaryErr) {
+    // If even critical error logging fails, do nothing further
+  }
+}
+// The original 'const log = require('electron-log/main');' will follow this new block.
+
+console.log('[FinCRuM_DEBUG] Required modules potentially loaded (app, BrowserWindow, spawn).');
+
 const log = require('electron-log/main');
+console.log('[FinCRuM_DEBUG] electron-log module loaded.');
 
 // Configure electron-log: output to console and file
 log.transports.console.level = 'debug'; // Increase console logging level
 log.transports.file.level = 'debug'; // Increase file logging level
 
 // Set up a specific log file in the project directory
-const logFilePath = path.join(__dirname, 'electron-main.log');
+// const logFilePath = path.join(__dirname, 'electron-main.log'); // This was a duplicate declaration
 log.transports.file.resolvePathFn = () => logFilePath;
 
 // Log the actual path where logs will be written
-console.log(`[FinCRuM] Logging to: ${logFilePath}`);
-log.info(`[FinCRuM] Electron log file location: ${logFilePath}`);
+console.log(`[FinCRuM_DEBUG] Configured electron-log. Attempting to log to: ${logFilePath}`);
+log.info(`[FinCRuM] Electron log file location: ${logFilePath} (electron-log)`);
+
+// Test write with electron-log immediately after setup
+log.info('[FinCRuM_DEBUG] This is an immediate test log entry from electron-log.');
+
+// Test write with fs.appendFileSync immediately after setup
+try {
+  fs.appendFileSync(logFilePath, `[${new Date().toISOString()}] [FinCRuM_DEBUG] This is an immediate test log entry from fs.appendFileSync.\n`, 'utf8');
+  console.log('[FinCRuM_DEBUG] Successfully wrote test entry with fs.appendFileSync.');
+} catch (err) {
+  console.error('[FinCRuM_DEBUG] Failed to write test entry with fs.appendFileSync:', err);
+}
 
 // Ensure we can see all errors
 process.on('uncaughtException', (error) => {
@@ -28,6 +75,79 @@ process.on('unhandledRejection', (reason, promise) => {
 
 
 let mainWindow;
+let devServerProcess = null; // To hold the Next.js dev server process
+
+// Function to start the Next.js development server
+function startNextDevServer() {
+  return new Promise((resolve, reject) => {
+    let resolved = false; // Flag to prevent multiple resolves/rejects
+
+    const port = 9002; // Ensure this matches your devServerUrl in createWindow
+    const command = 'npx';
+    // Use npx.cmd on Windows for 'npx' commands
+    const effectiveCommand = process.platform === 'win32' ? 'npx.cmd' : command;
+    const args = ['next', 'dev', '-p', port.toString()];
+
+    log.info(`[FinCRuM] Spawning Next.js dev server: ${effectiveCommand} ${args.join(' ')} in ${__dirname}`);
+
+    devServerProcess = spawn(effectiveCommand, args, {
+      cwd: __dirname, // Assumes electron.js is in the project root alongside package.json
+      shell: true,    // shell:true can be helpful for resolving commands in PATH, especially with npx/npm.
+      stdio: 'pipe'   // Capture stdout/stderr
+    });
+
+    const readyMessages = [
+      `ready - started server on 0.0.0.0:${port}`,
+      `event - compiled client and server successfully`,
+      `Compiled successfully`,
+      `started server on ::, url: http://localhost:${port}`
+    ];
+
+    const onData = (data) => {
+      const output = data.toString();
+      log.info(`[NextDevServer-stdout] ${output.trim()}`);
+      if (!resolved) {
+        if (readyMessages.some(msg => output.includes(msg))) {
+          log.info('[FinCRuM] Next.js dev server reported ready.');
+          resolved = true;
+          resolve();
+        }
+      }
+    };
+
+    const onErrorData = (data) => {
+      const errorOutput = data.toString();
+      log.error(`[NextDevServer-stderr] ${errorOutput.trim()}`);
+      if (!resolved && errorOutput.includes('already in use')) {
+          log.error(`[FinCRuM] Port ${port} for dev server is already in use.`);
+          resolved = true;
+          reject(new Error(`Port ${port} already in use.`));
+      }
+    };
+
+    devServerProcess.stdout.on('data', onData);
+    devServerProcess.stderr.on('data', onErrorData);
+
+    devServerProcess.on('error', (err) => {
+      if (!resolved) {
+        log.error('[FinCRuM] Failed to start Next.js dev server process (spawn error):', err);
+        resolved = true;
+        reject(err);
+      } else {
+        log.error('[FinCRuM] Error from Next.js dev server process after it was considered ready:', err);
+      }
+    });
+
+    devServerProcess.on('close', (code) => {
+      log.info(`[FinCRuM] Next.js dev server process exited with code ${code}.`);
+      if (!resolved) {
+        log.error(`[FinCRuM] Next.js dev server process closed (code ${code}) before becoming ready.`);
+        resolved = true;
+        reject(new Error(`Next.js dev server process exited prematurely with code ${code}`));
+      }
+    });
+  });
+}
 
 function createWindow() {
   log.info('[FinCRuM] Creating main window');
@@ -86,8 +206,20 @@ function createWindow() {
   }
   
   const staticFileUrl = `file://${staticFilePath}`;
-  const startUrl = process.env.ELECTRON_START_URL || devServerUrl;
-  log.info(`[FinCRuM] Primary URL: ${startUrl}, Fallback: ${staticFileUrl}`);
+  // const startUrl = process.env.ELECTRON_START_URL || devServerUrl; // Old logic
+  // log.info(`[FinCRuM] Primary URL: ${startUrl}, Fallback: ${staticFileUrl}`); // Old log
+
+  let resolvedStartUrl;
+  const currentEnvInCreateWindow = process.env.NODE_ENV;
+  log.info(`[FinCRuM] Current process.env.NODE_ENV: '${currentEnvInCreateWindow}' (type: ${typeof currentEnvInCreateWindow}) inside createWindow`);
+
+  if (currentEnvInCreateWindow === 'development') {
+    resolvedStartUrl = process.env.ELECTRON_START_URL || devServerUrl;
+    log.info(`[FinCRuM] Decided in createWindow: Development mode. Primary URL: ${resolvedStartUrl}, Fallback: ${staticFileUrl}`);
+  } else {
+    resolvedStartUrl = staticFileUrl;
+    log.info(`[FinCRuM] Decided in createWindow: Production mode (or not explicitly development). Using URL: ${resolvedStartUrl}`);
+  }
   
   // Function to try loading the static file if dev server fails
   const tryLoadStaticFile = () => {
@@ -156,18 +288,28 @@ function createWindow() {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.loadURL(`data:text/html,<html><body><h2>Critical Error</h2><p>Failed to load initial test page. Electron window might not be working correctly.</p><p>Error: ${errorDescription} (${errorCode})</p></body></html>`);
       }
-    } else if (validatedURL === startUrl && startUrl === devServerUrl) {
-      log.info('[FinCRuM] Main application (dev server) failed to load, trying static file.');
-      tryLoadStaticFile();
-    } else if (validatedURL === staticFileUrl) {
-      log.error('[FinCRuM] Static file also failed to load. Displaying final error page.');
+    } else if (validatedURL === resolvedStartUrl) { // The primary configured URL failed
+        if (process.env.NODE_ENV === 'development' && resolvedStartUrl !== staticFileUrl) {
+            // If in dev and the thing that failed wasn't already the static file, try static file.
+            log.info(`[FinCRuM] Main application URL (${resolvedStartUrl}) failed in dev mode. Trying static file: ${staticFileUrl}`);
+            tryLoadStaticFile();
+        } else {
+            // In prod (resolvedStartUrl IS staticFileUrl) OR
+            // in dev but resolvedStartUrl was already staticFileUrl (e.g. if ELECTRON_START_URL pointed to it and failed)
+            log.error(`[FinCRuM] Primary URL (${resolvedStartUrl}) failed to load. This was the final target or production URL. Displaying error. Error: ${errorDescription} (${errorCode})`);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.loadURL(`data:text/html,<html><body><h2>Error Loading Application</h2><p>Failed to load primary application URL: ${resolvedStartUrl}</p><p>Error: ${errorDescription} (${errorCode})</p><p>Please ensure Next.js build is correct (try <code>npm run build</code>) or dev server is running.</p></body></html>`);
+            }
+        }
+    } else if (validatedURL === staticFileUrl) { // The static file fallback itself failed (likely after tryLoadStaticFile in dev)
+        log.error(`[FinCRuM] Static file fallback (${staticFileUrl}) also failed to load. Displaying error. Error: ${errorDescription} (${errorCode})`);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.loadURL(`data:text/html,<html><body><h2>Error Loading Application</h2><p>Failed to load static file fallback: ${staticFileUrl}</p><p>Error: ${errorDescription} (${errorCode})</p><p>Please ensure Next.js build is correct. Try <code>npm run build</code>.</p></body></html>`);
+        }
+    } else { // C (for unexpected URLs)
+      log.error(`[FinCRuM] Failed to load an UNEXPECTED URL: ${validatedURL}. Displaying generic error. Error: ${errorDescription} (${errorCode})`);
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.loadURL(`data:text/html,<html><body><h2>Error Loading Application</h2><p>Failed to load the application files (static fallback). Error: ${errorDescription} (${errorCode})</p><p>Please ensure Next.js build is correct. Try <code>npm run build</code>.</p></body></html>`);
-      }
-    } else {
-      log.error(`[FinCRuM] Failed to load an unexpected URL: ${validatedURL}. Displaying generic error.`);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.loadURL(`data:text/html,<html><body><h2>Application Load Error</h2><p>Failed to load: ${validatedURL}</p><p>Error: ${errorDescription} (${errorCode})</p></body></html>`);
+        mainWindow.loadURL(`data:text/html,<html><body><h2>Application Load Error</h2><p>Failed to load an unexpected URL: ${validatedURL}</p><p>Error: ${errorDescription} (${errorCode})</p></body></html>`);
       }
     }
   });
@@ -190,69 +332,65 @@ function createWindow() {
     }
   });
   
-  // Listener for when content finishes loading
   mainWindow.webContents.on('did-finish-load', () => {
     const currentURL = mainWindow.webContents.getURL();
-    log.info(`[FinCRuM] Page finished loading: ${currentURL.startsWith('data:text/html') ? 'TestDataURI' : currentURL}`);
+    const isTestPage = currentURL.startsWith('data:text/html,') && currentURL.includes('<title>Initial Load Test</title>');
+    log.info(`[FinCRuM] DID-FINISH-LOAD: URL: ${currentURL.substring(0,100)}`);
+    log.info(`[FinCRuM] DID-FINISH-LOAD: IsTestPage: ${isTestPage}, initialLoadDone: ${initialLoadDone}`);
 
-    if (!initialLoadDone && currentURL === simpleTestHtmlUrl) {
-      log.info('[FinCRuM] Initial simple test HTML loaded successfully. Displaying for 10 seconds.');
-      initialLoadDone = true; // Mark that the test HTML has been processed once
+    if (!initialLoadDone && isTestPage) {
+      log.info('[FinCRuM] CONDITION MET: Initial test page loaded and initialLoadDone is false.');
+      initialLoadDone = true;
+      log.info('[FinCRuM] SET initialLoadDone = true.');
 
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setAlwaysOnTop(false);
-        log.info('[FinCRuM] alwaysOnTop set to false.');
-      }
-
-      // Clear any premature mainAppLoadTimeout (should not exist yet, but good practice)
-      if (mainAppLoadTimeout) clearTimeout(mainAppLoadTimeout);
-
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          log.info(`[FinCRuM] 10-second delay for test HTML is over. Now attempting to load main application: ${startUrl}`);
-          
-          // Set up the timeout for the main application load itself
-          mainAppLoadTimeout = setTimeout(() => {
-            const latestURL = mainWindow.webContents.getURL();
-            if (mainWindow && !mainWindow.isDestroyed() &&
-                latestURL !== startUrl &&
-                latestURL !== staticFileUrl &&
-                !latestURL.startsWith('data:text/html')) { // Check current URL at time of timeout
-              if (startUrl === devServerUrl) {
-                log.warn(`[FinCRuM] Main application (dev server) load timeout after delay. Current URL: ${latestURL}. Trying static file: ${staticFileUrl}`);
-                tryLoadStaticFile();
-              } else {
-                log.warn(`[FinCRuM] Main application (${startUrl}) load timeout after delay. Current URL: ${latestURL}. No further fallback.`);
-              }
-            } else {
-              log.info(`[FinCRuM] Main app load timeout check: Main app already loaded or on a data/test page. Current URL: ${latestURL}`);
-            }
-          }, 15000); // 15-second timeout for the main app to load
-
-          mainWindow.loadURL(startUrl);
-        }
-      }, 10000); // Display test HTML for 10 seconds
-
-    } else if (initialLoadDone) {
-      // This block handles loads *after* the initial test HTML has been processed
       if (mainAppLoadTimeout) {
         clearTimeout(mainAppLoadTimeout);
-        mainAppLoadTimeout = null; // Clear the timeout as the app (or fallback/error) has loaded
-        log.info('[FinCRuM] Main application load sequence: Cleared mainAppLoadTimeout.');
+        log.info('[FinCRuM] Cleared existing mainAppLoadTimeout before setting new one.');
       }
+      
+      log.info('[FinCRuM] PREPARING to set 5s timeout to load main application.');
+      mainAppLoadTimeout = setTimeout(() => {
+        log.info('[FinCRuM] TIMEOUT FIRED (5s). Attempting to load main application URL.');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          log.info(`[FinCRuM] Main window OK. Loading main application URL: ${resolvedStartUrl}`);
+          mainWindow.loadURL(resolvedStartUrl)
+            .then(() => {
+              log.info(`[FinCRuM] Successfully INITIATED load for main application URL: ${resolvedStartUrl}`);
+            })
+            .catch(err => {
+              log.error(`[FinCRuM] Error INITIATING load for main application URL ${resolvedStartUrl}:`, err);
+              if (process.env.NODE_ENV === 'development' && resolvedStartUrl !== staticFileUrl) {
+                log.info(`[FinCRuM] Main application URL (${resolvedStartUrl}) failed to INITIATE load (dev mode). Trying static file: ${staticFileUrl}`);
+                tryLoadStaticFile();
+              } else {
+                // In production (resolvedStartUrl is staticFileUrl) or if staticFileUrl was already the target in dev
+                log.error(`[FinCRuM] Failed to INITIATE load for ${resolvedStartUrl}. No further fallback from .catch(). Displaying error.`);
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.loadURL(`data:text/html,<html><body><h2>Critical Load Error</h2><p>Could not initiate loading of application URL: ${resolvedStartUrl}</p><p>Error: ${err.message}</p></body></html>`);
+                }
+              }
+            });
+        } else {
+                log.error('[FinCRuM] Main application (static file) also failed after timeout.');
+              }
+            });
+        } else {
+          log.warn('[FinCRuM] TIMEOUT FIRED but main window was destroyed or null.');
+        }
+      }, 5000); // 5-second delay
+      log.info(`[FinCRuM] SET 5s TIMEOUT to load main application. Timeout ID: ${mainAppLoadTimeout}`);
 
-      if (currentURL === startUrl || currentURL === staticFileUrl) {
-        log.info(`[FinCRuM] Main application (or static fallback) loaded successfully: ${currentURL}`);
-      } else if (currentURL.startsWith('data:text/html') && currentURL !== simpleTestHtmlUrl) {
-        // This means an error page (which are data: URLs) loaded
-        log.error(`[FinCRuM] An error page seems to have loaded: ${currentURL.substring(0,100)}...`);
-      } else if (currentURL === simpleTestHtmlUrl) {
-        // This would be unexpected if it happens *after* initialLoadDone and we've tried to load startUrl
-        log.warn(`[FinCRuM] The simpleTestHtmlUrl loaded AGAIN unexpectedly after initialLoadDone was true. URL: ${currentURL}`);
+    } else if (initialLoadDone && isTestPage) {
+      log.warn('[FinCRuM] CONDITION MET: Test page loaded AGAIN, but initialLoadDone is already true. Ignoring timeout logic.');
+    } else if (currentURL === resolvedStartUrl || (process.env.NODE_ENV === 'development' && currentURL === staticFileUrl) ) { // Check against resolvedStartUrl, or staticFileUrl if it was a fallback in dev
+      log.info(`[FinCRuM] Main application content loaded: ${currentURL.substring(0,100)}`);
+      if (mainAppLoadTimeout) {
+        clearTimeout(mainAppLoadTimeout);
+        log.info('[FinCRuM] Cleared main app load timeout as main content is now loaded.');
+        mainAppLoadTimeout = null;
       }
-      else {
-        log.warn(`[FinCRuM] Loaded an unexpected URL after initial test sequence: ${currentURL.substring(0,100)}...`);
-      }
+    } else {
+      log.warn(`[FinCRuM] Page finished loading for an UNEXPECTED URL: ${currentURL.substring(0,100)}`);
     }
   });
   
@@ -271,15 +409,39 @@ function createWindow() {
 log.info('[FinCRuM] Application starting');
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
-  log.info('[FinCRuM] App is ready');
-  createWindow();
+app.whenReady().then(async () => { // Make the callback async
+  log.info('[FinCRuM] App is ready.');
+  const currentEnv = process.env.NODE_ENV;
+  log.info(`[FinCRuM] App ready. Current process.env.NODE_ENV: '${currentEnv}' (type: ${typeof currentEnv})`);
 
-  // On macOS it's common to re-create a window when the dock icon is clicked
-  app.on('activate', () => {
-    if (mainWindow === null) {
+  if (currentEnv === 'development') {
+    log.info('[FinCRuM] Development mode detected. Attempting to start Next.js dev server...');
+    try {
+      await startNextDevServer();
+      log.info('[FinCRuM] Next.js dev server started successfully (or reported ready). Proceeding to create window.');
       createWindow();
-      log.info('[FinCRuM] Window re-created on activate');
+    } catch (error) {
+      log.error('[FinCRuM] Critical error: Failed to start Next.js dev server:', error);
+      log.error('[FinCRuM] Please check the logs for more details. The application will now quit.');
+      // Ensure dialog is required: const { dialog } = require('electron'); at the top
+      dialog.showErrorBox('Development Server Error', `Failed to start the Next.js development server.\n\n${error.message}\n\nPlease check the logs. The application will quit.`);
+      app.quit();
+      return; // Ensure no further code in this block runs
+    }
+  } else {
+    log.info(`[FinCRuM] Production mode (or NODE_ENV not 'development': '${currentEnv}'). Creating window directly.`);
+    createWindow();
+  }
+
+  app.on('activate', () => {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) {
+      log.info('[FinCRuM] App activated and no windows open. Re-creating window.');
+      // This createWindow call will respect the NODE_ENV logic within createWindow itself
+      // for URL selection. If dev server was needed and failed, app would have quit.
+      // If dev server was needed and succeeded, it should still be running.
+      createWindow();
     }
   });
 }).catch(err => {
@@ -293,6 +455,30 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     log.info('[FinCRuM] Quitting application');
     app.quit();
+  }
+});
+
+// Event handler for when the application is about to quit
+app.on('will-quit', () => {
+  log.info('[FinCRuM] App is about to quit. Cleaning up dev server...');
+  if (devServerProcess && devServerProcess.pid) { // Ensure process exists and has a PID
+    log.info(`[FinCRuM] Stopping Next.js dev server (PID: ${devServerProcess.pid})...`);
+    if (process.platform === "win32") {
+      // On Windows, taskkill is more reliable for killing process trees.
+      // detached: true and stdio: 'ignore' allow Electron to quit without waiting for taskkill.
+      spawn('taskkill', ['/PID', devServerProcess.pid.toString(), '/T', '/F'], {
+        detached: true,
+        stdio: 'ignore' // No shell: true needed for system commands like taskkill
+      });
+      log.info(`[FinCRuM] Dispatched taskkill for PID ${devServerProcess.pid} on Windows.`);
+    } else {
+      // For macOS and Linux, SIGINT should allow graceful shutdown if the server handles it.
+      devServerProcess.kill('SIGINT');
+      log.info(`[FinCRuM] Sent SIGINT to dev server process ${devServerProcess.pid} on ${process.platform}.`);
+    }
+    devServerProcess = null; // Clear the reference
+  } else {
+    log.info('[FinCRuM] No running Next.js dev server process to stop.');
   }
 });
 

@@ -1,4 +1,4 @@
-import { Dashboard } from '@/components/dashboard'
+import { Dashboard } from '@/components/Dashboard'
 import SyncManager from '@/components/SyncManager'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
