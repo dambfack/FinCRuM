@@ -1,10 +1,23 @@
-
 'use server';
 
-import { google } from 'googleapis';
-import type { Credentials, OAuth2Client } from 'google-auth-library';
+import { google, calendar_v3, Auth } from 'googleapis';
 import type { Task, Reminder, Appointment, GoogleTokens, AppointmentAttendee, ChecklistItem } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
+
+type OAuth2Client = Auth.OAuth2Client;
+type Credentials = Auth.Credentials;
+type CalendarEvent = calendar_v3.Schema$Event;
+
+// Extend the global NodeJS namespace to include our custom environment variables
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: string;
+      GOOGLE_CLIENT_SECRET: string;
+      NEXT_PUBLIC_GOOGLE_REDIRECT_URI: string;
+    }
+  }
+}
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -17,7 +30,7 @@ if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
 /**
  * Gets a new OAuth2 client instance
  */
-function getOAuth2Client(): OAuth2Client {
+export function getOAuth2Client(): OAuth2Client {
   const { OAuth2Client: Client } = require('google-auth-library');
   return new Client({
     clientId: CLIENT_ID,
@@ -29,7 +42,7 @@ function getOAuth2Client(): OAuth2Client {
 /**
  * Gets the Google Calendar API client with the provided tokens
  */
-function getCalendarClient(tokens: GoogleTokens) {
+export function getCalendarClient(tokens: GoogleTokens) {
   const client = getOAuth2Client();
   client.setCredentials(tokens);
   return google.calendar({ version: 'v3', auth: client });

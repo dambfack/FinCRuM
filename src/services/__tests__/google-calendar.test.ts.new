@@ -1,0 +1,192 @@
+// Mock environment variables
+process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI = 'http://localhost:3000/api/auth/callback/google';
+
+// Mock the google-auth-library
+const mockGenerateAuthUrl = jest.fn().mockReturnValue('https://accounts.google.com/o/oauth2/auth');
+const mockGetToken = jest.fn().mockResolvedValue({
+  tokens: {
+    access_token: 'test-access-token',
+    refresh_token: 'test-refresh-token',
+    expiry_date: Date.now() + 3600000
+  }
+});
+const mockSetCredentials = jest.fn();
+const mockRefreshAccessToken = jest.fn().mockResolvedValue({
+  credentials: {
+    access_token: 'new-access-token',
+    expiry_date: Date.now() + 3600000
+  }
+});
+
+// Mock the OAuth2Client
+class MockOAuth2Client {
+  generateAuthUrl = mockGenerateAuthUrl;
+  getToken = mockGetToken;
+  setCredentials = mockSetCredentials;
+  refreshAccessToken = mockRefreshAccessToken;
+}
+
+// Mock google-auth-library
+jest.mock('google-auth-library', () => ({
+  OAuth2Client: MockOAuth2Client
+}));
+
+// Mock googleapis
+const mockInsert = jest.fn().mockResolvedValue({ data: { id: 'test-event-id' } });
+const mockUpdate = jest.fn().mockResolvedValue({ data: { id: 'test-event-id' } });
+const mockDelete = jest.fn().mockResolvedValue({ data: {} });
+const mockList = jest.fn().mockResolvedValue({
+  data: {
+    items: [
+      { id: 'event-1', summary: 'Test Event 1' },
+      { id: 'event-2', summary: 'Test Event 2' }
+    ]
+  }
+});
+
+jest.mock('googleapis', () => ({
+  google: {
+    auth: {
+      OAuth2: jest.fn().mockImplementation(() => ({
+        setCredentials: mockSetCredentials,
+        refreshAccessToken: mockRefreshAccessToken
+      }))
+    },
+    calendar: jest.fn().mockImplementation(() => ({
+      events: {
+        insert: mockInsert,
+        update: mockUpdate,
+        delete: mockDelete,
+        list: mockList
+      }
+    }))
+  }
+}));
+
+// Import the module after setting up mocks
+import { google } from 'googleapis';
+import * as googleCalendar from '../google-calendar';
+
+// Test data
+const mockTokens = {
+  access_token: 'test-access-token',
+  refresh_token: 'test-refresh-token',
+  expiry_date: Date.now() + 3600000
+};
+
+const mockAppointment = {
+  id: 'test-appointment-id',
+  title: 'Test Appointment',
+  description: 'Test Description',
+  start: new Date().toISOString(),
+  end: new Date(Date.now() + 3600000).toISOString(),
+  type: 'appointment' as const,
+  googleCalendarEventId: 'test-event-id'
+};
+
+describe('Google Calendar Service', () => {
+  beforeEach(() => {
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  describe('generateGoogleAuthUrl', () => {
+    it('should generate a Google OAuth URL', async () => {
+      const url = await googleCalendar.generateGoogleAuthUrl();
+      expect(url).toBe('https://accounts.google.com/o/oauth2/auth');
+      expect(mockGenerateAuthUrl).toHaveBeenCalled();
+    });
+  });
+
+  describe('exchangeCodeForTokens', () => {
+    it('should exchange an authorization code for tokens', async () => {
+      const tokens = await googleCalendar.exchangeCodeForTokens('test-code');
+      expect(tokens).toEqual({
+        access_token: 'test-access-token',
+        refresh_token: 'test-refresh-token',
+        expiry_date: expect.any(Number)
+      });
+      expect(mockGetToken).toHaveBeenCalledWith('test-code');
+    });
+  });
+
+  describe('getAuthenticatedClient', () => {
+    it('should return a client with valid tokens', async () => {
+      const client = await googleCalendar.getAuthenticatedClient(mockTokens);
+      expect(client).toBeDefined();
+      expect(mockSetCredentials).toHaveBeenCalledWith(mockTokens);
+    });
+
+    it('should refresh tokens if expired', async () => {
+      const expiredTokens = {
+        ...mockTokens,
+        expiry_date: Date.now() - 1000 // Expired token
+      };
+      
+      const client = await googleCalendar.getAuthenticatedClient(expiredTokens);
+      expect(client).toBeDefined();
+      expect(mockRefreshAccessToken).toHaveBeenCalled();
+    });
+  });
+
+  describe('createCalendarEvent', () => {
+    it('should create a new calendar event', async () => {
+      const result = await googleCalendar.createCalendarEvent(
+        mockAppointment,
+        'appointment',
+        mockTokens
+      );
+      expect(result.event.id).toBe('test-event-id');
+      expect(mockInsert).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateCalendarEvent', () => {
+    it('should update an existing calendar event', async () => {
+      const result = await googleCalendar.updateCalendarEvent(
+        'test-event-id',
+        mockAppointment,
+        'appointment',
+        mockTokens
+      );
+      expect(result.event.id).toBe('test-event-id');
+      expect(mockUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteCalendarEvent', () => {
+    it('should delete a calendar event', async () => {
+      const result = await googleCalendar.deleteCalendarEvent('test-event-id', mockTokens);
+      expect(result.success).toBe(true);
+      expect(mockDelete).toHaveBeenCalledWith({
+        eventId: 'test-event-id',
+        calendarId: 'primary'
+      });
+    });
+  });
+
+  describe('listCalendarEvents', () => {
+    it('should list calendar events', async () => {
+      const now = new Date();
+      const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      const result = await googleCalendar.listCalendarEvents(
+        mockTokens,
+        now.toISOString(),
+        nextWeek.toISOString()
+      );
+      
+      expect(result.events).toHaveLength(2);
+      expect(mockList).toHaveBeenCalledWith({
+        calendarId: 'primary',
+        timeMin: now.toISOString(),
+        timeMax: nextWeek.toISOString(),
+        maxResults: 250,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+    });
+  });
+});

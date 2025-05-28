@@ -1,4 +1,20 @@
+// Import Jest DOM matchers
 import '@testing-library/jest-dom';
+
+// Add custom Jest matchers
+import { expect } from '@jest/globals';
+
+expect.extend({
+  toBeCloseToDate(received, expected, precision = 1000) {
+    const receivedTime = received.getTime();
+    const expectedTime = expected.getTime();
+    const pass = Math.abs(receivedTime - expectedTime) < precision;
+    const message = pass
+      ? () => `expected ${received} not to be close to ${expected}`
+      : () => `expected ${received} to be close to ${expected}`;
+    return { pass, message };
+  },
+});
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
