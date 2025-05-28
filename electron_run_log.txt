@@ -1,0 +1,7 @@
+[2025-05-21T16:10:02.102Z] SCRIPT_EXECUTION_START
+[2025-05-21T16:10:02.104Z] [MINIMAL_STDOUT_TEST] electron.js is running (stdout)
+[2025-05-21T16:10:02.105Z] [MINIMAL_STDERR_TEST] electron.js is running (stderr)
+[2025-05-21T16:10:02.107Z] [MINIMAL_CONSOLE_LOG_TEST] electron.js is running (console.log)
+[2025-05-21T16:10:02.107Z] Electron app object loaded.
+[2025-05-21T16:10:02.108Z] Script setup complete. Waiting for app ready.
+[2025-05-21T16:10:02.146Z] App is ready. Quitting.

@@ -19,54 +19,24 @@ export default function GoogleAuthCallbackPage() {
   useEffect(() => {
     const code = searchParams.get('code');
     const errorParam = searchParams.get('error');
+    const provider = sessionStorage.getItem('googleAuthProvider') as 'googledrive' | 'googlecalendar' | null;
+
+    // Clean up the session storage
+    sessionStorage.removeItem('googleAuthProvider');
 
     if (errorParam) {
       setError(`Authentication failed: ${errorParam}`);
       setMessage(`Error: ${errorParam}. Please try authenticating again.`);
       toast({
-        title: 'Google Authentication Failed',
+        title: `Google ${provider === 'googlecalendar' ? 'Calendar' : 'Drive'} Authentication Failed`,
         description: errorParam,
         variant: 'destructive',
       });
-      // Optionally redirect after a delay
-      // setTimeout(() => router.push('/'), 5000);
+      setTimeout(() => router.push('/'), 3000);
       return;
     }
 
-    if (code) {
-      exchangeCodeForTokens(code)
-        .then((tokens: GoogleTokens) => {
-          if (tokens.access_token) {
-            localStorage.setItem(DataItemType.GoogleDriveAccessToken, tokens.access_token);
-          }
-          if (tokens.refresh_token) {
-            localStorage.setItem(DataItemType.GoogleDriveRefreshToken, tokens.refresh_token);
-          }
-          // Store other token info if needed, e.g., expiry_date
-           if (tokens.expiry_date) {
-             localStorage.setItem('googleDriveTokenExpiry', tokens.expiry_date.toString());
-           }
-
-
-          toast({
-            title: 'Google Authentication Successful',
-            description: 'You are now connected to Google services.',
-          });
-          setMessage('Authentication successful! Redirecting...');
-          // Redirect to dashboard or a page that initiated the auth
-          router.push('/');
-        })
-        .catch((err) => {
-          console.error('Error exchanging code for tokens:', err);
-          setError(`Failed to process Google authentication: ${err.message}`);
-          setMessage(`Error processing authentication. Please try again.`);
-          toast({
-            title: 'Google Authentication Error',
-            description: `Could not finalize authentication: ${err.message}`,
-            variant: 'destructive',
-          });
-        });
-    } else {
+    if (!code) {
       setError('No authorization code found in callback.');
       setMessage('Authentication callback is missing required information.');
       toast({
@@ -74,7 +44,67 @@ export default function GoogleAuthCallbackPage() {
         description: 'Authorization code missing from Google callback.',
         variant: 'destructive',
       });
+      setTimeout(() => router.push('/'), 3000);
+      return;
     }
+
+    // Handle the OAuth callback based on the provider
+    const handleOAuthCallback = async () => {
+      try {
+        const tokens = await exchangeCodeForTokens(code);
+        
+        if (!tokens.access_token) {
+          throw new Error('No access token received from Google');
+        }
+
+        // Determine which tokens to save based on the provider
+        if (provider === 'googlecalendar') {
+          // Save Google Calendar tokens
+          localStorage.setItem(DataItemType.GoogleCalendarAccessToken, tokens.access_token);
+          if (tokens.refresh_token) {
+            localStorage.setItem(DataItemType.GoogleCalendarRefreshToken, tokens.refresh_token);
+          }
+          if (tokens.expiry_date) {
+            localStorage.setItem('googleCalendarTokenExpiry', tokens.expiry_date.toString());
+          }
+          
+          toast({
+            title: 'Google Calendar Connected',
+            description: 'Successfully connected to Google Calendar!',
+          });
+        } else {
+          // Default to Google Drive for backward compatibility
+          localStorage.setItem(DataItemType.GoogleDriveAccessToken, tokens.access_token);
+          if (tokens.refresh_token) {
+            localStorage.setItem(DataItemType.GoogleDriveRefreshToken, tokens.refresh_token);
+          }
+          if (tokens.expiry_date) {
+            localStorage.setItem('googleDriveTokenExpiry', tokens.expiry_date.toString());
+          }
+          
+          toast({
+            title: 'Google Drive Connected',
+            description: 'Successfully connected to Google Drive!',
+          });
+        }
+
+        setMessage('Authentication successful! Redirecting...');
+        router.push('/');
+      } catch (err: any) {
+        console.error('Error processing Google authentication:', err);
+        const errorMessage = err.message || 'An unknown error occurred';
+        setError(`Failed to process Google authentication: ${errorMessage}`);
+        setMessage('Error processing authentication. Please try again.');
+        toast({
+          title: `Google ${provider === 'googlecalendar' ? 'Calendar' : 'Drive'} Authentication Error`,
+          description: `Could not complete authentication: ${errorMessage}`,
+          variant: 'destructive',
+        });
+        setTimeout(() => router.push('/'), 5000);
+      }
+    };
+
+    handleOAuthCallback();
   }, [searchParams, router, toast]);
 
   return (

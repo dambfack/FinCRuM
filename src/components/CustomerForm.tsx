@@ -194,6 +194,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     const contacts = getData<Contact[]>(DataItemType.Contacts) || [];
     const isNewContact = !initialData?.id;
     const contactId = initialData?.id || `contact-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    
+    // Helper function to ensure date is in string format
+    const ensureDateString = (date: Date | string | undefined): string => {
+      if (!date) return new Date().toISOString();
+      return date instanceof Date ? date.toISOString() : date;
+    };
 
     const finalAssignedToUserId = data.assignedToUserId === "none" ? undefined : data.assignedToUserId;
 
@@ -252,7 +258,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         customerDataToSave = {
             id: contactId,
             ...formInputAsContactShape,
-            createdAt: initialData?.createdAt || now,
+            createdAt: ensureDateString(initialData?.createdAt) || now,
             updatedAt: now,
             attachments: initialData?.attachments || [], 
             contactStatus: 'approved',
@@ -261,7 +267,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         } as Contact;
 
         if(initialData) {
-            customerDataToSave = { ...initialData, ...customerDataToSave, id: contactId, createdAt: initialData.createdAt };
+            customerDataToSave = { 
+              ...initialData, 
+              ...customerDataToSave, 
+              id: contactId, 
+              createdAt: ensureDateString(initialData.createdAt) 
+            };
         }
 
 
@@ -281,7 +292,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
         form.reset();
         setImagePreview(null);
       } else if (initialData && currentUser.role === 'partner') {
-        form.reset(customerDataToSave);
+        // Ensure all dates are strings when resetting the form
+        const formResetData = {
+          ...customerDataToSave,
+          createdAt: ensureDateString(customerDataToSave.createdAt),
+          updatedAt: ensureDateString(customerDataToSave.updatedAt)
+        };
+        form.reset(formResetData);
         setImagePreview(customerDataToSave.profilePictureUrl || null);
       }
     } catch (error) {

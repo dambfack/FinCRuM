@@ -209,6 +209,8 @@ export enum DataItemType {
   OneDriveRefreshToken = 'onedriveRefreshToken',
   GoogleDriveAccessToken = 'googledriveAccessToken',
   GoogleDriveRefreshToken = 'googledriveRefreshToken',
+  GoogleCalendarAccessToken = 'googlecalendarAccessToken',
+  GoogleCalendarRefreshToken = 'googlecalendarRefreshToken',
   Users = 'users',
   CurrentUserId = 'currentUserId', 
   Notifications = 'notifications', 

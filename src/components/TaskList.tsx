@@ -39,19 +39,28 @@ const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
   };
 
   const handleToggleComplete = (taskId: string) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed, status: !task.completed ? 'done' : 'todo' } : task
-    );
-    setTasks(updatedTasks);
-    saveData<Task[]>(DataItemType.Tasks, updatedTasks);
+    const updatedTasks = tasks.map(task => {
+      if (task.id === taskId) {
+        const newCompleted = !task.completed;
+        const updatedTask: Task = {
+          ...task,
+          completed: newCompleted,
+          status: newCompleted ? 'done' : 'todo'
+        };
+        return updatedTask;
+      }
+      return task;
+    });
+    setTasks(updatedTasks as Task[]);
+    saveData<Task[]>(DataItemType.Tasks, updatedTasks as Task[]);
   };
 
   const getPriorityBadgeVariant = (priority?: 'low' | 'medium' | 'high') => {
     switch (priority) {
-      case 'high': return 'destructive';
-      case 'medium': return 'secondary';
-      case 'low': return 'outline';
-      default: return 'outline';
+      case 'high': return 'destructive' as const;
+      case 'medium': return 'secondary' as const;
+      case 'low':
+      default: return 'outline' as const;
     }
   };
 

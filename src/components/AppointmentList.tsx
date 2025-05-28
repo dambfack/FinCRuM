@@ -17,7 +17,7 @@ interface AppointmentListProps {
 const AppointmentList: React.FC<AppointmentListProps> = ({ onEditAppointment }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [users, setUsers] = useState<User[]>([]); // State for users
-  const { triggerSync } = useDataSync(); 
+  const { performSync } = useDataSync();
 
   useEffect(() => {
     loadAppointmentsAndUsers();

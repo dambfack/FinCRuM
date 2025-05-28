@@ -1,0 +1,58 @@
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    turbo: {},
+    // Enable server actions
+    serverActions: {
+      allowedOrigins: ['localhost:9002', '127.0.0.1:65109', 'localhost:65109']
+    },
+    // Allow development origins
+    allowedDevOrigins: [
+      '127.0.0.1:65109',
+      'localhost:65109',
+      'localhost:9002'
+    ]
+  },
+  // CORS headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, x-requested-with' },
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+        ],
+      },
+    ]
+  },
+  // API rewrites
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:9002/api/:path*',
+      },
+    ]
+  },
+  // Webpack configuration for development
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: /node_modules/,
+      };
+    }
+    return config;
+  },
+  // Development settings
+  env: {
+    // Development environment variables can be added here
+  },
+}
+
+// Export the config
+module.exports = nextConfig

@@ -1,0 +1,70 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      # Add any required services here (e.g., databases)
+      # redis:
+      #   image: redis
+      #   ports:
+      #     - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run type checking
+      run: npm run typecheck
+      
+    - name: Run linter
+      run: npm run lint
+      
+    - name: Run unit tests
+      run: npm run test:coverage
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage/lcov.info
+        fail_ci_if_error: false
+    
+    - name: Run E2E tests
+      run: npm run test:e2e
+      env:
+        CYPRESS_BASE_URL: http://localhost:9002
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        CYPRESS_GOOGLE_TEST_USER: ${{ secrets.CYPRESS_GOOGLE_TEST_USER }}
+        CYPRESS_GOOGLE_TEST_PASS: ${{ secrets.CYPRESS_GOOGLE_TEST_PASS }}
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          test-results/
+          coverage/
+          cypress/screenshots/
+          cypress/videos/
+    
+    - name: Notify on failure
+      if: failure()
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_TITLE: 'Test Failed'
+        SLACK_MESSAGE: 'Tests failed in ${{ github.workflow }}'
+        SLACK_COLOR: '#ff0000'

@@ -52,7 +52,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   if (React.isValidElement(value)) {
     valueNode = value;
   } else if (value instanceof Date) {
-    const dateString = formatDateTime(value as string);
+    const dateString = formatDateTime(value.toISOString());
     valueNode = (
       <p className={pTagClasses} title={isTruncateRequested ? dateString : undefined}>
         {dateString}

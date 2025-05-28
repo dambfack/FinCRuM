@@ -136,7 +136,7 @@ export function useDataSync() {
             error.message.toLowerCase().includes('invalid_grant') || 
             statusCode === 401 || statusCode === 403) {
           clearGoogleTokens();
-          toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google Drive.", variant: "warning" });
+          toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google Drive.", variant: "destructive" });
         }
       }
     } else {
@@ -179,7 +179,7 @@ export function useDataSync() {
              if (error.message.toLowerCase().includes('token') || error.message.toLowerCase().includes('authentication') || error.statusCode === 401 || error.statusCode === 403) {
                 localStorage.removeItem(DataItemType.OneDriveAccessToken);
                 setIsOneDriveConnectedInternal(false);
-                toast({ title: "OneDrive Authentication Invalid", description: "Your OneDrive session is invalid. Please re-connect OneDrive.", variant: "warning" });
+                toast({ title: "OneDrive Authentication Invalid", description: "Your OneDrive session is invalid. Please re-connect OneDrive.", variant: "destructive" });
             }
         }
     } else {
@@ -262,7 +262,7 @@ export function useDataSync() {
                      if (error.message.toLowerCase().includes('authentication') || error.message.toLowerCase().includes('invalid_grant') || statusCode === 401 || statusCode === 403) {
                         clearGoogleTokens();
                         if (showIndividualToasts) {
-                             toast({ title: "Google Authentication Invalid", description: "Calendar sync failed. Please re-connect Google.", variant: "warning" });
+                             toast({ title: "Google Authentication Invalid", description: "Calendar sync failed. Please re-connect Google.", variant: "destructive" });
                         }
                         throw error; 
                      }
@@ -333,23 +333,44 @@ export function useDataSync() {
         }
     }, [conflicts, toast, performSync]);
 
-    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive') => {
-      if (provider === 'googledrive') {
+    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar') => {
+      if (provider === 'googledrive' || provider === 'googlecalendar') {
         try {
-          clearGoogleTokens(); // Clear old tokens before starting new auth
-          const authUrl = await generateGoogleAuthUrl();
+          // Clear old tokens before starting new auth
+          if (provider === 'googlecalendar') {
+            localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
+            localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
+            localStorage.removeItem('googleCalendarTokenExpiry');
+          } else {
+            clearGoogleTokens();
+          }
+          
+          // Generate auth URL with appropriate scopes
+          const scopes = [
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/calendar.events'
+          ];
+          
+          // If also requesting Drive access, add those scopes
+          if (provider === 'googledrive') {
+            scopes.push('https://www.googleapis.com/auth/drive.file');
+          }
+          
+          const authUrl = await generateGoogleAuthUrl(scopes);
+          // Store the provider type in session storage to handle the callback
+          sessionStorage.setItem('googleAuthProvider', provider);
           window.location.href = authUrl; 
         } catch (error: any) {
-          console.error("Error generating Google Auth URL:", error);
-          toast({ title: "Google Auth Error", description: `Could not initiate Google authentication: ${error.message}`, variant: "destructive" });
+          console.error(`Error generating Google ${provider} Auth URL:`, error);
+          toast({ 
+            title: `Google ${provider === 'googlecalendar' ? 'Calendar' : 'Drive'} Auth Error`, 
+            description: `Could not initiate Google authentication: ${error.message}`, 
+            variant: "destructive" 
+          });
         }
       } else if (provider === 'onedrive') {
         toast({ title: `Connecting ${provider}...`, description: "OneDrive OAuth flow not yet implemented." });
-        // Placeholder:
-        // const mockToken = `mock-onedrive-token-${Date.now()}`;
-        // localStorage.setItem(DataItemType.OneDriveAccessToken, mockToken);
-        // setIsOneDriveConnectedInternal(true);
-        // toast({ title: `Connected to ${provider} (Mock)`, description: "Mock token stored." });
+        // Placeholder for OneDrive implementation
       }
     };
 

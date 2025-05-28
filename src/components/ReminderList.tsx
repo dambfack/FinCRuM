@@ -17,7 +17,7 @@ const ReminderList: React.FC<ReminderListProps> = ({ onEdit }) => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const { triggerSync } = useDataSync(); 
+  const { performSync } = useDataSync();
 
   useEffect(() => {
     const fetchRemindersData = () => { 

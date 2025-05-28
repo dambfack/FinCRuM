@@ -1,3 +1,4 @@
+
 // src/components/Dashboard.tsx
 'use client';
 
@@ -43,97 +44,53 @@ const initialStats: DashboardStats = {
   newCustomersTodayCount: 0,
   tasksPending: 0,
   appointmentsTodayCount: 0,
-};
+}
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
-const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
-
 const Dashboard: FC = () => {
-  // State declarations
-  const [stats, setStats] = useState<DashboardStats>(initialStats);
-  const [loading, setLoading] = useState(true);
-  const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
-  const [allUsersState, setAllUsersState] = useState<User[]>([]);
-  const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
-  const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
-  const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
-  const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
-  const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
-  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
-  const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
-  const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<TaskType | undefined>(undefined);
-  const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
-  const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
-  const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
-  const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
-  const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
-  const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
-  const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
-  const [isNewCustomersModalOpen, setNewCustomersModalOpen] = useState(false);
-  const [newCustomersTodayList, setNewCustomersTodayList] = useState<Contact[]>([]);
-  const [isTodaysTasksModalOpen, setTodaysTasksModalOpen] = useState(false);
-  const [todaysTasksList, setTodaysTasksList] = useState<TaskType[]>([]);
-  const [isTodaysAppointmentsModalOpen, setTodaysAppointmentsModalOpen] = useState(false);
-  const [todaysAppointmentsList, setTodaysAppointmentsList] = useState<AppointmentType[]>([]);
+// ... existing code ...
+// ... existing code ...
+    const [stats, setStats] = useState<DashboardStats>(initialStats);
+    const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
+    const [allUsersState, setAllUsersState] = useState<User[]>([]);
+    const [recentContacts, setRecentContacts] = useState<Contact[]>([]);
 
-  // Hooks
-  const { toast } = useToast();
-  const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
-  const { resolvedTheme, theme } = useTheme();
-  const { currentUser, currentUserThemeSettings } = useAuth();
-  const isGoogleCalendarLinked = isGoogleDriveConnected;
-  
-  // Helper functions
-    // Helper functions
-    // Helper functions
-  const getContactName = useCallback((contactId?: string): string => {
-    if (!contactId) return 'Unknown';
-    const contact = allContactsState.find((c: Contact) => c.id === contactId);
-    return contact ? `${contact.firstName} ${contact.lastName}`.trim() || 'Unnamed Contact' : 'Unknown';
-  }, [allContactsState]);
+    const [barChartTimeRange, setBarChartTimeRange] = useState<BarChartTimeRange>('6m');
+    const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
 
-  const getUserName = useCallback((userId?: string): string => {
-    if (!userId) return 'Unassigned';
-    const user = allUsersState.find((u: User) => u.id === userId);
-    return user ? user.name || 'Unnamed User' : 'Unknown User';
-  }, [allUsersState]);
-  
-  // Handler functions
-  const handleShowNewCustomersToday = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const newCustomers = allContactsState.filter((c: Contact) => {
-      const createdAtDate = c.createdAt ? (parseDate(c.createdAt as string)?.toISOString().split('T')[0]) : null;
-      return createdAtDate === today;
-    });
-    setNewCustomersTodayList(newCustomers);
-    setNewCustomersModalOpen(true);
-  }, [allContactsState]);
+    const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
+    const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
+    
+    const { resolvedTheme, theme } = useTheme();
+    const { currentUser, currentUserThemeSettings } = useAuth();
 
-  const handleShowTodaysTasks = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const tasks = getData<TaskType[]>(DataItemType.Tasks) || [];
-    const todaysTasks = tasks.filter((t: TaskType) => {
-      const dueDate = t.dueDate ? (parseDate(t.dueDate as string)?.toISOString().split('T')[0]) : null;
-      return dueDate === today;
-    });
-    setTodaysTasksList(todaysTasks);
-    setTodaysTasksModalOpen(true);
-  }, []);
+    const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+    const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
+    const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<TaskType | undefined>(undefined);
+    const [editingReminder, setEditingReminder] = useState<ReminderType | undefined>(undefined);
+    const [editingAppointment, setEditingAppointment] = useState<AppointmentType | undefined>(undefined);
 
-  const handleShowTodaysAppointments = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const appointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
-    const todaysAppointments = appointments.filter((a: AppointmentType) => {
-      const apptDate = a.date ? (parseDate(a.date as string)?.toISOString().split('T')[0]) : null;
-      return apptDate === today;
-    });
-    setTodaysAppointmentsList(todaysAppointments);
-    setTodaysAppointmentsModalOpen(true);
-  }, []);
+    const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
+    const [isCustomerDetailModalOpen, setIsCustomerDetailModalOpen] = useState(false);
 
+    const [customerToEdit, setCustomerToEdit] = useState<Contact | null>(null);
+    const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] = useState(false);
+
+    const [contactForNewActivity, setContactForNewActivity] = useState<Contact | null>(null);
+
+    const isGoogleCalendarLinked = isGoogleDriveConnected;
+
+    const [isNewCustomersModalOpen, setNewCustomersModalOpen] = useState(false);
+    const [newCustomersTodayList, setNewCustomersTodayList] = useState<Contact[]>([]);
+    const [isTodaysTasksModalOpen, setTodaysTasksModalOpen] = useState(false);
+    const [todaysTasksList, setTodaysTasksList] = useState<TaskType[]>([]);
+    const [isTodaysAppointmentsModalOpen, setTodaysAppointmentsModalOpen] = useState(false);
+    const [todaysAppointmentsList, setTodaysAppointmentsList] = useState<AppointmentType[]>([]);
 
 
     const loadDashboardData = useCallback(() => {
@@ -245,7 +202,7 @@ const Dashboard: FC = () => {
 
     const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
 
-    const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
+    const apexPieChartOptions = useMemo(() => {
         const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);
         
         const currentThemeKey = resolvedTheme === 'dark' ? 'dark' : 'light';
@@ -259,7 +216,7 @@ const Dashboard: FC = () => {
 
         return {
             chart: {
-                type: 'donut' as const,
+                type: 'donut',
                 background: 'transparent',
                 fontFamily: MONTSERRAT_FONT_STACK,
                 toolbar: { show: false }
@@ -275,13 +232,7 @@ const Dashboard: FC = () => {
                 fontSize: '12px',
                 fontFamily: MONTSERRAT_FONT_STACK,
                 labels: { colors: resolvedTheme === 'dark' ? '#e5e5e5' : '#333333' },
-                markers: {
-                    size: 6,
-                    shape: 'circle' as const,
-                    strokeWidth: 0,
-                    offsetX: 0,
-                    offsetY: 0
-                },
+                markers: { width: 10, height: 10 },
                 itemMargin: { horizontal: 5, vertical: 2 }
             },
             plotOptions: {
@@ -305,10 +256,17 @@ const Dashboard: FC = () => {
                                 formatter: (val: string) => val
                             }
                         }
-                    }
+                    },
+                    dropShadow: { 
+                        enabled: false, // Disabled to remove potential dark overlay
+                        // top: 3, 
+                        // left: 0, 
+                        // blur: 3, 
+                        // opacity: 0.15 // Reduced opacity if re-enabled
+                    }, 
+                    states: { hover: { filter: { type: 'lighten', value: 0.25 } } }
                 }
             },
-            // Hover state is handled by the theme
             dataLabels: {
                 enabled: totalClients > 0,
                 formatter: (val: number, opts: any) => {
@@ -348,33 +306,16 @@ const Dashboard: FC = () => {
     const handleGoogleCalendarAuth = useCallback(async () => {
       if (isGoogleCalendarLinked) {
         if (typeof window !== 'undefined') {
-          // Remove both Google Calendar and Google Drive tokens
-          localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
-          localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
-          localStorage.removeItem('googleCalendarTokenExpiry');
           localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
           localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
           localStorage.removeItem('googleDriveTokenExpiry');
-          
-          // Update UI state
-          setIsGoogleCalendarLinked(false);
-          toast({ 
-            title: "Google Calendar Unlinked", 
-            description: "You have been signed out of Google Calendar.",
-            variant: "default"
-          });
         }
+        toast({ title: "Google Calendar Unlinked", description: "You may need to re-authenticate to use calendar features."});
       } else {
         try {
-          // Initiate Google Calendar authentication
-          await initiateAuthentication('googlecalendar');
-        } catch (error) {
-          console.error('Google Calendar authentication error:', error);
-          toast({ 
-            title: "Google Calendar Auth Error", 
-            description: `Failed to connect to Google Calendar: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-            variant: "destructive"
-          });
+            await initiateAuthentication('googledrive');
+        } catch(error) {
+            toast({ title: "Google Calendar Auth Error", description: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
         }
       }
       loadDashboardData(); // Reload to reflect connection status change
@@ -440,65 +381,76 @@ const handleContactUpdatedFromDashboardModal = (updatedContact: Contact) => {
       loadDashboardData();
 }
 
-
-
 const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const taskDialogContentClassName = "sm:max-w-xl glass-effect bg-card/80 dark:bg-card/70";
     const listModalContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card/70";
     const customerEditDialogContentClassName = "sm:max-w-2xl glass-effect bg-card/80 dark:bg-card/70";
 
-        // Handler functions are already defined above
-    const getTaskPriorityBadgeVariant = useCallback((priority?: 'low' | 'medium' | 'high') => {
+    const handleShowNewCustomersToday = () => {
+      const allContacts = getData<Contact[]>(DataItemType.Contacts) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const filtered = allContacts.filter(c => c.createdAt && (parseDate(c.createdAt as string)?.toISOString().split('T')[0] === todayString));
+      setNewCustomersTodayList(filtered);
+      setNewCustomersModalOpen(true);
+}
+
+const handleShowTodaysTasks = () => {
+      const allTasks = getData<TaskType[]>(DataItemType.Tasks) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const priorityOrder: Record<TaskType['priority'] & string, number> = { high: 1, medium: 2, low: 3 }
+
+export default Dashboard;
+
+      const filtered = allTasks
+        .filter(t => t.dueDate && (parseDate(t.dueDate as string)?.toISOString().split('T')[0] === todayString))
+        .sort((a, b) => (priorityOrder[a.priority || 'low'] || 4) - (priorityOrder[b.priority || 'low'] || 4));
+      setTodaysTasksList(filtered);
+      setTodaysTasksModalOpen(true);
+}
+
+const handleShowTodaysAppointments = () => {
+      const allAppointments = getData<AppointmentType[]>(DataItemType.Appointments) || [];
+      const todayString = new Date().toISOString().split('T')[0];
+      const filtered = allAppointments.filter(a => a.date && (parseDate(a.date as string)?.toISOString().split('T')[0] === todayString));
+      setTodaysAppointmentsList(filtered);
+      setTodaysAppointmentsModalOpen(true);
+    }
+
+export default Dashboard;
+
+    const getTaskPriorityBadgeVariant = (priority?: 'low' | 'medium' | 'high') => {
       switch (priority) {
         case 'high': return 'destructive';
         case 'medium': return 'secondary';
         case 'low': return 'outline';
         default: return 'outline';
       }
-    }, []);
+    }
+};
 
-    // Memoize the stat cards to prevent unnecessary re-renders
-    const statCards = useMemo(() => [
-      { 
-        title: "Total Customers", 
-        value: stats.totalCustomers, 
-        icon: Users, 
-        note: "All contacts in system", 
-        link: "/customers" 
-      },
-      { 
-        title: "New Today", 
-        value: `+${stats.newCustomersTodayCount}`, 
-        icon: UserPlusIcon, 
-        note: "Customers added today", 
-        action: handleShowNewCustomersToday 
-      },
-      { 
-        title: "Pending Tasks", 
-        value: stats.tasksPending, 
-        icon: ListTodo, 
-        note: "Tasks due today, by priority", 
-        action: handleShowTodaysTasks 
-      },
-      { 
-        title: "Appointments Today", 
-        value: stats.appointmentsTodayCount, 
-        icon: Calendar, 
-        note: "Scheduled for today", 
-        action: handleShowTodaysAppointments 
-      }
-    ], [
-      stats.totalCustomers, 
-      stats.newCustomersTodayCount, 
-      stats.tasksPending, 
-      stats.appointmentsTodayCount, 
-      handleShowNewCustomersToday, 
-      handleShowTodaysTasks, 
-      handleShowTodaysAppointments
-    ]);
+const getContactName = (contactId?: string) => {
+    if (!contactId) return null;
+    const contact = allContactsState.find(c => c.id === contactId);
+    return contact ? `${contact.firstName} ${contact.lastName}` : `Contact ID: ${contactId}`;
+};
 
-  return (
-    <div className="space-y-6">
+const getUserName = (userId?: string) => {
+    if (!userId) return null;
+    const user = allUsersState.find(u => u.id === userId);
+    return user ? user.name : `User ID: ${userId}`;
+};
+
+const statCards = [
+    { title: "Total Customers", value: stats.totalCustomers, icon: Users, note: "All contacts in system", link: "/customers" },
+    { title: "New Today", value: `+${stats.newCustomersTodayCount}`, icon: UserPlusIcon, note: "Customers added today", action: handleShowNewCustomersToday },
+    { title: "Pending Tasks", value: stats.tasksPending, icon: ListTodo, note: "Tasks due today, by priority", action: handleShowTodaysTasks },
+    { title: "Appointments Today", value: stats.appointmentsTodayCount, icon: Calendar, note: "Scheduled for today", action: handleShowTodaysAppointments }
+];
+
+const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK }
+
+    return (
+      <div className="space-y-6">
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <h1 className="text-3xl font-bold font-heading">CRM Dashboard</h1>
           <div className="flex items-center gap-2">

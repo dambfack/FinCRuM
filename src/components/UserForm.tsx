@@ -39,31 +39,41 @@ interface UserFormProps {
 const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) => {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: initialData ?
-      { ...initialData, pin: initialData.pin || '', profilePictureUrl: initialData.profilePictureUrl || '' }
-      : {
-        name: '',
-        email: '',
-        role: 'employee',
-        pin: '',
-        profilePictureUrl: '',
-      },
+    defaultValues: {
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      role: initialData?.role || 'employee',
+      pin: initialData?.pin || '',
+      profilePictureUrl: initialData?.profilePictureUrl || ''
+    },
+    mode: 'onChange',
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset({ ...initialData, pin: initialData.pin || '', profilePictureUrl: initialData.profilePictureUrl || '' });
-    } else {
-      form.reset({ name: '', email: '', role: 'employee', pin: '', profilePictureUrl: '' });
-    }
+    form.reset({
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      role: initialData?.role || 'employee',
+      pin: initialData?.pin || '',
+      profilePictureUrl: initialData?.profilePictureUrl || ''
+    });
   }, [initialData, form]);
 
   const onSubmit = (data: UserFormValues) => {
+    if (!data.name || !data.email || !data.role) {
+      // This should be caught by form validation, but just in case
+      console.error('Required fields are missing');
+      return;
+    }
+
+    // Create user data with all required fields
     const userData: User = {
-      ...data,
       id: initialData?.id || `user-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
-      pin: data.pin || undefined, // Store as undefined if empty
-      profilePictureUrl: data.profilePictureUrl || undefined,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      ...(data.pin && { pin: data.pin }),
+      ...(data.profilePictureUrl && { profilePictureUrl: data.profilePictureUrl })
     };
 
     const users = getData<User[]>(DataItemType.Users) || [];

@@ -224,9 +224,9 @@ const NotificationBell: React.FC = () => {
                     {!notification.read && notification.type !== 'approval_request' && (
                         <Button
                             variant="ghost"
-                            size="xs"
+                            size="sm"
                             onClick={() => markAsRead(notification.id)}
-                            className="h-auto p-1 text-xs text-accent hover:text-accent-foreground hover:bg-accent/20 flex items-center gap-1"
+                            className="h-7 px-2 text-xs text-accent hover:text-accent-foreground hover:bg-accent/20 flex items-center gap-1"
                             title="Dismiss notification"
                         >
                             <EyeOff className="h-3 w-3" />
@@ -236,10 +236,15 @@ const NotificationBell: React.FC = () => {
                   </div>
                   {currentUser?.role === 'partner' && notification.type === 'approval_request' && !notification.read && (
                     <div className="flex gap-2 mt-1.5 pl-6">
-                      <Button size="xs" variant="default" onClick={() => handleApprovalAction(notification, 'approve')} className="h-7 px-2 py-1 text-xs">
+                      <Button size="sm" variant="default" onClick={() => handleApprovalAction(notification, 'approve')} className="h-7 px-2 text-xs">
                         Approve
                       </Button>
-                      <Button size="xs" variant="outline" onClick={() => handleApprovalAction(notification, 'reject')} className="h-7 px-2 py-1 text-xs">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleApprovalAction(notification, 'reject')} 
+                        className="h-7 px-2 text-xs"
+                      >
                         Reject
                       </Button>
                     </div>

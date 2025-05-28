@@ -12,35 +12,52 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
-import type { ExcelData } from '@/lib/types'; // Use central types
 
+interface DataGridProps<T extends Record<string, unknown>> {
+  data: T[];
+  columns: string[];
+}
 
-const DataGrid = () => {
-  const [data, setData] = useState<ExcelData | null>(null);
-  const [loading, setLoading] = useState(true);
+const DataGrid = <T extends Record<string, unknown>>({ 
+  data = [], 
+  columns = [] 
+}: DataGridProps<T>) => {
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [localData, setLocalData] = useState<T[]>([]);
 
   useEffect(() => {
-    // Ensure this code runs only on the client side
-    try {
-        const storedData = localStorage.getItem('customerData');
-        if (storedData) {
-            const parsedData: ExcelData = JSON.parse(storedData);
-             if (parsedData && parsedData.headers && parsedData.rows) {
-                 setData(parsedData);
-             } else {
-                 setError("No valid data found. Please import a file.");
-             }
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        if (data && data.length > 0) {
+          setLocalData(data);
         } else {
-             setError("No data found. Please import a file.");
+          // Fallback to localStorage if no data prop is provided
+          const storedData = localStorage.getItem('customerData');
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            if (Array.isArray(parsedData)) {
+              setLocalData(parsedData as T[]);
+            } else if (parsedData && Array.isArray(parsedData.rows)) {
+              setLocalData(parsedData.rows as T[]);
+            } else {
+              setError("No valid data found. Please import a file.");
+            }
+          } else {
+            setError("No data found. Please import a file.");
+          }
         }
-    } catch (err) {
-        console.error("Error loading data from localStorage:", err);
+      } catch (err) {
+        console.error("Error loading data:", err);
         setError("Failed to load data. Please try importing again.");
-    } finally {
+      } finally {
         setLoading(false);
-    }
-  }, []); // Empty dependency array ensures this runs once on mount
+      }
+    };
+
+    loadData();
+  }, [data]);
 
   if (loading) {
     return (
@@ -49,67 +66,83 @@ const DataGrid = () => {
           <CardTitle>Loading Data...</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+          <div className="space-y-2">
+            {Array(5).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
     );
   }
 
-   if (error) {
+  if (error) {
     return (
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" /> Error Loading Data
-          </CardTitle>
+      <Card>
+        <CardHeader className="text-destructive">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <CardTitle>Error Loading Data</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
-          <p>{error}</p>
+          <p className="text-destructive">{error}</p>
         </CardContent>
       </Card>
     );
   }
 
-  if (!data || data.rows.length === 0) {
+  if (!localData || localData.length === 0) {
     return (
-       <Card>
+      <Card>
         <CardHeader>
-          <CardTitle>No Customer Data</CardTitle>
+          <CardTitle>No Data Available</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>No data has been imported yet. Please go to the <a href="/import" className="underline text-accent">Import Data</a> page to upload a file.</p>
+          <p>Please import data to get started.</p>
         </CardContent>
       </Card>
     );
   }
+
+  // Get all unique column names from the data
+  const allColumns = columns && columns.length > 0 
+    ? columns 
+    : Array.from(
+        new Set(
+          localData.flatMap(item => Object.keys(item as Record<string, unknown>))
+        )
+      );
 
   return (
     <Card>
-      <CardContent className="p-0">
+      <div className="overflow-auto max-h-[calc(100vh-200px)]">
         <Table>
           <TableHeader>
             <TableRow>
-              {data.headers.map((header, index) => (
-                <TableHead key={index}>{header}</TableHead>
+              {allColumns.map((column, index) => (
+                <TableHead key={index} className="font-bold">
+                  {column}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.rows.map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{cell}</TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {localData.map((row, rowIndex) => {
+              const rowData = row as Record<string, unknown>;
+              return (
+                <TableRow key={rowIndex}>
+                  {allColumns.map((column, cellIndex) => (
+                    <TableCell key={`${rowIndex}-${cellIndex}`}>
+                      {String(rowData[column] ?? '')}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
-      </CardContent>
+      </div>
     </Card>
   );
 };
