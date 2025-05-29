@@ -111,7 +111,7 @@ const SyncManager = () => {
                  <Card className="border-dashed border-accent">
                     <CardHeader>
                         <CardTitle className="text-base font-heading tracking-wide">Connect Cloud Storage</CardTitle>
-                        <CardDescription>Connect your OneDrive or Google Drive account to enable data backup and sync.</CardDescription>
+                        <CardDescription>Connect your OneDrive or Google services account to enable data backup and sync.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-4">
                          {isOneDriveConnected === false && (
@@ -120,8 +120,8 @@ const SyncManager = () => {
                             </Button>
                          )}
                          {isGoogleDriveConnected === false && (
-                             <Button onClick={() => initiateAuthentication('googledrive')} variant="default" className="h-11 px-4 py-3">
-                                 <Cloud className="mr-2 h-4 w-4"/> Connect Google Drive
+                             <Button onClick={() => initiateAuthentication('google')} variant="default" className="h-11 px-4 py-3">
+                                 <Cloud className="mr-2 h-4 w-4"/> Connect Google Services
                              </Button>
                          )}
                     </CardContent>

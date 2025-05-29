@@ -7,6 +7,7 @@ import { DataItemType } from '@/lib/types';
 import { getData, saveData, hexToHslString } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
+import { revokeGoogleTokensAction } from '@/app/actions/google-auth-actions';
 
 // Default HSL values from globals.css for accent color
 const DEFAULT_ACCENT_HSL: Record<'light' | 'dark', string> = {
@@ -41,7 +42,7 @@ interface AuthContextType {
   currentUserThemeSettings: UserThemeSettings | null;
 
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
 
@@ -244,15 +245,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Revoke Google tokens if they exist
+    const googleDriveAccessToken = localStorage.getItem(DataItemType.GoogleDriveAccessToken);
+    const googleCalendarAccessToken = localStorage.getItem(DataItemType.GoogleCalendarAccessToken);
+    
+    // Try to revoke Google Drive tokens
+    if (googleDriveAccessToken) {
+      try {
+        await revokeGoogleTokensAction(googleDriveAccessToken);
+      } catch (error) {
+        console.warn('Failed to revoke Google Drive tokens:', error);
+      }
+    }
+    
+    // Try to revoke Google Calendar tokens (if different from Drive)
+    if (googleCalendarAccessToken && googleCalendarAccessToken !== googleDriveAccessToken) {
+      try {
+        await revokeGoogleTokensAction(googleCalendarAccessToken);
+      } catch (error) {
+        console.warn('Failed to revoke Google Calendar tokens:', error);
+      }
+    }
+    
+    // Clear all Google-related tokens from localStorage
+    localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
+    localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
+    localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
+    localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
+    
+    // Clear user session
     setCurrentUser(null);
     setIsAuthenticated(false);
     setPinSetupRequiredForUser(null);
     setCurrentUserThemeSettings(null);
     localStorage.removeItem(DataItemType.CurrentUserId);
     applyUserThemeSettings(null); 
-    toast({ title: "Logged Out", description: "You have been successfully logged out." });
-  }, [toast, applyUserThemeSettings]);
+    toast({ title: "Logged Out", description: "You have been successfully logged out and disconnected from Google services." });
+   }, [toast, applyUserThemeSettings]);
 
   const completePinSetupAndLogin = async (userId: string, newPin: string): Promise<boolean> => {
     setIsLoadingAuth(true);

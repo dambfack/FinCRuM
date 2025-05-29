@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Reminder, Contact, DataItemType, User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { createCalendarEvent as addReminderToGoogleCalendar, updateCalendarEvent as updateReminderInGoogleCalendar } from '../services/google-calendar';
+import { createCalendarEventAction, updateCalendarEventAction } from '../app/actions/google-calendar-actions';
 import { getData, saveData, parseDate, createNotification } from '../lib/utils'; // Added createNotification
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -182,21 +182,26 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       } else {
         let result;
         if (initialReminder?.googleCalendarEventId) {
-          result = await updateReminderInGoogleCalendar(initialReminder.googleCalendarEventId, newOrUpdatedReminder, 'reminder', googleTokens);
+          result = await updateCalendarEventAction(initialReminder.googleCalendarEventId, newOrUpdatedReminder, 'reminder', googleTokens);
         } else {
-          result = await addReminderToGoogleCalendar(newOrUpdatedReminder, 'reminder', googleTokens);
+          result = await createCalendarEventAction(newOrUpdatedReminder, 'reminder', googleTokens);
         }
-        if (result.event && result.event.id && !newOrUpdatedReminder.googleCalendarEventId) {
-            newOrUpdatedReminder.googleCalendarEventId = result.event.id;
+        if (result.success && result.data) {
+          if (result.data.event && result.data.event.id && !newOrUpdatedReminder.googleCalendarEventId) {
+            newOrUpdatedReminder.googleCalendarEventId = result.data.event.id;
             const updatedRemindersWithEventId = currentReminders.map(rem => rem.id === newOrUpdatedReminder.id ? newOrUpdatedReminder : rem);
             saveData<Reminder[]>(DataItemType.Reminders, updatedRemindersWithEventId);
+          }
+          if (result.data.newTokens && typeof window !== 'undefined') {
+            if(result.data.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.data.newTokens.access_token);
+            if(result.data.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.data.newTokens.refresh_token);
+            if(result.data.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.data.newTokens.expiry_date.toString());
+          }
+          toast({ title: "Google Calendar Synced", description: "Reminder synced with Google Calendar successfully.", variant: "default"});
+        } else {
+          throw new Error(result.error || 'Failed to sync with Google Calendar');
         }
-        if (result.newTokens && typeof window !== 'undefined') {
-            if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
-            if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
-            if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
-        }
-        await syncCalendar(); 
+        // Remove the syncCalendar() call to prevent duplicates - individual sync is already done above 
       }
     } catch (error) {
       console.error('Error saving reminder or syncing with Google Calendar:', error);

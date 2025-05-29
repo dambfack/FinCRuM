@@ -3,14 +3,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { uploadToOneDrive, downloadFromOneDrive, fetchOneDriveFileMetadata } from '@/services/onedrive'; // Added fetchOneDriveFileMetadata
-import { uploadToGoogleDrive, downloadFromGoogleDrive, fetchFileMetadata as fetchGoogleDriveFileMetadata } from '@/services/google-drive';
-import { 
-  generateGoogleAuthUrl, 
-  createCalendarEvent as apiCreateCalendarEvent,
-  updateCalendarEvent as apiUpdateCalendarEvent,
-  deleteCalendarEvent as apiDeleteCalendarEvent, // Added for completeness if needed
-  listCalendarEvents as apiListCalendarEvents, 
-} from '@/services/google-calendar';
+import { uploadToGoogleDriveAction, downloadFromGoogleDriveAction, fetchGoogleDriveFileMetadataAction } from '@/app/actions/google-drive-actions';
+import { generateGoogleAuthUrlAction } from '@/app/actions/google-auth-actions';
+import {
+  createCalendarEventAction,
+  updateCalendarEventAction,
+  deleteCalendarEventAction,
+  listCalendarEventsAction 
+} from '@/app/actions/google-calendar-actions';
+import {
+  deleteCalendarEventAction as syncDeleteAction,
+  listCalendarEventsAction as syncListAction
+} from '@/app/actions/google-sync-actions';
 import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, FileMetadata, Contact } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
@@ -101,7 +105,12 @@ export function useDataSync() {
       setIsGoogleDriveConnectedInternal(true);
       try {
         toast({ title: "Google Drive Syncing...", description: "Fetching remote data..." });
-        const { data: cloudData, newTokens: gDriveRefreshedTokens } = await downloadFromGoogleDrive(googleTokens);
+        const downloadResult = await downloadFromGoogleDriveAction(googleTokens);
+        if (!downloadResult.success) {
+          throw new Error(downloadResult.error || 'Failed to download from Google Drive');
+        }
+        const cloudData = downloadResult.data;
+        const gDriveRefreshedTokens = null; // Token refresh handled internally by server action
         if (gDriveRefreshedTokens) {
           storeGoogleTokens(gDriveRefreshedTokens);
           googleTokens = gDriveRefreshedTokens; // Use refreshed tokens for subsequent operations in this sync cycle
@@ -120,9 +129,12 @@ export function useDataSync() {
 
         if (mergedData && encounteredConflicts.length === 0 && isAnyLocalDataPresent) { // Only upload if data exists and no critical errors
           toast({ title: "Google Drive Syncing...", description: "Uploading data..." });
-          const { success, newTokens: gDriveUploadRefreshedTokens } = await uploadToGoogleDrive(mergedData, googleTokens); // Use potentially refreshed tokens
-          if (gDriveUploadRefreshedTokens) storeGoogleTokens(gDriveUploadRefreshedTokens);
-          if (success) toast({ title: "Google Drive Synced", description: "Customer data backed up to Google Drive." });
+          const uploadResult = await uploadToGoogleDriveAction(mergedData, googleTokens); // Use potentially refreshed tokens
+          if (uploadResult.success) {
+            toast({ title: "Google Drive Synced", description: "Customer data backed up to Google Drive." });
+          } else {
+            throw new Error(uploadResult.error || 'Failed to upload to Google Drive');
+          }
         } else if (!isAnyLocalDataPresent && cloudData) {
            saveData<ExcelData>(DataItemType.CustomerData, cloudData); // Save cloud data locally if no local data
            toast({ title: "Google Drive Synced", description: "Data downloaded from Google Drive."});
@@ -136,7 +148,7 @@ export function useDataSync() {
             error.message.toLowerCase().includes('invalid_grant') || 
             statusCode === 401 || statusCode === 403) {
           clearGoogleTokens();
-          toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google Drive.", variant: "destructive" });
+          toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google services.", variant: "destructive" });
         }
       }
     } else {
@@ -243,15 +255,20 @@ export function useDataSync() {
                 try {
                     let result;
                     if (item.googleCalendarEventId) {
-                        result = await apiUpdateCalendarEvent(item.googleCalendarEventId, item as any, itemType, currentTokens);
+                        result = await updateCalendarEventAction(item.googleCalendarEventId, item as any, itemType, currentTokens);
                     } else {
-                        result = await apiCreateCalendarEvent(item as any, itemType, currentTokens);
+                        result = await createCalendarEventAction(item as any, itemType, currentTokens);
                     }
-                    if (result.newTokens) {
-                      storeGoogleTokens(result.newTokens);
-                      currentTokens = result.newTokens; 
+                    if (result.success && result.data) {
+                      if (result.data.newTokens) {
+                        storeGoogleTokens(result.data.newTokens);
+                        currentTokens = result.data.newTokens; 
+                      }
+                      syncedItemsAccumulator.push({ ...item, googleCalendarEventId: result.data.event.id });
+                    } else {
+                      // Handle failed result
+                      throw new Error(result.error || 'Failed to sync calendar event');
                     }
-                    syncedItemsAccumulator.push({ ...item, googleCalendarEventId: result.event.id });
                 } catch (error: any) {
                      console.error(`Error syncing ${itemType} ${item.id} with Google Calendar:`, error);
                      const statusCode = error.statusCode || error.response?.status;
@@ -333,37 +350,35 @@ export function useDataSync() {
         }
     }, [conflicts, toast, performSync]);
 
-    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar') => {
-      if (provider === 'googledrive' || provider === 'googlecalendar') {
+    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar' | 'google') => {
+      if (provider === 'googledrive' || provider === 'googlecalendar' || provider === 'google') {
         try {
-          // Clear old tokens before starting new auth
-          if (provider === 'googlecalendar') {
-            localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
-            localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
-            localStorage.removeItem('googleCalendarTokenExpiry');
-          } else {
-            clearGoogleTokens();
-          }
+          // Clear all Google tokens before starting new auth for unified login
+          localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
+          localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
+          localStorage.removeItem('googleCalendarTokenExpiry');
+          clearGoogleTokens();
           
-          // Generate auth URL with appropriate scopes
+          // Generate auth URL with unified scopes for both Calendar and Drive
           const scopes = [
             'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/calendar.events'
+            'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/drive.file'
           ];
           
-          // If also requesting Drive access, add those scopes
-          if (provider === 'googledrive') {
-            scopes.push('https://www.googleapis.com/auth/drive.file');
+          const authUrlResult = await generateGoogleAuthUrlAction(scopes);
+          if (!authUrlResult.success) {
+            throw new Error(authUrlResult.error || 'Failed to generate auth URL');
           }
+          const authUrl = authUrlResult.authUrl!;
           
-          const authUrl = await generateGoogleAuthUrl(scopes);
-          // Store the provider type in session storage to handle the callback
-          sessionStorage.setItem('googleAuthProvider', provider);
+          // Store unified provider type in session storage
+          sessionStorage.setItem('googleAuthProvider', 'google');
           window.location.href = authUrl; 
         } catch (error: any) {
-          console.error(`Error generating Google ${provider} Auth URL:`, error);
+          console.error(`Error generating Google Auth URL:`, error);
           toast({ 
-            title: `Google ${provider === 'googlecalendar' ? 'Calendar' : 'Drive'} Auth Error`, 
+            title: 'Google Authentication Error', 
             description: `Could not initiate Google authentication: ${error.message}`, 
             variant: "destructive" 
           });

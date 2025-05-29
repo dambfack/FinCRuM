@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DataItemType, type Appointment, type Contact, type AppointmentAttendee, type User } from '../lib/types';
 import { useDataSync } from '../hooks/use-data-sync';
-import { createCalendarEvent, updateCalendarEvent } from '../services/google-calendar';
+import { createCalendarEventAction, updateCalendarEventAction } from '../app/actions/google-calendar-actions';
 import { getData, saveData, parseDate, createNotification } from '../lib/utils'; // Added createNotification
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -266,21 +266,27 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       } else {
         let result;
         if (newOrUpdatedAppointment.googleCalendarEventId){
-          result = await updateCalendarEvent(newOrUpdatedAppointment.googleCalendarEventId, newOrUpdatedAppointment, 'appointment', googleTokens);
+          result = await updateCalendarEventAction(newOrUpdatedAppointment.googleCalendarEventId, newOrUpdatedAppointment, 'appointment', googleTokens);
         } else {
-          result = await createCalendarEvent(newOrUpdatedAppointment, 'appointment', googleTokens);
-          if (result.event && result.event.id) {
-              newOrUpdatedAppointment.googleCalendarEventId = result.event.id;
-              const updatedAppointmentsWithEventId = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
-              saveData<Appointment[]>(DataItemType.Appointments, updatedAppointmentsWithEventId);
+          result = await createCalendarEventAction(newOrUpdatedAppointment, 'appointment', googleTokens);
+        }
+        
+        if (result.success && result.data) {
+          if (result.data.event && result.data.event.id && !newOrUpdatedAppointment.googleCalendarEventId) {
+            newOrUpdatedAppointment.googleCalendarEventId = result.data.event.id;
+            const updatedAppointmentsWithEventId = appointments.map(app => app.id === newOrUpdatedAppointment.id ? newOrUpdatedAppointment : app);
+            saveData<Appointment[]>(DataItemType.Appointments, updatedAppointmentsWithEventId);
           }
+          if (result.data.newTokens && typeof window !== 'undefined') {
+            if(result.data.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.data.newTokens.access_token);
+            if(result.data.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.data.newTokens.refresh_token);
+            if(result.data.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.data.newTokens.expiry_date.toString());
+          }
+          toast({ title: "Google Calendar Synced", description: "Appointment synced with Google Calendar successfully.", variant: "default"});
+        } else {
+          throw new Error(result.error || 'Failed to sync with Google Calendar');
         }
-        if (result.newTokens && typeof window !== 'undefined') {
-           if(result.newTokens.access_token) localStorage.setItem(DataItemType.GoogleDriveAccessToken, result.newTokens.access_token);
-           if(result.newTokens.refresh_token) localStorage.setItem(DataItemType.GoogleDriveRefreshToken, result.newTokens.refresh_token);
-           if(result.newTokens.expiry_date) localStorage.setItem('googleDriveTokenExpiry', result.newTokens.expiry_date.toString());
-        }
-        await syncCalendar();
+        // Remove the syncCalendar() call to prevent duplicates - individual sync is already done above
       }
     } catch (error) {
       console.error('Error saving or updating appointment with Google Calendar:', error);

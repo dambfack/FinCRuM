@@ -356,23 +356,22 @@ const Dashboard: FC = () => {
           localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
           localStorage.removeItem('googleDriveTokenExpiry');
           
-          // Update UI state
-          setIsGoogleCalendarLinked(false);
+          // UI state will be updated automatically through isGoogleDriveConnected
           toast({ 
-            title: "Google Calendar Unlinked", 
-            description: "You have been signed out of Google Calendar.",
+            title: "Google Services Unlinked", 
+            description: "You have been signed out of Google services.",
             variant: "default"
           });
         }
       } else {
         try {
-          // Initiate Google Calendar authentication
-          await initiateAuthentication('googlecalendar');
+          // Initiate unified Google authentication (Calendar + Drive)
+          await initiateAuthentication('google');
         } catch (error) {
-          console.error('Google Calendar authentication error:', error);
+          console.error('Google authentication error:', error);
           toast({ 
-            title: "Google Calendar Auth Error", 
-            description: `Failed to connect to Google Calendar: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+            title: "Google Auth Error", 
+            description: `Failed to connect to Google services: ${error instanceof Error ? error.message : 'Unknown error'}`, 
             variant: "destructive"
           });
         }
@@ -504,7 +503,7 @@ const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card
           <div className="flex items-center gap-2">
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
-                {isGoogleCalendarLinked ? 'Unlink Google Calendar' : 'Link Google Calendar'}
+                {isGoogleCalendarLinked ? 'Unlink Google Services' : 'Link Google Services'}
             </Button>
             <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />

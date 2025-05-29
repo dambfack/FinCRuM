@@ -42,6 +42,7 @@ import { DataItemType, UserThemeSettings } from '@/lib/types';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import { SketchPicker, type ColorResult } from 'react-color';
 import { Separator } from '@/components/ui/separator';
+import { GoogleAuthManager } from '@/components/GoogleAuthManager';
 
 
 const interBlack = Inter({
@@ -381,12 +382,13 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         ))}
                       </div>
                   </div>
-                  {/* Right Column: App Background */}
+                  {/* Right Column: App Background & Google Services */}
                   <div className="space-y-6">
                     <BackgroundImageSwitcher />
+                    <GoogleAuthManager />
                   </div>
                 </div>
-                {isAuthenticated && (<div className="mt-6 px-3 pb-3"><Button onClick={logout} variant="outline" size="sm" className="w-full h-9"><LogOut className="mr-2 h-4 w-4" />Logout</Button></div>)}
+                {isAuthenticated && (<div className="mt-6 px-3 pb-3"><Button onClick={() => logout()} variant="outline" size="sm" className="w-full h-9"><LogOut className="mr-2 h-4 w-4" />Logout</Button></div>)}
               </PopoverContent>
             </Popover>
             {currentUser && (<button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">

@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { exchangeCodeForTokens } from '@/services/google-calendar'; // Using this as it contains the server action
+import { exchangeCodeForTokensAction } from '@/app/actions/google-auth-actions';
 import { DataItemType, GoogleTokens } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -15,11 +15,28 @@ export default function GoogleAuthCallbackPage() {
   const { toast } = useToast();
   const [message, setMessage] = useState('Processing authentication...');
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
     const code = searchParams.get('code');
     const errorParam = searchParams.get('error');
-    const provider = sessionStorage.getItem('googleAuthProvider') as 'googledrive' | 'googlecalendar' | null;
+    
+    // Prevent multiple executions by checking if this code has already been processed
+    if (hasProcessed.current || (code && localStorage.getItem(`processed_code_${code}`))) {
+      return;
+    }
+    hasProcessed.current = true;
+    
+    // Mark this code as being processed
+    if (code) {
+      localStorage.setItem(`processed_code_${code}`, 'true');
+      // Clean up after 5 minutes
+      setTimeout(() => {
+        localStorage.removeItem(`processed_code_${code}`);
+      }, 5 * 60 * 1000);
+    }
+
+    const provider = sessionStorage.getItem('googleAuthProvider') as 'googledrive' | 'googlecalendar' | 'google' | null;
 
     // Clean up the session storage
     sessionStorage.removeItem('googleAuthProvider');
@@ -28,7 +45,7 @@ export default function GoogleAuthCallbackPage() {
       setError(`Authentication failed: ${errorParam}`);
       setMessage(`Error: ${errorParam}. Please try authenticating again.`);
       toast({
-        title: `Google ${provider === 'googlecalendar' ? 'Calendar' : 'Drive'} Authentication Failed`,
+        title: 'Google Authentication Failed',
         description: errorParam,
         variant: 'destructive',
       });
@@ -51,15 +68,36 @@ export default function GoogleAuthCallbackPage() {
     // Handle the OAuth callback based on the provider
     const handleOAuthCallback = async () => {
       try {
-        const tokens = await exchangeCodeForTokens(code);
+        const result = await exchangeCodeForTokensAction(code);
         
-        if (!tokens.access_token) {
-          throw new Error('No access token received from Google');
+        if (!result.success || !result.tokens?.access_token) {
+          throw new Error(result.error || 'No access token received from Google');
         }
+        
+        const tokens = result.tokens;
 
         // Determine which tokens to save based on the provider
-        if (provider === 'googlecalendar') {
-          // Save Google Calendar tokens
+        if (provider === 'google') {
+          // Save tokens for both Google Calendar and Drive (unified login)
+          localStorage.setItem(DataItemType.GoogleCalendarAccessToken, tokens.access_token);
+          localStorage.setItem(DataItemType.GoogleDriveAccessToken, tokens.access_token);
+          
+          if (tokens.refresh_token) {
+            localStorage.setItem(DataItemType.GoogleCalendarRefreshToken, tokens.refresh_token);
+            localStorage.setItem(DataItemType.GoogleDriveRefreshToken, tokens.refresh_token);
+          }
+          
+          if (tokens.expiry_date) {
+            localStorage.setItem('googleCalendarTokenExpiry', tokens.expiry_date.toString());
+            localStorage.setItem('googleDriveTokenExpiry', tokens.expiry_date.toString());
+          }
+          
+          toast({
+            title: 'Google Services Connected',
+            description: 'Successfully connected to Google Calendar and Drive!',
+          });
+        } else if (provider === 'googlecalendar') {
+          // Save Google Calendar tokens (legacy support)
           localStorage.setItem(DataItemType.GoogleCalendarAccessToken, tokens.access_token);
           if (tokens.refresh_token) {
             localStorage.setItem(DataItemType.GoogleCalendarRefreshToken, tokens.refresh_token);

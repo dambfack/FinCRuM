@@ -46,6 +46,31 @@ const nextConfig = {
         ignored: /node_modules/,
       };
     }
+    
+    // Handle Node.js modules that can't be resolved in browser
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        child_process: false,
+        os: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        net: false,
+        tls: false,
+        assert: false,
+        debug: false,
+        url: false,
+        querystring: false,
+        http: false,
+        https: false,
+        zlib: false,
+        buffer: false,
+      };
+    }
+    
     return config;
   },
   // Development settings
