@@ -44,7 +44,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const { syncCalendar } = useDataSync();
+  const { syncCalendar, syncMicrosoftCalendar } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
   const { currentUser } = useAuth(); // Get current user
@@ -291,6 +291,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
     } catch (error) {
       console.error('Error saving or updating appointment with Google Calendar:', error);
       toast({ title: "Google Calendar Error", description: `Failed to sync appointment: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
+    }
+
+    // Microsoft Calendar sync
+    try {
+      await syncMicrosoftCalendar();
+    } catch (error) {
+      console.error('Failed to sync appointment to Microsoft Calendar:', error);
+      toast({ title: "Microsoft Calendar Sync Error", description: `Failed to sync appointment: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
 
     onSave(newOrUpdatedAppointment);

@@ -43,6 +43,7 @@ import ProfilePictureModal from '@/components/ProfilePictureModal';
 import { SketchPicker, type ColorResult } from 'react-color';
 import { Separator } from '@/components/ui/separator';
 import { GoogleAuthManager } from '@/components/GoogleAuthManager';
+import { MicrosoftAuthManager } from '@/components/MicrosoftAuthManager';
 
 
 const interBlack = Inter({
@@ -382,10 +383,11 @@ function AppContent({ children }: { children: React.ReactNode }) {
                         ))}
                       </div>
                   </div>
-                  {/* Right Column: App Background & Google Services */}
+                  {/* Right Column: App Background & Cloud Services */}
                   <div className="space-y-6">
                     <BackgroundImageSwitcher />
                     <GoogleAuthManager />
+                    <MicrosoftAuthManager />
                   </div>
                 </div>
                 {isAuthenticated && (<div className="mt-6 px-3 pb-3"><Button onClick={() => logout()} variant="outline" size="sm" className="w-full h-9"><LogOut className="mr-2 h-4 w-4" />Logout</Button></div>)}

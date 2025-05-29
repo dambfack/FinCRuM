@@ -264,6 +264,16 @@ export interface GoogleTokens {
   expiry_date?: number | null;
 }
 
+// Microsoft OAuth tokens structure
+export interface MicrosoftTokens {
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expires_in?: number | null;
+  token_type?: string | null;
+  scope?: string | null;
+  expires_at?: number | null; // Timestamp when token expires
+}
+
 // Notification type
 export interface Notification {
   id: string;

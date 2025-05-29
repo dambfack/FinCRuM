@@ -15,7 +15,9 @@ import {
   deleteCalendarEventAction as syncDeleteAction,
   listCalendarEventsAction as syncListAction
 } from '@/app/actions/google-sync-actions';
-import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, FileMetadata, Contact } from '@/lib/types'; 
+import { createMicrosoftCalendarEventAction, updateMicrosoftCalendarEventAction, deleteMicrosoftCalendarEventAction, syncToMicrosoftCalendarAction, batchSyncToMicrosoftCalendarAction } from '@/app/actions/microsoft-calendar-actions';
+import { getGoogleTokens as getGoogleTokensFromStorage, storeGoogleTokens, clearGoogleTokens, getMicrosoftTokens, saveMicrosoftTokens, clearMicrosoftTokens, isMicrosoftAuthenticated } from '@/services/auth';
+import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, MicrosoftTokens, FileMetadata, Contact } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle } from 'lucide-react';
@@ -37,6 +39,7 @@ export function useDataSync() {
   // States to track connection status for UI updates
   const [isOneDriveConnectedInternal, setIsOneDriveConnectedInternal] = useState<boolean | null>(null);
   const [isGoogleDriveConnectedInternal, setIsGoogleDriveConnectedInternal] = useState<boolean | null>(null);
+  const [isMicrosoftCalendarConnectedInternal, setIsMicrosoftCalendarConnectedInternal] = useState<boolean | null>(null);
 
 
   const SYNC_INTERVAL = 24 * 60 * 60 * 1000; // Daily sync interval
@@ -312,6 +315,88 @@ export function useDataSync() {
     }
 }, [toast]); // Removed storeGoogleTokens, clearGoogleTokens from deps as they are stable
 
+  const syncMicrosoftCalendar = useCallback(async (showIndividualToasts = true) => {
+    let microsoftTokens = getMicrosoftTokens();
+    if (!microsoftTokens || !microsoftTokens.access_token) {
+      if (showIndividualToasts) {
+        toast({ title: "Microsoft Calendar Sync Failed", description: "Not authenticated with Microsoft. Please link Microsoft Calendar.", variant: "destructive"});
+      }
+      setIsMicrosoftCalendarConnectedInternal(false);
+      return;
+    }
+    setIsMicrosoftCalendarConnectedInternal(true);
+
+    if (showIndividualToasts) {
+        toast({ title: "Syncing Microsoft Calendar...", description: "Updating Outlook Calendar events." });
+    }
+    
+    try {
+        const localTasks: Task[] = getData<Task[]>(DataItemType.Tasks) || [];
+        const localReminders: Reminder[] = getData<Reminder[]>(DataItemType.Reminders) || [];
+        const localAppointments: Appointment[] = getData<Appointment[]>(DataItemType.Appointments) || [];
+
+        const processItems = async <T extends { id: string, microsoftCalendarEventId?: string, title?: string }>(
+            items: T[],
+            itemType: 'task' | 'reminder' | 'appointment'
+        ): Promise<{syncedItems: T[], newTokens?: MicrosoftTokens}> => {
+            const syncedItemsAccumulator: T[] = [];
+            let currentTokens = microsoftTokens!; // Assert non-null as checked above
+
+            for (const item of items) {
+                try {
+                    const result = await syncToMicrosoftCalendarAction(item as any, itemType, currentTokens, (item as any).microsoftCalendarEventId);
+                    
+                    if (result.success && result.data) {
+                      if (result.data.newTokens) {
+                        saveMicrosoftTokens(result.data.newTokens);
+                        currentTokens = result.data.newTokens; 
+                      }
+                      syncedItemsAccumulator.push({ ...item, microsoftCalendarEventId: result.data.eventId });
+                    } else {
+                      // Handle failed result
+                      throw new Error(result.error || 'Failed to sync Microsoft calendar event');
+                    }
+                } catch (error: any) {
+                     console.error(`Error syncing ${itemType} ${item.id} with Microsoft Calendar:`, error);
+                     const statusCode = error.statusCode || error.response?.status;
+                     if (showIndividualToasts) {
+                        toast({ title: `Microsoft Calendar Sync Error`, description: `Failed to sync ${itemType} "${item.title || item.id}": ${error.message}`, variant: "destructive"});
+                     }
+                     syncedItemsAccumulator.push(item); 
+                     if (error.message.toLowerCase().includes('authentication') || error.message.toLowerCase().includes('invalid_grant') || statusCode === 401 || statusCode === 403) {
+                        clearMicrosoftTokens();
+                        if (showIndividualToasts) {
+                             toast({ title: "Microsoft Authentication Invalid", description: "Calendar sync failed. Please re-connect Microsoft.", variant: "destructive" });
+                        }
+                        throw error; 
+                     }
+                }
+            }
+            return {syncedItems: syncedItemsAccumulator, newTokens: currentTokens};
+        };
+        
+        const taskResult = await processItems(localTasks, 'task');
+        saveData<Task[]>(DataItemType.Tasks, taskResult.syncedItems);
+        if(taskResult.newTokens) microsoftTokens = taskResult.newTokens;
+
+        const reminderResult = await processItems(localReminders, 'reminder');
+        saveData<Reminder[]>(DataItemType.Reminders, reminderResult.syncedItems);
+        if(reminderResult.newTokens) microsoftTokens = reminderResult.newTokens;
+        
+        const appointmentResult = await processItems(localAppointments, 'appointment');
+        saveData<Appointment[]>(DataItemType.Appointments, appointmentResult.syncedItems);
+        if(appointmentResult.newTokens) microsoftTokens = appointmentResult.newTokens;
+
+        if (showIndividualToasts) {
+            toast({ title: "Microsoft Calendar Synced", description: "Outlook Calendar events updated." });
+        }
+    } catch (error: any) {
+        // This catch is for critical auth errors propagated from processItems
+        console.error("Critical error during Microsoft Calendar sync, likely auth failure:", error);
+        // The toast for this type of failure is handled within processItems before re-throwing
+    }
+}, [toast]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
         const storedLastSyncTimeString = getData<string>(DataItemType.LastSyncTime);
@@ -350,7 +435,7 @@ export function useDataSync() {
         }
     }, [conflicts, toast, performSync]);
 
-    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar' | 'google') => {
+    const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar' | 'google' | 'microsoft' | 'microsoftcalendar') => {
       if (provider === 'googledrive' || provider === 'googlecalendar' || provider === 'google') {
         try {
           // Clear all Google tokens before starting new auth for unified login
@@ -383,6 +468,23 @@ export function useDataSync() {
             variant: "destructive" 
           });
         }
+      } else if (provider === 'microsoft' || provider === 'microsoftcalendar') {
+        try {
+          // Clear existing Microsoft tokens before starting new auth
+          clearMicrosoftTokens();
+          
+          // Generate Microsoft auth URL
+          const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI!)}&scope=${encodeURIComponent('https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Files.ReadWrite offline_access')}&response_mode=query&state=microsoft_auth`;
+          
+          window.location.href = authUrl;
+        } catch (error: any) {
+          console.error(`Error generating Microsoft Auth URL:`, error);
+          toast({ 
+            title: 'Microsoft Authentication Error', 
+            description: `Could not initiate Microsoft authentication: ${error.message}`, 
+            variant: "destructive" 
+          });
+        }
       } else if (provider === 'onedrive') {
         toast({ title: `Connecting ${provider}...`, description: "OneDrive OAuth flow not yet implemented." });
         // Placeholder for OneDrive implementation
@@ -399,8 +501,10 @@ export function useDataSync() {
     resolveConflict,
     initiateAuthentication,
     syncCalendar,
+    syncMicrosoftCalendar,
     isGoogleDriveConnected: isGoogleDriveConnectedInternal, // Expose internal state
     isOneDriveConnected: isOneDriveConnectedInternal,     // Expose internal state
+    isMicrosoftCalendarConnected: isMicrosoftCalendarConnectedInternal, // Expose internal state
     getLocalData: getData, 
     setLocalData: saveData
   };

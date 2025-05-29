@@ -81,7 +81,7 @@ const Dashboard: FC = () => {
 
   // Hooks
   const { toast } = useToast();
-  const { performSync, syncStatus, syncCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected } = useDataSync();
+  const { performSync, syncStatus, syncCalendar, syncMicrosoftCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected, isMicrosoftCalendarConnected } = useDataSync();
   const { resolvedTheme, theme } = useTheme();
   const { currentUser, currentUserThemeSettings } = useAuth();
   const isGoogleCalendarLinked = isGoogleDriveConnected;
@@ -379,6 +379,37 @@ const Dashboard: FC = () => {
       loadDashboardData(); // Reload to reflect connection status change
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
+    const handleMicrosoftCalendarAuth = useCallback(async () => {
+      if (isMicrosoftCalendarConnected) {
+        if (typeof window !== 'undefined') {
+          // Remove Microsoft Calendar and OneDrive tokens
+          localStorage.removeItem('microsoftAccessToken');
+          localStorage.removeItem('microsoftRefreshToken');
+          localStorage.removeItem('microsoftTokenExpiry');
+          
+          // UI state will be updated automatically through isMicrosoftCalendarConnected
+          toast({ 
+            title: "Microsoft Services Unlinked", 
+            description: "You have been signed out of Microsoft services.",
+            variant: "default"
+          });
+        }
+      } else {
+        try {
+          // Initiate Microsoft authentication (Calendar + OneDrive)
+          await initiateAuthentication('microsoft');
+        } catch (error) {
+          console.error('Microsoft authentication error:', error);
+          toast({ 
+            title: "Microsoft Auth Error", 
+            description: `Failed to connect to Microsoft services: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+            variant: "destructive"
+          });
+        }
+      }
+      loadDashboardData(); // Reload to reflect connection status change
+    }, [isMicrosoftCalendarConnected, initiateAuthentication, toast, loadDashboardData]);
+
     const refreshData = useCallback(() => {
         loadDashboardData();
         toast({ title: "Data Refreshed", description: "Dashboard data has been reloaded." });
@@ -504,6 +535,10 @@ const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card
             <Button onClick={handleGoogleCalendarAuth} size="sm" variant={isGoogleCalendarLinked ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
                 {isGoogleCalendarLinked ? 'Unlink Google Services' : 'Link Google Services'}
+            </Button>
+            <Button onClick={handleMicrosoftCalendarAuth} size="sm" variant={isMicrosoftCalendarConnected ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
+                <Calendar className="mr-2 h-4 w-4" />
+                {isMicrosoftCalendarConnected ? 'Unlink Microsoft Services' : 'Link Microsoft Services'}
             </Button>
             <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />

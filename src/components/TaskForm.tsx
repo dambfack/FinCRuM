@@ -47,7 +47,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { syncCalendar } = useDataSync();
+  const { syncCalendar, syncMicrosoftCalendar } = useDataSync();
   const { toast } = useToast();
   const { currentUser } = useAuth(); // Get current user
 
@@ -199,7 +199,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       await syncCalendar();
     } catch (error) {
       console.error('Failed to sync task to Google Calendar:', error);
-      toast({ title: "Calendar Sync Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
+      toast({ title: "Google Calendar Sync Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
+    }
+
+    try {
+      await syncMicrosoftCalendar();
+    } catch (error) {
+      console.error('Failed to sync task to Microsoft Calendar:', error);
+      toast({ title: "Microsoft Calendar Sync Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
     onSave();
   };
