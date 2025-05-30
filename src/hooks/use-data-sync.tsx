@@ -8,15 +8,13 @@ import { generateGoogleAuthUrlAction } from '@/app/actions/google-auth-actions';
 import {
   createCalendarEventAction,
   updateCalendarEventAction,
-  deleteCalendarEventAction,
-  listCalendarEventsAction 
+  deleteCalendarEventAction
 } from '@/app/actions/google-calendar-actions';
 import {
-  deleteCalendarEventAction as syncDeleteAction,
-  listCalendarEventsAction as syncListAction
+  deleteCalendarEventAction as syncDeleteAction
 } from '@/app/actions/google-sync-actions';
 import { createMicrosoftCalendarEventAction, updateMicrosoftCalendarEventAction, deleteMicrosoftCalendarEventAction, syncToMicrosoftCalendarAction, batchSyncToMicrosoftCalendarAction } from '@/app/actions/microsoft-calendar-actions';
-import { getGoogleTokens as getGoogleTokensFromStorage, storeGoogleTokens, clearGoogleTokens, getMicrosoftTokens, saveMicrosoftTokens, clearMicrosoftTokens, isMicrosoftAuthenticated } from '@/services/auth';
+import { getGoogleTokens as getGoogleTokensFromStorage, getMicrosoftTokens, saveMicrosoftTokens, clearMicrosoftTokens, isMicrosoftAuthenticated } from '@/services/auth';
 import type { ExcelData, CloudAuthInfo, DataConflict, SyncStatus, Task, Reminder, Appointment, GoogleTokens, MicrosoftTokens, FileMetadata, Contact } from '@/lib/types'; 
 import { DataItemType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
@@ -344,14 +342,17 @@ export function useDataSync() {
 
             for (const item of items) {
                 try {
-                    const result = await syncToMicrosoftCalendarAction(item as any, itemType, currentTokens, (item as any).microsoftCalendarEventId);
+                    const result = await syncToMicrosoftCalendarAction(item as any, itemType, (item as any).microsoftCalendarEventId);
                     
-                    if (result.success && result.data) {
-                      if (result.data.newTokens) {
-                        saveMicrosoftTokens(result.data.newTokens);
-                        currentTokens = result.data.newTokens; 
+                    if (result.success) {
+                      if (result.tokensUpdated) {
+                        // Tokens were updated, refresh from storage
+                        const updatedTokens = getMicrosoftTokens();
+                        if (updatedTokens) {
+                          currentTokens = updatedTokens;
+                        } 
                       }
-                      syncedItemsAccumulator.push({ ...item, microsoftCalendarEventId: result.data.eventId });
+                      syncedItemsAccumulator.push({ ...item, microsoftCalendarEventId: result.event?.id });
                     } else {
                       // Handle failed result
                       throw new Error(result.error || 'Failed to sync Microsoft calendar event');

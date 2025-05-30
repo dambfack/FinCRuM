@@ -54,7 +54,7 @@ export function mapToMicrosoftCalendarEvent(
 
     case 'reminder':
       const reminder = item as Reminder;
-      const reminderDate = new Date(reminder.reminderDate);
+      const reminderDate = new Date(reminder.dateTime);
       event.start.dateTime = reminderDate.toISOString();
       // Reminders get 30 minutes duration by default
       const reminderEndDate = new Date(reminderDate.getTime() + 30 * 60 * 1000);
@@ -64,12 +64,17 @@ export function mapToMicrosoftCalendarEvent(
 
     case 'appointment':
       const appointment = item as Appointment;
-      const startDate = new Date(appointment.appointmentDate);
+      const startDate = new Date(appointment.date);
       event.start.dateTime = startDate.toISOString();
       
-      // Calculate end time based on duration or default to 1 hour
-      const durationMinutes = appointment.duration || 60;
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+      // Calculate end time based on end property or default to 1 hour
+      let endDate: Date;
+      if (appointment.end) {
+        endDate = new Date(appointment.end);
+      } else {
+        // Default to 1 hour duration
+        endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      }
       event.end.dateTime = endDate.toISOString();
       
       // Add location if provided
@@ -80,11 +85,11 @@ export function mapToMicrosoftCalendarEvent(
       }
       
       // Add attendees if provided
-      if (appointment.attendees && appointment.attendees.length > 0) {
-        event.attendees = appointment.attendees.map(email => ({
+      if (appointment.attendeesList && appointment.attendeesList.length > 0) {
+        event.attendees = appointment.attendeesList.map(attendee => ({
           emailAddress: {
-            address: email,
-            name: email.split('@')[0] // Use email prefix as name if no name provided
+            address: attendee.email,
+            name: attendee.displayName || attendee.email
           },
           type: 'required' as const
         }));
@@ -113,7 +118,7 @@ function getEventSubject(item: Task | Reminder | Appointment, type: string): str
       return `${prefix}: ${(item as Reminder).title}`;
     case 'appointment':
       const appointment = item as Appointment;
-      const contactName = appointment.contactId ? `with Contact ${appointment.contactId}` : '';
+      const contactName = appointment.invitedContacts && appointment.invitedContacts.length > 0 ? `with ${appointment.invitedContacts.length} contact(s)` : '';
       return `${prefix}: ${appointment.title} ${contactName}`.trim();
     default:
       return `${prefix}: ${(item as any).title || 'Untitled'}`;
@@ -152,9 +157,6 @@ function getEventDescription(item: Task | Reminder | Appointment, type: string):
       if (reminder.description) {
         lines.push(`Description: ${reminder.description}`);
       }
-      if (reminder.priority) {
-        lines.push(`Priority: ${reminder.priority}`);
-      }
       break;
 
     case 'appointment':
@@ -163,14 +165,14 @@ function getEventDescription(item: Task | Reminder | Appointment, type: string):
       if (appointment.description) {
         lines.push(`Description: ${appointment.description}`);
       }
-      if (appointment.contactId) {
-        lines.push(`Contact ID: ${appointment.contactId}`);
+      if (appointment.invitedContacts && appointment.invitedContacts.length > 0) {
+        lines.push(`Invited Contacts: ${appointment.invitedContacts.length} contact(s)`);
       }
       if (appointment.location) {
         lines.push(`Location: ${appointment.location}`);
       }
-      if (appointment.attendees && appointment.attendees.length > 0) {
-        lines.push(`Attendees: ${appointment.attendees.join(', ')}`);
+      if (appointment.attendeesList && appointment.attendeesList.length > 0) {
+        lines.push(`Attendees: ${appointment.attendeesList.map(a => a.displayName || a.email).join(', ')}`);
       }
       break;
   }

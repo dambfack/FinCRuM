@@ -1,8 +1,8 @@
 import type { Task, Reminder, Appointment, MicrosoftTokens } from '@/lib/types';
 import { 
-  createMicrosoftCalendarEvent,
-  updateMicrosoftCalendarEvent,
-  deleteMicrosoftCalendarEvent,
+  createMicrosoftCalendarEvent as createMicrosoftEventClient,
+  updateMicrosoftCalendarEvent as updateMicrosoftEventClient,
+  deleteMicrosoftCalendarEvent as deleteMicrosoftEventClient,
   findMicrosoftCalendarEventBySubject
 } from './microsoft-calendar-client';
 import { mapToMicrosoftCalendarEvent, extractItemIdFromMicrosoftEvent } from './microsoft-calendar-mapper';
@@ -37,7 +37,7 @@ export async function createMicrosoftCalendarEvent(
       };
     }
     
-    const { event: createdEvent, newTokens } = await createMicrosoftCalendarEvent(event, searchTokens || tokens);
+    const { event: createdEvent, newTokens } = await createMicrosoftEventClient(event, searchTokens || tokens);
 
     console.log(`Successfully created ${type} in Microsoft Calendar:`, createdEvent.id);
     
@@ -81,7 +81,7 @@ export async function updateMicrosoftCalendarEvent(
 
     console.log(`Updating ${type} in Microsoft Calendar:`, eventId);
     
-    const { event: updatedEvent, newTokens } = await updateMicrosoftCalendarEvent(
+    const { event: updatedEvent, newTokens } = await updateMicrosoftEventClient(
       eventId,
       eventUpdate,
       tokens
@@ -124,7 +124,7 @@ export async function deleteMicrosoftCalendarEvent(
   try {
     console.log('Deleting event from Microsoft Calendar:', eventId);
     
-    const { success, newTokens } = await deleteMicrosoftCalendarEvent(eventId, tokens);
+    const { success, newTokens } = await deleteMicrosoftEventClient(eventId, tokens);
 
     console.log('Successfully deleted event from Microsoft Calendar:', eventId);
     

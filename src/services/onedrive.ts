@@ -150,7 +150,7 @@ export async function downloadFromOneDrive(authInfo: OneDriveAuthInfo): Promise<
  * @returns {Promise<OneDriveAuthInfo>} The authentication info from OneDrive.
  */
 export async function authenticateWithOneDrive(): Promise<OneDriveAuthInfo> {
-    const authInfo = await getAuthInfo('onedrive');
+    const authInfo = await getAuthInfo();
     return authInfo as OneDriveAuthInfo;
   }
 

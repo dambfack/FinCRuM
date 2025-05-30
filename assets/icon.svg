@@ -1,0 +1,36 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" stroke="#1e40af" stroke-width="8"/>
+  
+  <!-- Financial chart icon -->
+  <g transform="translate(128, 128)">
+    <!-- Chart bars -->
+    <rect x="20" y="180" width="30" height="80" fill="#ffffff" opacity="0.9"/>
+    <rect x="70" y="140" width="30" height="120" fill="#ffffff" opacity="0.9"/>
+    <rect x="120" y="100" width="30" height="160" fill="#ffffff" opacity="0.9"/>
+    <rect x="170" y="160" width="30" height="100" fill="#ffffff" opacity="0.9"/>
+    <rect x="220" y="120" width="30" height="140" fill="#ffffff" opacity="0.9"/>
+    
+    <!-- Trend line -->
+    <polyline points="35,200 85,160 135,120 185,180 235,140" 
+              fill="none" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+    
+    <!-- Risk indicator -->
+    <circle cx="235" cy="140" r="8" fill="#ef4444"/>
+    
+    <!-- Dollar sign -->
+    <text x="140" y="60" font-family="Arial, sans-serif" font-size="48" font-weight="bold" 
+          fill="#ffffff" text-anchor="middle">$</text>
+  </g>
+  
+  <!-- App name -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="32" font-weight="bold" 
+        fill="#ffffff" text-anchor="middle">FinCRuM</text>
+</svg>

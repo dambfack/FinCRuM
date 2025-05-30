@@ -2,9 +2,9 @@
 
 import type { Task, Reminder, Appointment, MicrosoftTokens } from '@/lib/types';
 import {
-  createMicrosoftCalendarEvent,
-  updateMicrosoftCalendarEvent,
-  deleteMicrosoftCalendarEvent,
+  createMicrosoftCalendarEvent as createMicrosoftEvent,
+  updateMicrosoftCalendarEvent as updateMicrosoftEvent,
+  deleteMicrosoftCalendarEvent as deleteMicrosoftEvent,
   syncToMicrosoftCalendar,
   batchSyncToMicrosoftCalendar
 } from '@/services/microsoft-calendar-events';
@@ -34,7 +34,7 @@ export async function createMicrosoftCalendarEventAction(
       };
     }
     
-    const result = await createMicrosoftCalendarEvent(item, type, microsoftTokens);
+    const result = await createMicrosoftEvent(item, type, microsoftTokens);
     
     // Update tokens if they were refreshed
     let tokensUpdated = false;
@@ -83,7 +83,7 @@ export async function updateMicrosoftCalendarEventAction(
       };
     }
     
-    const result = await updateMicrosoftCalendarEvent(item, type, eventId, microsoftTokens);
+    const result = await updateMicrosoftEvent(item, type, eventId, microsoftTokens);
     
     // Update tokens if they were refreshed
     let tokensUpdated = false;
@@ -129,7 +129,7 @@ export async function deleteMicrosoftCalendarEventAction(
       };
     }
     
-    const result = await deleteMicrosoftCalendarEvent(eventId, microsoftTokens);
+    const result = await deleteMicrosoftEvent(eventId, microsoftTokens);
     
     // Update tokens if they were refreshed
     let tokensUpdated = false;
