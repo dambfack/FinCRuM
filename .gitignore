@@ -15,6 +15,9 @@
 # Build outputs
 build
 dist
+dist-cleanup-*
+temp-extracted-backup
+temp-*
 
 # Turborepo
 .turbo

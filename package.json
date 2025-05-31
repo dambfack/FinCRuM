@@ -1,13 +1,13 @@
 {
-  "name": "FinCRuM",
+  "name": "fincrum",
   "description": "Financial Credit Risk Management Application",
   "author": "Your Name <your.email@example.com>",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
-  "main": "electron-production.js",
+  "main": "electron.js",
   "homepage": "./",
   "scripts": {
-    "dev": "next dev --turbopack -p 9002",
+    "dev": "next dev -p 9002",
     "electron": "wait-on http://localhost:9002 && electron .",
     "electron:dev": "concurrently \"next dev --turbopack -p 9002\" \"wait-on http://localhost:9002 && electron .\"",
     "electron:build": "next build",
@@ -116,7 +116,7 @@
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "cypress": "^14.4.0",
-    "electron": "^33.2.1",
+    "electron": "^36.3.2",
     "electron-builder": "^26.0.12",
     "eslint": "9.26.0",
     "eslint-config-next": "15.3.2",
@@ -142,40 +142,47 @@
       "output": "dist"
     },
     "files": [
-      "out/**/*",
-      "electron-production.js",
-      "preload.js",
-      "package.json",
+      ".next/**/*",
+      "public/**/*",
       "assets/**/*",
-      "node_modules/**/*",
-      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!node_modules/*.d.ts",
-      "!node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
-      "!.editorconfig",
-      "!**/._*",
-      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
-      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-      "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+      "electron.js",
+      "preload.js",
+      "loading.html",
+      "package.json",
+      "next.config.js",
+      "node_modules/**/*"
     ],
     "extraResources": [
       {
-        "from": "backend",
-        "to": "backend",
-        "filter": ["**/*"]
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": ".next",
+        "to": ".next"
+      },
+      {
+        "from": "public",
+        "to": "public"
+      },
+      {
+        "from": "loading.html",
+        "to": "loading.html"
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico",
@@ -185,11 +192,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
@@ -199,15 +212,21 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "rpm",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",
