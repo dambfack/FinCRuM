@@ -200,7 +200,7 @@ const Dashboard: FC = () => {
         };
     }, [loadDashboardData]);
 
-    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
+    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), system-ui, -apple-system, sans-serif';
 
     const apexPieChartOptions = useMemo(() => {
         const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);

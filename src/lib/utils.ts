@@ -4,6 +4,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { DataItemType, type Notification } from "./types"; // Added Notification type
 import { format } from 'date-fns';
+import { cloudDatabase } from '@/services/cloud-database';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,13 +32,14 @@ export function getData<T>(key: DataItemType): T | null {
  * Saves data to localStorage and dispatches a 'dataChanged' event.
  * @param key The DataItemType key for the data.
  * @param data The data to save.
+ * @param skipCloudSync Optional flag to skip cloud synchronization.
  * @returns True if successful, false otherwise.
  */
-export function saveData<T>(key: DataItemType, data: T): boolean {
+export function saveData<T>(key: DataItemType, data: T, skipCloudSync: boolean = false): boolean {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(key, JSON.stringify(data));
-      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: key, data } }));
+      window.dispatchEvent(new CustomEvent('dataChanged', { detail: { type: key, data, skipCloudSync } }));
       return true;
     } catch (e) {
       console.error(`Failed to save local data for ${key}:`, e);
@@ -139,6 +141,94 @@ export function createNotification(notificationData: Omit<Notification, 'id' | '
   notifications.push(newNotification);
   saveData<Notification[]>(DataItemType.Notifications, notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
   console.log("Notification created:", newNotification);
+}
+
+/**
+ * Saves data with automatic cloud synchronization.
+ * @param key The DataItemType key for the data.
+ * @param data The data to save.
+ * @returns Promise that resolves to true if successful, false otherwise.
+ */
+export async function saveDataWithCloudSync<T>(key: DataItemType, data: T): Promise<boolean> {
+  // Save locally first
+  const localSaveSuccess = saveData(key, data, true); // Skip cloud sync in saveData
+  
+  if (!localSaveSuccess) {
+    return false;
+  }
+
+  // Attempt cloud sync
+  try {
+    const provider = cloudDatabase.getPreferredProvider();
+    if (provider) {
+      await cloudDatabase.syncWithCloud(provider);
+    }
+    return true;
+  } catch (error) {
+    console.warn('Cloud sync failed, but local save succeeded:', error);
+    return true; // Return true since local save succeeded
+  }
+}
+
+/**
+ * Adds or updates an item with automatic cloud synchronization.
+ * @param key The DataItemType key for the data.
+ * @param item The item to add or update (must have an id property).
+ * @returns Promise that resolves to true if successful, false otherwise.
+ */
+export async function addOrUpdateItemWithCloudSync<T extends { id: string; updatedAt?: Date | string }>(
+  key: DataItemType,
+  item: T
+): Promise<boolean> {
+  try {
+    // Add updatedAt timestamp
+    const updatedItem = {
+      ...item,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Update local storage
+    const currentData = getData<T[]>(key) || [];
+    const existingIndex = currentData.findIndex(existing => existing.id === item.id);
+    
+    if (existingIndex >= 0) {
+      currentData[existingIndex] = updatedItem;
+    } else {
+      currentData.push(updatedItem);
+    }
+    
+    // Save with cloud sync
+    return await saveDataWithCloudSync(key, currentData);
+  } catch (error) {
+    console.error('Failed to add/update item with cloud sync:', error);
+    return false;
+  }
+}
+
+/**
+ * Deletes an item with automatic cloud synchronization.
+ * @param key The DataItemType key for the array.
+ * @param itemId The ID of the item to delete.
+ * @returns Promise that resolves to the updated array or null if failed.
+ */
+export async function deleteItemByIdWithCloudSync<T extends { id: string }>(
+  key: DataItemType,
+  itemId: string
+): Promise<T[] | null> {
+  try {
+    const currentArray = getData<T[]>(key);
+    if (Array.isArray(currentArray)) {
+      const updatedArray = currentArray.filter(item => item.id !== itemId);
+      const success = await saveDataWithCloudSync(key, updatedArray);
+      return success ? updatedArray : null;
+    } else {
+      console.warn(`Data for key ${key} is not an array or does not exist. Cannot delete item ${itemId}.`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Failed to delete item with cloud sync:', error);
+    return null;
+  }
 }
 
 /**

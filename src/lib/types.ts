@@ -203,24 +203,18 @@ export enum DataItemType {
   Tasks = 'tasks',
   Reminders = 'reminders',
   Appointments = 'appointments',
-  CustomerData = 'customerData', // For ExcelData (imported data)
-  LastSyncTime = 'lastSyncTime',
-  OneDriveAccessToken = 'onedriveAccessToken',
-  OneDriveRefreshToken = 'onedriveRefreshToken',
-  GoogleDriveAccessToken = 'googledriveAccessToken',
-  GoogleDriveRefreshToken = 'googledriveRefreshToken',
-  GoogleCalendarAccessToken = 'googlecalendarAccessToken',
-  GoogleCalendarRefreshToken = 'googlecalendarRefreshToken',
   Users = 'users',
-  CurrentUserId = 'currentUserId', 
-  Notifications = 'notifications', 
-  HeaderLogoLight = 'headerLogoLight', 
-  HeaderLogoDark = 'headerLogoDark',
-  DefaultHeaderLogoLight = 'defaultHeaderLogoLight', // New
-  DefaultHeaderLogoDark = 'defaultHeaderLogoDark',   // New
-  BackgroundImage = 'backgroundImage', 
-  DefaultBackgroundImage = 'defaultBackgroundImage', 
-  UserThemePreferences = 'userThemePreferences', 
+  Notifications = 'notifications',
+  CustomerData = 'customerData',
+  UserPreferences = 'userPreferences',
+  UserThemeSettings = 'userThemeSettings',
+  GoogleTokens = 'googleTokens',
+  MicrosoftTokens = 'microsoftTokens',
+  FileAttachments = 'fileAttachments',
+  LastSyncTime = 'lastSyncTime',
+  CurrentUserId = 'currentUserId',
+  AutoSyncEnabled = 'autoSyncEnabled',
+  ConflictResolutionLog = 'conflictResolutionLog'
 }
 
 /**
@@ -286,4 +280,33 @@ export interface Notification {
   createdAt: string; // ISO date string
   read: boolean;
   payload?: any; // For approval_request, might contain proposed changes or original item details
+}
+
+export interface ConflictResolutionEntry {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  dataType: DataItemType;
+  itemId: string;
+  action: 'manual_override' | 'user_choice' | 'merge_conflict';
+  conflictDetails: {
+    localVersion: any;
+    cloudVersion: any;
+    resolvedVersion: any;
+    resolutionReason: string;
+  };
+  description: string;
+}
+
+export interface ConflictResolution {
+  action: 'keep_local' | 'keep_cloud' | 'merge_manual' | 'skip';
+  mergedData?: any;
+  reason?: string;
+}
+
+export interface DataConflictWithResolution extends DataConflict {
+  resolution?: ConflictResolution;
+  resolvedAt?: string;
+  resolvedBy?: string;
 }

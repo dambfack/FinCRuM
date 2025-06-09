@@ -2,7 +2,7 @@
 'use client';
 
 import type { Metadata } from 'next';
-import { Anton, Inter, Montserrat } from 'next/font/google'; // Import Anton and Inter
+import localFont from 'next/font/local';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { cn, getFirstInitial, getData, saveData, hexToHslString } from '@/lib/utils';
@@ -25,7 +25,7 @@ import {
   useSidebar, 
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2, Briefcase, ListTree } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2, Briefcase, ListTree, HelpCircle } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
@@ -46,17 +46,48 @@ import { GoogleAuthManager } from '@/components/GoogleAuthManager';
 import { MicrosoftAuthManager } from '@/components/MicrosoftAuthManager';
 
 
-const interBlack = Inter({
-  subsets: ['latin'],
-  weight: ['900'],
+// Local fonts downloaded from Google Fonts
+const interBlack = localFont({
+  src: '../../public/fonts/inter-900.woff2',
+  weight: '900',
+  style: 'normal',
   variable: '--font-inter-black',
+  display: 'swap',
 });
 
-const montserrat = Montserrat({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+const montserrat = localFont({
+  src: [
+    {
+      path: '../../public/fonts/montserrat-300.woff2',
+      weight: '300',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/montserrat-400.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/montserrat-700.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-montserrat',
+  display: 'swap',
 });
+
+// const interBlack = Inter({
+//   subsets: ['latin'],
+//   weight: ['900'],
+//   variable: '--font-inter-black',
+// });
+
+// const montserrat = Montserrat({
+//   subsets: ['latin'],
+//   weight: ['300', '400', '500', '600', '700'],
+//   variable: '--font-montserrat',
+// });
 
 const Logo: React.FC<{
   // No props needed as it's a static SVG now, or dynamic from context if we re-add that later
@@ -279,6 +310,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Add Customer"><Link href="/add-customer"><UserPlusIcon /><span className={spanClasses}>Add Customer</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Import Data"><Link href="/import"><Upload /><span className={spanClasses}>Import Data</span></Link></SidebarMenuButton></SidebarMenuItem>
             {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><FileArchive /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
+            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Help & Support"><Link href="/help"><HelpCircle /><span className={spanClasses}>Help & Support</span></Link></SidebarMenuButton></SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-2 flex justify-end items-center group-data-[state=collapsed]:justify-center">

@@ -2,7 +2,7 @@
   "name": "fincrum",
   "description": "Financial Credit Risk Management Application",
   "author": "Your Name <your.email@example.com>",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "electron.js",
   "homepage": "./",
@@ -168,6 +168,10 @@
       {
         "from": "loading.html",
         "to": "loading.html"
+      },
+      {
+        "from": ".env.production",
+        "to": ".env.production"
       }
     ],
     "win": {

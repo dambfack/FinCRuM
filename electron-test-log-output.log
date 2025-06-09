@@ -1,6 +1,0 @@
-[2025-05-19 21:25:30.921] [info]  [TEST_LOGGING_SCRIPT] Info message from electron-log.
-[2025-05-19 21:25:30.934] [debug] [TEST_LOGGING_SCRIPT] Debug message from electron-log.
-[2025-05-19 21:25:30.936] [error] [TEST_LOGGING_SCRIPT] Error message from electron-log.
-[2025-05-19T15:55:30.937Z] [TEST_LOGGING_SCRIPT] Direct fs.appendFileSync message.
-[2025-05-19 21:25:31.050] [info]  [TEST_LOGGING_SCRIPT] App ready, will quit in 2s.
-[2025-05-19 21:25:33.057] [info]  [TEST_LOGGING_SCRIPT] Quitting application.

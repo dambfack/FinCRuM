@@ -20,7 +20,8 @@ export {
 export {
   createCalendarEvent,
   updateCalendarEvent,
-  deleteCalendarEvent
+  deleteCalendarEvent,
+  listCalendarEvents
 } from './google-calendar-events';
 
 // Type exports moved to individual service files to avoid client-side googleapis imports

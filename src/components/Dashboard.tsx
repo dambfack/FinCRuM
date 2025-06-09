@@ -47,7 +47,7 @@ const initialStats: DashboardStats = {
 
 type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 
-const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
+const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), system-ui, -apple-system, sans-serif';
 const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
 
 const Dashboard: FC = () => {
@@ -243,7 +243,7 @@ const Dashboard: FC = () => {
         };
     }, [loadDashboardData]);
 
-    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), var(--font-geist-sans), sans-serif';
+    const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), system-ui, -apple-system, sans-serif';
 
     const apexPieChartOptions = useMemo((): ApexCharts.ApexOptions => {
         const totalClients = dealStatusSeries.reduce((a, b) => a + b, 0);

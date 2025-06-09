@@ -48,17 +48,10 @@ export async function createCalendarEvent(
     };
     
   } catch (error: any) {
-    console.error('Error creating Google Calendar event:', {
-      error: error.response?.data || error.message,
-      type,
-      itemId: item.id,
-      itemTitle: 'title' in item ? item.title : 'reminder'
-    });
+    console.error(`Error creating ${type} in Google Calendar:`, error);
     
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
-    const errorToThrow = new Error(`Failed to create Google Calendar event: ${errorMessage}`);
+    const errorToThrow = new Error(`Failed to create ${type} in Google Calendar: ${error.message}`);
     
-    // Preserve the original error status code if available
     if (error.response?.status) {
       (errorToThrow as any).statusCode = error.response.status;
     }
@@ -106,7 +99,7 @@ export async function updateCalendarEvent(
         }
       : undefined;
 
-    console.log(`Successfully updated ${type} in Google Calendar:`, eventId);
+    console.log(`Successfully updated ${type} in Google Calendar:`, response.data.id);
     
     return {
       event: response.data,
@@ -114,17 +107,10 @@ export async function updateCalendarEvent(
     };
     
   } catch (error: any) {
-    console.error('Error updating Google Calendar event:', {
-      error: error.response?.data || error.message,
-      eventId,
-      type,
-      itemId: item.id
-    });
+    console.error(`Error updating ${type} in Google Calendar:`, error);
     
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
-    const errorToThrow = new Error(`Failed to update Google Calendar event: ${errorMessage}`);
+    const errorToThrow = new Error(`Failed to update ${type} in Google Calendar: ${error.message}`);
     
-    // Preserve the original error status code if available
     if (error.response?.status) {
       (errorToThrow as any).statusCode = error.response.status;
     }
@@ -167,27 +153,77 @@ export async function deleteCalendarEvent(
 
     console.log(`Successfully deleted event from Google Calendar:`, eventId);
     
-    return { 
-      success: true, 
-      newTokens 
+    return {
+      success: true,
+      newTokens
     };
     
   } catch (error: any) {
-    // Handle 404 (Not Found) as a success case since the event is already deleted
-    if (error.response?.status === 404) {
-      console.log(`Event ${eventId} not found in Google Calendar (may have been already deleted)`);
-      return { success: true };
+    console.error('Error deleting event from Google Calendar:', error);
+    
+    const errorToThrow = new Error(`Failed to delete event from Google Calendar: ${error.message}`);
+    
+    if (error.response?.status) {
+      (errorToThrow as any).statusCode = error.response.status;
     }
     
-    console.error('Error deleting Google Calendar event:', {
-      error: error.response?.data || error.message,
-      eventId
+    throw errorToThrow;
+  }
+}
+
+/**
+ * Lists calendar events from Google Calendar
+ */
+export async function listCalendarEvents(
+  tokens: GoogleTokens,
+  timeMin?: string,
+  timeMax?: string
+): Promise<{ events: any[], newTokens?: GoogleTokens }> {
+  try {
+    // Get authenticated client (will refresh tokens if needed)
+    const client = await getAuthenticatedClient(tokens);
+    const calendar = google.calendar({ version: 'v3', auth: client });
+    
+    // Set default time range if not provided
+    const now = new Date();
+    const defaultTimeMin = timeMin || now.toISOString();
+    const defaultTimeMax = timeMax || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    console.log(`Listing calendar events from ${defaultTimeMin} to ${defaultTimeMax}`);
+    
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: defaultTimeMin,
+      timeMax: defaultTimeMax,
+      maxResults: 250,
+      singleEvents: true,
+      orderBy: 'startTime',
     });
+
+    // Extract new tokens if they were refreshed
+    const credentials = client.credentials;
+    const newTokens: GoogleTokens | undefined = credentials.access_token 
+      ? {
+          access_token: credentials.access_token,
+          refresh_token: credentials.refresh_token || tokens.refresh_token,
+          expiry_date: credentials.expiry_date,
+          token_type: credentials.token_type,
+          scope: credentials.scope,
+        }
+      : undefined;
+
+    console.log(`Successfully listed ${response.data.items?.length || 0} calendar events`);
     
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Unknown error';
-    const errorToThrow = new Error(`Failed to delete Google Calendar event: ${errorMessage}`);
+    return {
+      events: response.data.items || [],
+      newTokens
+    };
     
-    // Preserve the original error status code if available
+  } catch (error: any) {
+    console.error('Error listing calendar events:', error);
+    
+    const errorToThrow = new Error(`Failed to list calendar events: ${error.message}`);
+    
     if (error.response?.status) {
       (errorToThrow as any).statusCode = error.response.status;
     }

@@ -38,11 +38,12 @@ export async function downloadFromGoogleDriveAction(
  * Server action to fetch file metadata from Google Drive
  */
 export async function fetchGoogleDriveFileMetadataAction(
-  tokens: GoogleTokens
+  tokens: GoogleTokens,
+  filename?: string
 ): Promise<{ success: boolean; metadata?: FileMetadata; error?: string }> {
   try {
     const result = await fetchFileMetadata(tokens);
-    return { success: true, metadata: result.metadata };
+    return { success: true, metadata: result.metadata || undefined };
   } catch (error: any) {
     console.error('Error in fetchGoogleDriveFileMetadataAction:', error);
     return { success: false, error: error.message };

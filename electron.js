@@ -1,7 +1,22 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+
+// Load environment variables for packaged app
+if (app.isPackaged) {
+  const envPath = path.join(process.resourcesPath, '.env.production');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const [key, value] = line.split('=');
+      if (key && value && !key.startsWith('#')) {
+        process.env[key.trim()] = value.trim();
+      }
+    });
+    console.log('Loaded environment variables from .env.production');
+  }
+}
 
 // Configure logging
 const log = (...args) => {
@@ -65,7 +80,9 @@ function createWindow() {
     });
     
     // Load the loading screen first
-    const loadingPath = path.join(__dirname, 'loading.html');
+    const loadingPath = app.isPackaged 
+      ? path.join(process.resourcesPath, 'loading.html')
+      : path.join(__dirname, 'loading.html');
     log(`Loading loading screen: ${loadingPath}`);
     
     mainWindow.loadFile(loadingPath).then(() => {
@@ -206,11 +223,18 @@ function startProductionServer() {
   return new Promise((resolve, reject) => {
     log('Starting production server on port 9002...');
     
+    const serverCwd = app.isPackaged 
+      ? path.join(process.resourcesPath, 'app.asar.unpacked')
+      : __dirname;
+    
+    log('Server working directory:', serverCwd);
+    
     // Start the Next.js production server
     serverProcess = spawn('npx', ['next', 'start', '-p', '9002'], {
-      cwd: __dirname,
+      cwd: serverCwd,
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true
+      shell: true,
+      env: { ...process.env, PATH: process.env.PATH }
     });
     
     let serverStarted = false;
