@@ -39,7 +39,14 @@ export default function ExportDataPage() {
   const loadContacts = useCallback(() => {
     setLoadingContacts(true);
     const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
-    setContacts(storedContacts.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
+    setContacts(storedContacts
+      .filter(contact => contact.updatedAt) // Filter out contacts without updatedAt
+      .sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt as string).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt as string).getTime() : 0;
+        return dateB - dateA;
+      })
+    );
     setLoadingContacts(false);
   }, []);
 

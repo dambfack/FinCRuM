@@ -65,7 +65,14 @@ export default function CustomersPage() {
     }
     // For partners, all contacts are visible, including pending ones. CustomerTable can highlight them.
 
-    setContacts([...visibleContacts].sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
+    setContacts([...visibleContacts]
+      .filter(contact => contact.updatedAt) // Filter out contacts without updatedAt
+      .sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt as string).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt as string).getTime() : 0;
+        return dateB - dateA;
+      })
+    );
     setLoading(false);
   }, [currentUser]);
 

@@ -35,8 +35,12 @@ const NotificationBell: React.FC = () => {
     }
     const allNotifications = getData<Notification[]>(DataItemType.Notifications) || [];
     const userNotifications = allNotifications
-      .filter(n => n.recipientUserId === currentUser.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .filter(n => n.recipientUserId === currentUser.id && n.createdAt) // Filter out notifications without createdAt
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
     setNotifications(userNotifications);
     setUnreadCount(userNotifications.filter(n => !n.read).length);
     setHasReadNotifications(userNotifications.some(n => n.read));

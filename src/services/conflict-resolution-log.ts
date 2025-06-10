@@ -54,7 +54,9 @@ export class ConflictResolutionLogService {
   public async getLogs(): Promise<ConflictResolutionEntry[]> {
     try {
       const logs = getData<ConflictResolutionEntry[]>(DataItemType.ConflictResolutionLog) || [];
-      return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      return logs
+        .filter(log => log.timestamp) // Filter out logs without timestamp
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error) {
       console.error('Failed to get conflict resolution logs:', error);
       return [];
@@ -112,8 +114,8 @@ export class ConflictResolutionLogService {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const entriesLast30Days = logs.filter(log => new Date(log.timestamp) >= thirtyDaysAgo).length;
-    const entriesLast7Days = logs.filter(log => new Date(log.timestamp) >= sevenDaysAgo).length;
+    const entriesLast30Days = logs.filter(log => log.timestamp && new Date(log.timestamp) >= thirtyDaysAgo).length;
+    const entriesLast7Days = logs.filter(log => log.timestamp && new Date(log.timestamp) >= sevenDaysAgo).length;
 
     const actionBreakdown: Record<ConflictResolutionEntry['action'], number> = {
       manual_override: 0,
@@ -149,7 +151,7 @@ export class ConflictResolutionLogService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.LOG_RETENTION_DAYS);
 
-      const filteredLogs = logs.filter(log => new Date(log.timestamp) >= cutoffDate);
+      const filteredLogs = logs.filter(log => log.timestamp && new Date(log.timestamp) >= cutoffDate);
       const removedCount = logs.length - filteredLogs.length;
 
       if (removedCount > 0) {

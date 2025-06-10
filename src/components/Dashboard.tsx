@@ -20,6 +20,8 @@ import ReminderForm from './ReminderForm';
 import AppointmentForm from './AppointmentForm';
 import CustomerDetailModal from './CustomerDetailModal';
 import CustomerForm from './CustomerForm';
+import SyncBufferManager from './SyncBufferManager';
+import SyncManager from './SyncManager';
 import { getData, parseDate, formatDateTime, cn, saveData } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { subMonths, startOfMonth, format, eachMonthOfInterval } from 'date-fns';
@@ -163,7 +165,15 @@ const Dashboard: FC = () => {
                 }).length,
             });
 
-            setRecentContacts(loadedContacts.sort((a,b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime()).slice(0, 5));
+            setRecentContacts(loadedContacts
+            .filter(contact => contact.createdAt) // Filter out contacts without createdAt
+            .sort((a,b) => {
+                const dateA = a.createdAt ? new Date(a.createdAt as string).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt as string).getTime() : 0;
+                return dateB - dateA;
+            })
+            .slice(0, 5)
+            );
 
             const numMonths = parseInt(barChartTimeRange.replace('m', ''), 10);
             const endDate = new Date();
@@ -540,7 +550,15 @@ const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card
                 <Calendar className="mr-2 h-4 w-4" />
                 {isMicrosoftCalendarConnected ? 'Unlink Microsoft Services' : 'Link Microsoft Services'}
             </Button>
-            <Button onClick={() => performSync()} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
+            <Button onClick={async () => {
+              await performSync();
+              if (isGoogleCalendarLinked) {
+                await syncCalendar(false); // Don't show individual toasts
+              }
+              if (isMicrosoftCalendarConnected) {
+                await syncMicrosoftCalendar(false); // Don't show individual toasts
+              }
+            }} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 {syncStatus === 'syncing' ? 'Syncing...' : (lastSyncTime ? `Last Sync: ${formatDateTime(lastSyncTime).split(',')[0]}` : 'Sync Now')}
             </Button>
@@ -914,6 +932,14 @@ const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card
             )}
         </DialogContent>
     </Dialog>
+
+        <SyncManager />
+        
+        {/* Sync Buffer Management */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Sync Buffer & Conflicts</h2>
+          <SyncBufferManager />
+        </div>
 
     </div>
   );

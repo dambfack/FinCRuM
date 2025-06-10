@@ -1,7 +1,7 @@
 // src/hooks/use-cloud-database.tsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { cloudDatabase } from '@/services/cloud-database';
+import { getCloudDatabase } from '@/services/shared-cloud-database';
 import type { CloudProvider, DataItemType, DataConflictWithResolution, ConflictResolution } from '@/lib/types';
 import { conflictResolutionLog } from '@/services/conflict-resolution-log';
 import { getData, saveData } from '@/lib/utils';
@@ -38,7 +38,8 @@ export interface UseCloudDatabaseReturn {
 }
 
 /**
- * Hook for managing cloud database operations
+ * Hook for managing shared cloud database operations with mandatory cloud sync
+ * Enables multiple PIN-authenticated users to sync with the same cloud storage accounts
  */
 export function useCloudDatabase(): UseCloudDatabaseReturn {
   const [state, setState] = useState<CloudDatabaseState>({
@@ -59,6 +60,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
   // Initialize state on mount
   useEffect(() => {
     const initializeState = () => {
+      const cloudDatabase = getCloudDatabase();
       const provider = cloudDatabase.getPreferredProvider();
       const lastSyncTime = getData<string>(DataItemType.LastSyncTime);
       
@@ -122,6 +124,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isSyncing: true, error: null }));
 
     try {
+      const cloudDatabase = CloudDatabaseService.getInstance();
       const result = await cloudDatabase.syncWithCloud(state.provider, manualResolutions);
       
       if (result.success) {
@@ -170,6 +173,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      const cloudDatabase = CloudDatabaseService.getInstance();
       const result = await cloudDatabase.addOrUpdateItem(state.provider, dataType, item, manualResolutions);
       
       if (result.success) {
@@ -219,6 +223,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      const cloudDatabase = CloudDatabaseService.getInstance();
       const result = await cloudDatabase.deleteItem(state.provider, dataType, itemId, manualResolutions);
       
       if (result.success) {
@@ -276,6 +281,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      const cloudDatabase = CloudDatabaseService.getInstance();
       const result = await cloudDatabase.resolveConflicts(state.conflicts, resolutions);
       
       if (result.success) {

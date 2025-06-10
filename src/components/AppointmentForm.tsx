@@ -198,7 +198,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       return;
     }
 
-    const appointmentDateTimeString = `${appointmentDate.toISOString().split('T')[0]}T${time}:00`;
+    // Create date string using local date components to avoid timezone issues
+    const year = appointmentDate.getFullYear();
+    const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(appointmentDate.getDate()).padStart(2, '0');
+    const appointmentDateTimeString = `${year}-${month}-${day}T${time}:00`;
     const appointmentDateTime = new Date(appointmentDateTimeString);
     
     if (isNaN(appointmentDateTime.getTime())) {
@@ -212,7 +216,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialData, initialS
       id: initialData?.id || Date.now().toString(),
       title,
       description,
-      date: appointmentDate.toISOString(),
+      date: `${year}-${month}-${day}T00:00:00.000Z`,
       time,
       start: appointmentDateTime.toISOString(),
       end: new Date(appointmentDateTime.getTime() + 60 * 60 * 1000).toISOString(), 

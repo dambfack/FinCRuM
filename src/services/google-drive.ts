@@ -194,11 +194,16 @@ export async function downloadFromGoogleDrive(
     }
     
     const textData = await response.text();
-    if (!textData) {
+    if (!textData || textData.trim() === "") {
       console.warn(`Google Drive file '${CRM_DATA_FILENAME}' (ID: ${fileId}) was empty.`);
       return { data: null, newTokens: client.credentials };
     }
 
+    // Ensure textData is not an empty string before parsing
+    if (textData.trim() === "") {
+      console.warn(`Google Drive file '${CRM_DATA_FILENAME}' (ID: ${fileId}) was effectively empty after trimming whitespace.`);
+      return { data: null, newTokens: client.credentials };
+    }
     const jsonData = JSON.parse(textData);
     // Basic validation for ExcelData structure
     if (jsonData && Array.isArray(jsonData.headers) && Array.isArray(jsonData.rows) && jsonData.rows.every((r: any) => Array.isArray(r))) {

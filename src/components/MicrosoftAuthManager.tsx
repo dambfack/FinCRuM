@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { generateMicrosoftAuthUrl } from '@/services/microsoft-oauth';
+import { generateMicrosoftAuthUrl, isMicrosoftOAuthConfigured } from '@/services/microsoft-oauth';
 import { isMicrosoftAuthenticated, clearMicrosoftTokens } from '@/services/auth';
 import { Unlink, Calendar, HardDrive, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
 
@@ -57,16 +57,28 @@ export function MicrosoftAuthManager() {
   }, []);
 
   const handleConnect = async () => {
+    if (!isMicrosoftOAuthConfigured()) {
+      toast({
+        title: 'Configuration Required',
+        description: 'Microsoft OAuth is not configured. Please set up the required environment variables.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsConnecting(true);
     
     try {
       const authUrl = await generateMicrosoftAuthUrl();
       
       // Store state for security verification
-      const urlParams = new URLSearchParams(authUrl.split('?')[1]);
-      const state = urlParams.get('state');
-      if (state) {
-        sessionStorage.setItem('microsoftOAuthState', state);
+      const queryString = authUrl.split('?')[1];
+      if (queryString) {
+        const urlParams = new URLSearchParams(queryString);
+        const state = urlParams.get('state');
+        if (state) {
+          sessionStorage.setItem('microsoftOAuthState', state);
+        }
       }
       
       // Open Microsoft OAuth in the same window
@@ -112,31 +124,35 @@ export function MicrosoftAuthManager() {
   };
 
   const isConnected = services.some(s => s.isConnected);
+  const isConfigured = isMicrosoftOAuthConfigured();
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/>
-          </svg>
-          Microsoft Account Management
+          <HardDrive className="h-5 w-5" />
+          Microsoft Services
         </CardTitle>
         <CardDescription>
-          Connect your Microsoft account to sync with Outlook Calendar and OneDrive. Both services are connected through unified Microsoft authentication.
+          Connect your Microsoft account to sync with Outlook Calendar and OneDrive
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isConnected ? (
-          <div className="text-center py-6">
-            <div className="mb-4">
-              <svg className="h-12 w-12 text-muted-foreground mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/>
-              </svg>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your Microsoft account to access Outlook Calendar and OneDrive services.
-              </p>
-            </div>
+        {!isConfigured ? (
+          <div className="text-center py-4">
+            <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground mb-2">
+              Microsoft OAuth is not configured. Please set up the required environment variables.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Required: NEXT_PUBLIC_MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, NEXT_PUBLIC_MICROSOFT_REDIRECT_URI
+            </p>
+          </div>
+        ) : !isConnected ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Connect your Microsoft account to access Outlook Calendar and OneDrive integration.
+            </p>
             <Button
               onClick={handleConnect}
               disabled={isConnecting}

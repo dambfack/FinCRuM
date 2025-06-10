@@ -2,8 +2,8 @@
   "name": "fincrum",
   "description": "Financial Credit Risk Management Application",
   "author": "Your Name <your.email@example.com>",
-  "version": "1.1.0",
-  "private": true,
+  "version": "0.0.1-alpha",
+  "private": false,
   "main": "electron.js",
   "homepage": "./",
   "scripts": {
@@ -67,10 +67,12 @@
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-table": "^8.19.3",
     "@types/react-datepicker": "^6.2.0",
+    "@types/uuid": "^10.0.0",
     "apexcharts": "^4.0.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
+    "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
     "firebase": "^11.3.0",
     "geist": "^1.3.1",
@@ -95,6 +97,7 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.1.0",
     "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
@@ -107,6 +110,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/crypto-js": "^4.2.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.14",
@@ -170,8 +174,8 @@
         "to": "loading.html"
       },
       {
-        "from": ".env.production",
-        "to": ".env.production"
+        "from": ".env.local",
+        "to": ".env.local"
       }
     ],
     "win": {

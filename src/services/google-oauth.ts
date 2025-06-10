@@ -9,15 +9,32 @@ const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
 
-if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-  console.error("Google OAuth environment variables (CLIENT_ID, CLIENT_SECRET, REDIRECT_URI) are not fully set.");
+/**
+ * Checks if Google OAuth is properly configured
+ */
+export function isGoogleOAuthConfigured(): boolean {
+  return !!(CLIENT_ID && CLIENT_SECRET && REDIRECT_URI);
+}
+
+/**
+ * Throws a configuration error for Google OAuth
+ */
+function throwConfigurationError(): never {
+  throw new Error(
+    'Google OAuth is not properly configured. Please set the following environment variables: ' +
+    'NEXT_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXT_PUBLIC_GOOGLE_REDIRECT_URI'
+  );
 }
 
 /**
  * Gets a new OAuth2 client instance
  */
 export async function getOAuth2Client(): Promise<OAuth2Client> {
-  const { OAuth2Client: Client } = require('google-auth-library');
+  if (!isGoogleOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
+  const { OAuth2Client: Client } = await import('google-auth-library');
   return new Client({
     clientId: CLIENT_ID,
     clientSecret: CLIENT_SECRET,
@@ -31,8 +48,13 @@ export async function getOAuth2Client(): Promise<OAuth2Client> {
 export async function generateGoogleAuthUrl(scopes: string[] = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/drive.file'
 ]): Promise<string> {
+  if (!isGoogleOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const client = await getOAuth2Client();
   
   // Generate a unique state parameter to prevent CSRF attacks and ensure fresh requests
@@ -54,6 +76,10 @@ export async function generateGoogleAuthUrl(scopes: string[] = [
  * Exchanges authorization code for tokens
  */
 export async function exchangeCodeForTokens(code: string): Promise<Credentials> {
+  if (!isGoogleOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const client = await getOAuth2Client();
   
   console.log('Debug - Authorization code length:', code.length);
@@ -94,6 +120,10 @@ export async function exchangeCodeForTokens(code: string): Promise<Credentials> 
  * Gets an authenticated OAuth2 client, refreshing tokens if necessary
  */
 export async function getAuthenticatedClient(passedTokens: GoogleTokens): Promise<OAuth2Client> {
+  if (!isGoogleOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const client = await getOAuth2Client();
   client.setCredentials(passedTokens);
 
@@ -143,6 +173,10 @@ export async function getAuthenticatedClient(passedTokens: GoogleTokens): Promis
  * Revokes Google OAuth tokens
  */
 export async function revokeGoogleTokens(accessToken: string): Promise<void> {
+  if (!isGoogleOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   try {
     // Use the correct revocation endpoint with token as query parameter
     const response = await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, {

@@ -4,7 +4,7 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { DataItemType, type Notification } from "./types"; // Added Notification type
 import { format } from 'date-fns';
-import { cloudDatabase } from '@/services/cloud-database';
+import { getCloudDatabase } from '@/services/shared-cloud-database';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -18,10 +18,32 @@ export function cn(...inputs: ClassValue[]) {
 export function getData<T>(key: DataItemType): T | null {
   if (typeof window !== 'undefined') {
     const storedData = localStorage.getItem(key);
+    if (!storedData) {
+      return null;
+    }
+    
     try {
-      return storedData ? JSON.parse(storedData) : null;
+      // Check if the stored data is valid JSON before parsing
+      if (storedData.trim().length === 0) {
+        console.warn(`Empty data found for ${key}, removing from localStorage`);
+        localStorage.removeItem(key);
+        return null;
+      }
+      
+      // Validate that the string starts with valid JSON characters
+      const firstChar = storedData.trim().charAt(0);
+      if (firstChar !== '{' && firstChar !== '[' && firstChar !== '"' && firstChar !== 'n' && firstChar !== 't' && firstChar !== 'f' && !(/^-?\d/.test(firstChar))) {
+        console.warn(`Invalid JSON format detected for ${key}, removing corrupted data`);
+        localStorage.removeItem(key);
+        return null;
+      }
+      
+      return JSON.parse(storedData);
     } catch (e) {
       console.error(`Failed to parse local data for ${key}:`, e);
+      console.warn(`Removing corrupted data for ${key}`);
+      // Remove corrupted data from localStorage
+      localStorage.removeItem(key);
       return null;
     }
   }
@@ -139,7 +161,14 @@ export function createNotification(notificationData: Omit<Notification, 'id' | '
 
   const notifications = getData<Notification[]>(DataItemType.Notifications) || [];
   notifications.push(newNotification);
-  saveData<Notification[]>(DataItemType.Notifications, notifications.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  saveData<Notification[]>(DataItemType.Notifications, notifications
+    .filter(n => n.createdAt) // Filter out notifications without createdAt
+    .sort((a,b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    })
+  );
   console.log("Notification created:", newNotification);
 }
 
@@ -159,9 +188,9 @@ export async function saveDataWithCloudSync<T>(key: DataItemType, data: T): Prom
 
   // Attempt cloud sync
   try {
-    const provider = cloudDatabase.getPreferredProvider();
-    if (provider) {
-      await cloudDatabase.syncWithCloud(provider);
+    const provider = getCloudDatabase().getPreferredProvider();
+  if (provider) {
+    await getCloudDatabase().syncWithCloud(provider);
     }
     return true;
   } catch (error) {

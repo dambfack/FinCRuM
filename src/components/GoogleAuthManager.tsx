@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { DataItemType } from '@/lib/types';
 import { revokeGoogleTokensAction } from '@/app/actions/google-auth-actions';
+// Removed direct import of isGoogleOAuthConfigured to avoid client-side google-auth-library issues
 import { Unlink, Calendar, HardDrive, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface GoogleService {
@@ -23,43 +22,66 @@ export function GoogleAuthManager() {
   const { toast } = useToast();
   const [isRevoking, setIsRevoking] = useState<string | null>(null);
   const [services, setServices] = useState<GoogleService[]>([]);
+  const [isConfigured, setIsConfigured] = useState<boolean>(false);
+  const [configLoading, setConfigLoading] = useState<boolean>(true);
 
+  // Check if Google OAuth is configured
   useEffect(() => {
-    const checkConnectedServices = () => {
-      const googleDriveAccessToken = localStorage.getItem(DataItemType.GoogleDriveAccessToken);
-      const googleCalendarAccessToken = localStorage.getItem(DataItemType.GoogleCalendarAccessToken);
+    const checkConfiguration = async () => {
+      try {
+        const response = await fetch('/api/auth/google/config');
+        const data = await response.json();
+        setIsConfigured(data.configured);
+      } catch (error) {
+        console.error('Error checking Google configuration:', error);
+        setIsConfigured(false);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
 
-      const serviceList: GoogleService[] = [
-        {
-          name: 'Google Drive',
-          icon: <HardDrive className="h-4 w-4" />,
-          accessTokenKey: DataItemType.GoogleDriveAccessToken,
-          refreshTokenKey: DataItemType.GoogleDriveRefreshToken,
-          isConnected: !!googleDriveAccessToken,
-          accessToken: googleDriveAccessToken || undefined,
-        },
+    checkConfiguration();
+  }, []);
+
+  // Load services and their connection status
+  useEffect(() => {
+    const loadServices = () => {
+      const googleServices: GoogleService[] = [
         {
           name: 'Google Calendar',
           icon: <Calendar className="h-4 w-4" />,
           accessTokenKey: DataItemType.GoogleCalendarAccessToken,
           refreshTokenKey: DataItemType.GoogleCalendarRefreshToken,
-          isConnected: !!googleCalendarAccessToken,
-          accessToken: googleCalendarAccessToken || undefined,
+          isConnected: false,
+        },
+        {
+          name: 'Google Drive',
+          icon: <HardDrive className="h-4 w-4" />,
+          accessTokenKey: DataItemType.GoogleDriveAccessToken,
+          refreshTokenKey: DataItemType.GoogleDriveRefreshToken,
+          isConnected: false,
         },
       ];
 
-      setServices(serviceList);
+      // Check connection status for each service
+      const updatedServices = googleServices.map(service => {
+        const accessToken = localStorage.getItem(service.accessTokenKey);
+        const refreshToken = localStorage.getItem(service.refreshTokenKey);
+        return {
+          ...service,
+          isConnected: !!(accessToken && refreshToken),
+          accessToken: accessToken || undefined,
+        };
+      });
+
+      setServices(updatedServices);
     };
 
-    checkConnectedServices();
+    loadServices();
     
-    // Listen for storage changes to update the UI
-    const handleStorageChange = () => {
-      checkConnectedServices();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    // Set up an interval to refresh the connection status
+    const interval = setInterval(loadServices, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRevokeService = async (service: GoogleService) => {
@@ -73,30 +95,31 @@ export function GoogleAuthManager() {
     }
 
     setIsRevoking(service.name);
-
     try {
-      const result = await revokeGoogleTokensAction(service.accessToken);
+      const result = await revokeGoogleTokensAction([service.accessTokenKey]);
       
       if (result.success) {
-        // Clear tokens from localStorage
+        // Remove tokens from localStorage
         localStorage.removeItem(service.accessTokenKey);
         localStorage.removeItem(service.refreshTokenKey);
         
-        // Update the services state
-        setServices(prev => 
-          prev.map(s => 
-            s.name === service.name 
-              ? { ...s, isConnected: false, accessToken: undefined }
-              : s
-          )
-        );
+        // Update services state
+        setServices(prev => prev.map(s => 
+          s.name === service.name 
+            ? { ...s, isConnected: false, accessToken: undefined }
+            : s
+        ));
         
         toast({
-          title: 'Disconnected',
+          title: 'Service Disconnected',
           description: `Successfully disconnected from ${service.name}.`,
         });
       } else {
-        throw new Error(result.error || 'Failed to revoke tokens');
+        toast({
+          title: 'Error',
+          description: result.error || `Failed to disconnect from ${service.name}.`,
+          variant: 'destructive',
+        });
       }
     } catch (error: any) {
       console.error(`Error revoking ${service.name} tokens:`, error);
@@ -111,43 +134,44 @@ export function GoogleAuthManager() {
   };
 
   const handleRevokeAll = async () => {
-    const connectedServices = services.filter(s => s.isConnected && s.accessToken);
+    const connectedServices = services.filter(s => s.isConnected);
     
     if (connectedServices.length === 0) {
       toast({
         title: 'No Services Connected',
-        description: 'There are no Google services to disconnect.',
+        description: 'There are no Google services currently connected.',
       });
       return;
     }
 
     setIsRevoking('all');
-
     try {
-      const revokePromises = connectedServices.map(async (service) => {
-        if (service.accessToken) {
-          const result = await revokeGoogleTokensAction(service.accessToken);
-          if (result.success) {
+      const tokenKeys = connectedServices.map(s => s.accessTokenKey);
+      const result = await revokeGoogleTokensAction(tokenKeys);
+      
+      // Process results
+      const successful: string[] = [];
+      const failed: string[] = [];
+      
+      await Promise.all(
+        connectedServices.map(async (service) => {
+          try {
+            // Remove tokens from localStorage
             localStorage.removeItem(service.accessTokenKey);
             localStorage.removeItem(service.refreshTokenKey);
+            successful.push(service.name);
+          } catch (error) {
+            failed.push(service.name);
           }
-          return { service: service.name, success: result.success, error: result.error };
-        }
-        return { service: service.name, success: false, error: 'No access token' };
-      });
-
-      const results = await Promise.all(revokePromises);
-      const successful = results.filter(r => r.success);
-      const failed = results.filter(r => !r.success);
+        })
+      );
 
       // Update services state
-      setServices(prev => 
-        prev.map(s => ({
-          ...s,
-          isConnected: false,
-          accessToken: undefined,
-        }))
-      );
+      setServices(prev => prev.map(s => ({
+        ...s,
+        isConnected: false,
+        accessToken: undefined,
+      })));
 
       if (failed.length === 0) {
         toast({
@@ -188,71 +212,85 @@ export function GoogleAuthManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {services.map((service, index) => (
-          <div key={service.name}>
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-3">
-                {service.icon}
-                <div>
-                  <p className="font-medium">{service.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {service.isConnected ? (
-                      <>
-                        <CheckCircle className="h-3 w-3 text-green-600" />
-                        <Badge variant="secondary" className="text-xs">
-                          Connected
-                        </Badge>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="h-3 w-3 text-gray-400" />
-                        <Badge variant="outline" className="text-xs">
-                          Not Connected
-                        </Badge>
-                      </>
+        {configLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-sm text-gray-500">Checking configuration...</div>
+          </div>
+        ) : !isConfigured ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-yellow-800 mb-1">Google OAuth Not Configured</h4>
+                <p className="text-sm text-yellow-700">
+                  Google OAuth credentials are not configured. Please set up your Google OAuth credentials in the environment variables to enable Google services.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : hasConnectedServices ? (
+          <>
+            <div className="space-y-3">
+              {services.map((service) => (
+                <div key={service.name} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {service.icon}
+                    <div>
+                      <div className="font-medium">{service.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {service.isConnected ? (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <CheckCircle className="h-3 w-3" />
+                            Connected
+                          </div>
+                        ) : (
+                          <div className="text-gray-400">Not connected</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={service.isConnected ? 'default' : 'secondary'}>
+                      {service.isConnected ? 'Active' : 'Inactive'}
+                    </Badge>
+                    {service.isConnected && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevokeService(service)}
+                        disabled={isRevoking === service.name}
+                      >
+                        {isRevoking === service.name ? 'Disconnecting...' : 'Disconnect'}
+                      </Button>
                     )}
                   </div>
                 </div>
-              </div>
-              {service.isConnected && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRevokeService(service)}
-                  disabled={isRevoking === service.name || isRevoking === 'all'}
-                >
-                  {isRevoking === service.name ? 'Disconnecting...' : 'Disconnect'}
-                </Button>
-              )}
+              ))}
             </div>
-            {index < services.length - 1 && <Separator />}
-          </div>
-        ))}
-        
-        {hasConnectedServices && (
-          <>
+            
             <Separator />
-            <div className="pt-2">
+            
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <div className="font-medium">Disconnect All Services</div>
+                <div className="text-sm text-gray-500">
+                  Remove access for all connected Google services at once.
+                </div>
+              </div>
               <Button
                 variant="destructive"
-                size="sm"
                 onClick={handleRevokeAll}
-                disabled={isRevoking !== null}
-                className="w-full"
+                disabled={isRevoking === 'all'}
               >
-                {isRevoking === 'all' ? 'Disconnecting All...' : 'Disconnect All Google Services'}
+                {isRevoking === 'all' ? 'Disconnecting...' : 'Disconnect All'}
               </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                This will revoke access to all connected Google services.
-              </p>
             </div>
           </>
-        )}
-        
-        {!hasConnectedServices && (
-          <div className="text-center py-4">
-            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <Unlink className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">No Connected Services</p>
+            <p className="text-sm">
               No Google services are currently connected.
             </p>
           </div>

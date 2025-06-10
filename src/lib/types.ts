@@ -46,15 +46,38 @@ export interface FileAttachmentMeta {
 }
 
 /**
- * Represents a user in the system.
+ * Represents a user in the system with cloud-first multi-user support.
  */
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'partner' | 'employee';
+  role: 'admin' | 'partner' | 'employee';
   pin?: string; // Optional 4-digit PIN, stored as string
   profilePictureUrl?: string; // Optional: Stores image as a data URI
+  cloudPinHash?: string; // Cloud-stored hashed PIN for multi-device access
+  deviceIds?: string[]; // List of authorized device IDs
+  permissions?: UserPermissions; // Role-based permissions
+  createdAt?: string; // ISO date string
+  lastLoginAt?: string; // ISO date string
+  isActive?: boolean; // Account status
+  createdByUserId?: string; // ID of admin/partner who created this account
+}
+
+/**
+ * Defines user permissions based on role.
+ */
+export interface UserPermissions {
+  canCreateUsers: boolean;
+  canDeleteUsers: boolean;
+  canModifyUsers: boolean;
+  canViewAllContacts: boolean;
+  canModifyAllContacts: boolean;
+  canDeleteContacts: boolean;
+  canApproveChanges: boolean;
+  canAccessReports: boolean;
+  canManageSettings: boolean;
+  canSyncToCloud: boolean;
 }
 
   /**
@@ -97,14 +120,20 @@ export interface Task {
   title: string;
   description?: string; // Optional
   dueDate?: Date | string; // Optional
+  dueTime?: string; // Optional - Time in HH:MM format, if not set task is all-day
   completed: boolean;
   priority?: 'high' | 'medium' | 'low'; // Optional
   status?: 'todo' | 'in-progress' | 'done'; // Optional
   associatedContactId?: string; // Optional: ID of the contact this task is for
   checklist?: ChecklistItem[]; // Optional: Array of checklist items
+  isRepetitive?: boolean; // Optional - Whether this is a repetitive task
+  repetitionType?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'; // Optional - Type of repetition
+  repetitionDays?: number[]; // Optional - Days of week for weekly repetition (0=Sunday, 1=Monday, etc.)
+  repetitionInterval?: number; // Optional - Interval for repetition (e.g., every 2 weeks)
   createdAt: Date | string;
   updatedAt: Date | string;
   googleCalendarEventId?: string; // Optional - Event ID for Google Calendar
+  googleTaskId?: string; // ID for Google Tasks (different from calendar events)
   assignedToUserId?: string; // ID of the user this task is assigned to
 }
 
@@ -206,15 +235,35 @@ export enum DataItemType {
   Users = 'users',
   Notifications = 'notifications',
   CustomerData = 'customerData',
-  UserPreferences = 'userPreferences',
-  UserThemeSettings = 'userThemeSettings',
-  GoogleTokens = 'googleTokens',
-  MicrosoftTokens = 'microsoftTokens',
-  FileAttachments = 'fileAttachments',
-  LastSyncTime = 'lastSyncTime',
+  CurrentUser = 'currentUser',
   CurrentUserId = 'currentUserId',
-  AutoSyncEnabled = 'autoSyncEnabled',
-  ConflictResolutionLog = 'conflictResolutionLog'
+  LastSyncTime = 'lastSyncTime',
+  ThemePreference = 'themePreference',
+  UserThemeSettings = 'userThemeSettings',
+  BackgroundImage = 'backgroundImage',
+  DefaultBackgroundImage = 'defaultBackgroundImage',
+  HeaderLogoDark = 'headerLogoDark',
+  HeaderLogoLight = 'headerLogoLight',
+  DefaultHeaderLogoDark = 'defaultHeaderLogoDark',
+  DefaultHeaderLogoLight = 'defaultHeaderLogoLight',
+  ConflictResolutionLog = 'conflictResolutionLog',
+  SetupCompleted = 'setup_completed',
+  CloudSyncConfig = 'cloud_sync_config',
+  RateLimiterConfig = 'rate_limiter_config',
+  RateLimiterState = 'rate_limiter_state',
+  SyncBuffer = 'sync_buffer',
+  SyncConflicts = 'sync_conflicts',
+  SyncBufferConfig = 'sync_buffer_config',
+  // OAuth Token Storage Keys
+  GoogleDriveAccessToken = 'google_drive_access_token',
+  GoogleDriveRefreshToken = 'google_drive_refresh_token',
+  GoogleCalendarAccessToken = 'google_calendar_access_token',
+  GoogleCalendarRefreshToken = 'google_calendar_refresh_token',
+  OneDriveAccessToken = 'onedrive_access_token',
+  OneDriveRefreshToken = 'onedrive_refresh_token',
+  MicrosoftAccessToken = 'microsoft_access_token',
+  MicrosoftRefreshToken = 'microsoft_refresh_token',
+  CloudProvider = 'cloud_provider'
 }
 
 /**

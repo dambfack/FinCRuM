@@ -1,8 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { type Task, DataItemType, type Contact, type User } from '../lib/types'; // Changed import for DataItemType
-import { useDataSync } from '../hooks/use-data-sync';
-import { getData, saveData, deleteItemById, formatDateTime } from '../lib/utils';
+import { getData, deleteItemById, formatDateTime, saveData } from '../lib/utils';
+import { deleteCalendarEventAction } from '@/app/actions/google-calendar-actions';
+import { deleteGoogleTaskAction } from '@/app/actions/google-tasks-actions';
+import { useDataSync, getGoogleCalendarTokensFromStorage } from '../hooks/use-data-sync';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Trash2, Edit, User as UserIcon, CheckSquare, Square } from 'lucide-react'; // Renamed User to UserIcon
@@ -15,6 +17,7 @@ interface TaskListProps {
 }
 
 const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
+  const { performSync } = useDataSync();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -24,17 +27,41 @@ const TaskList: React.FC<TaskListProps> = ({ onEditTask }) => {
       const storedTasks = getData<Task[]>(DataItemType.Tasks) || [];
       const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
       const storedUsers = getData<User[]>(DataItemType.Users) || [];
-      setTasks(storedTasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime()));
+      setTasks(storedTasks
+        .filter(task => task.updatedAt) // Filter out tasks without updatedAt
+        .sort((a, b) => {
+          const dateA = a.updatedAt ? new Date(a.updatedAt as string).getTime() : 0;
+          const dateB = b.updatedAt ? new Date(b.updatedAt as string).getTime() : 0;
+          return dateB - dateA;
+        })
+      );
       setContacts(storedContacts);
       setUsers(storedUsers);
     };
     fetchTasksAndContacts();
   }, []);
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
+    // Find the task to get its Google Task ID
+    const taskToDelete = tasks.find(task => task.id === taskId);
+    
+    // Delete from local storage first
     const updatedTasks = deleteItemById<Task>(DataItemType.Tasks, taskId);
     if (updatedTasks) {
       setTasks(updatedTasks);
+    }
+    
+    // If the task has a Google Task ID, delete it from Google Tasks
+    if (taskToDelete?.googleTaskId) {
+      try {
+        const googleTokens = getGoogleCalendarTokensFromStorage();
+        if (googleTokens && googleTokens.access_token) {
+          await deleteGoogleTaskAction(taskToDelete.googleTaskId, googleTokens);
+        }
+      } catch (error) {
+        console.error('Failed to delete task from Google Tasks:', error);
+        // Note: We don't show an error toast here as the local deletion was successful
+      }
     }
   };
 

@@ -125,8 +125,14 @@ export async function downloadFromOneDrive(authInfo: OneDriveAuthInfo): Promise<
       throw new Error(`OneDrive download failed: ${errorData.message || response.statusText}`);
     }
 
-    const jsonData = await response.text(); // Get response as text
-    const parsedData = JSON.parse(jsonData); // Parse the JSON string
+    const responseText = await response.text(); // Get response as text
+
+    if (!responseText || responseText.trim() === "") {
+      console.warn(`OneDrive file '${CRM_DATA_FILENAME}' was empty or contained only whitespace.`);
+      return null;
+    }
+
+    const parsedData = JSON.parse(responseText); // Parse the JSON string
 
     // Basic validation: Check if it looks like our ExcelData structure
     if (parsedData && Array.isArray(parsedData.headers) && Array.isArray(parsedData.rows)) {

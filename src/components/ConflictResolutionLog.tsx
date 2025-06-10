@@ -65,11 +65,13 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
     }
 
     // Apply sorting
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
-      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-    });
+    filtered
+      .filter(log => log.timestamp) // Filter out logs without timestamp
+      .sort((a, b) => {
+        const dateA = new Date(a.timestamp).getTime();
+        const dateB = new Date(b.timestamp).getTime();
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      });
 
     setFilteredLogs(filtered);
   }, [logs, searchTerm, filterDataType, filterResolution, sortOrder]);

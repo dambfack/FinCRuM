@@ -10,7 +10,9 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import PinLoginScreen from '@/components/PinLoginScreen';
 import SetPinScreen from '@/components/SetPinScreen';
+import FirstTimeSetupWizard from '@/components/FirstTimeSetupWizard';
 import NotificationBell from '@/components/NotificationBell';
+import { setupManagerService } from '@/services/setup-manager';
 import {
   SidebarProvider,
   Sidebar,
@@ -138,6 +140,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const { resolvedTheme } = useTheme();
   const { toast } = useToast();
 
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(true);
+
   const userProfilePicInputRef = useRef<HTMLInputElement>(null);
 
   const headerLogoLightInputRef = useRef<HTMLInputElement>(null);
@@ -171,31 +176,67 @@ function AppContent({ children }: { children: React.ReactNode }) {
   ];
   
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const APP_HARDCODED_DEFAULT_BACKGROUND = 'https://placehold.co/1920x1080.png';
-      
-      const applyInitialBackground = (url: string | null) => {
-        document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND}')`;
-        document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'abstract gradient');
-      };
+    const initializeApp = async () => {
+      try {
+        // Check if this is the first time setup
+        const setupCompleted = getData('setup_completed');
+        if (!setupCompleted) {
+          setIsFirstTimeSetup(true);
+          setSetupLoading(false);
+          return;
+        }
+        
+        if (typeof window !== 'undefined') {
+          const APP_HARDCODED_DEFAULT_BACKGROUND = 'https://placehold.co/1920x1080.png';
+          
+          const applyInitialBackground = (url: string | null) => {
+            document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND}')`;
+            document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'abstract gradient');
+          };
 
-      const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
-      const storedDefaultBg = getData<string>(DataItemType.DefaultBackgroundImage);
+          const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
+          const storedDefaultBg = getData<string>(DataItemType.DefaultBackgroundImage);
 
-      if (storedCustomBg) {
-        applyInitialBackground(storedCustomBg);
-      } else if (storedDefaultBg) {
-        applyInitialBackground(storedDefaultBg);
-      } else {
-        applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND);
+          if (storedCustomBg) {
+            applyInitialBackground(storedCustomBg);
+          } else if (storedDefaultBg) {
+            applyInitialBackground(storedDefaultBg);
+          } else {
+            applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      } finally {
+        setSetupLoading(false);
       }
-    }
+    };
+
+    initializeApp();
   }, []);
 
 
   useEffect(() => {
     setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080');
   }, [currentUserThemeSettings?.accentColor]);
+
+  const handleSetupComplete = async (setupResult: any) => {
+    try {
+      // Mark setup as completed
+      saveData('setup_completed', true);
+      setIsFirstTimeSetup(false);
+      
+      // Reload the page to reinitialize with new settings
+      window.location.reload();
+    } catch (error) {
+      console.error('Error completing setup:', error);
+      toast({
+        title: "Setup Error",
+        description: "There was an error completing the setup. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleFileChangeGeneric = (
     event: React.ChangeEvent<HTMLInputElement>, 
@@ -274,7 +315,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
     ? (headerLogoDarkUrl || defaultHeaderLogoDarkUrl || headerLogoLightUrl || defaultHeaderLogoLightUrl) 
     : (headerLogoLightUrl || defaultHeaderLogoLightUrl || headerLogoDarkUrl || defaultHeaderLogoDarkUrl); 
 
-  if (isLoadingAuth) {
+  if (setupLoading || isLoadingAuth) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="space-y-4 p-8 rounded-lg glass-effect">
@@ -282,6 +323,14 @@ function AppContent({ children }: { children: React.ReactNode }) {
           <Skeleton className="h-6 w-48 mx-auto bg-muted" />
           <Skeleton className="h-4 w-64 mx-auto bg-muted" />
         </div>
+      </div>
+    );
+  }
+
+  if (isFirstTimeSetup) {
+    return (
+      <div className="min-h-screen">
+        <FirstTimeSetupWizard onSetupComplete={handleSetupComplete} />
       </div>
     );
   }
@@ -357,7 +406,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   {currentUser && (
                     <div className="flex flex-col items-center space-y-3 mb-4">
                       <button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
-                        <Avatar className="h-24 w-24"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback className="text-3xl">{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
+                        <Avatar className="h-24 w-24">
+                          <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                          <AvatarFallback className="text-3xl">{getFirstInitial(currentUser.name)}</AvatarFallback>
+                        </Avatar>
                       </button>
                       <div><p className="text-sm font-medium text-center">{currentUser.name}</p><p className="text-xs text-muted-foreground text-center">{currentUser.email}</p></div>
                        <input type="file" ref={userProfilePicInputRef} onChange={handleUserProfilePictureFileChange} accept="image/*" className="hidden"/>
@@ -426,7 +478,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
               </PopoverContent>
             </Popover>
             {currentUser && (<button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
-              <Avatar className="h-8 w-8"><AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} /><AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback></Avatar>
+              <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
+                  <AvatarFallback>{getFirstInitial(currentUser.name)}</AvatarFallback>
+                </Avatar>
             </button>)}
           </div>
         </header>

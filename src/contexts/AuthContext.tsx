@@ -5,6 +5,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import type { User, UserThemeSettings, UserPreferences } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, saveData, hexToHslString } from '@/lib/utils';
+import { userManagement } from '@/services/user-management';
+import { getCloudDatabase } from '@/services/shared-cloud-database';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { revokeGoogleTokensAction } from '@/app/actions/google-auth-actions';
@@ -43,6 +45,10 @@ interface AuthContextType {
 
   login: (selectedUserId: string, pin: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  authenticateWithPin: (userId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  createUser: (userData: Omit<User, 'id' | 'permissions' | 'createdAt' | 'cloudPinHash' | 'deviceIds'>, pin: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  changePin: (oldPin: string, newPin: string) => Promise<{ success: boolean; error?: string }>;
+  getAllUsers: () => Promise<{ success: boolean; users?: User[]; error?: string }>;
   completePinSetupAndLogin: (userId: string, newPin: string) => Promise<boolean>;
   updateUserProfilePicture: (dataUri: string) => Promise<boolean>;
 
@@ -165,8 +171,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let users = getData<User[]>(DataItemType.Users) || [];
     if (users.length === 0) {
+      const defaultAdminId = `user-${Date.now()}-admin`;
+      const defaultPin = '0000';
       const defaultAdmin: User = {
-        id: `user-${Date.now()}-admin`, name: 'Admin', email: 'admin@example.com', role: 'partner', pin: '0000',
+        id: defaultAdminId,
+        name: 'Admin',
+        email: 'admin@example.com',
+        role: 'admin',
+        cloudPinHash: userManagement.hashPin(defaultPin, defaultAdminId),
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        deviceIds: [],
+        permissions: userManagement.getDefaultPermissions('admin'),
         profilePictureUrl: `https://placehold.co/128x128.png/${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}/ffffff?text=A&font=montserrat`
       };
       users = [defaultAdmin];
@@ -283,6 +299,110 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     applyUserThemeSettings(null); 
     toast({ title: "Logged Out", description: "You have been successfully logged out and disconnected from Google services." });
    }, [toast, applyUserThemeSettings]);
+
+  // New cloud-first authentication methods
+  const authenticateWithPin = async (userId: string, pin: string): Promise<{ success: boolean; error?: string }> => {
+    console.log('[AuthContext] authenticateWithPin called with userId:', userId, 'pin:', pin);
+    setIsLoadingAuth(true);
+    try {
+      const result = await userManagement.authenticateUser(userId, pin);
+      console.log('[AuthContext] authenticateUser result:', result);
+      
+      if (result.success && result.user) {
+        console.log('[AuthContext] Authentication successful, setting user:', result.user);
+        setCurrentUser(result.user);
+        setIsAuthenticated(true);
+        setPinSetupRequiredForUser(null);
+        saveData<string>(DataItemType.CurrentUserId, result.user.id);
+        
+        const allUserPrefs = getData<UserPreferences>(DataItemType.UserThemePreferences) || {};
+        const userPrefs = allUserPrefs[result.user.id] || {};
+        setCurrentUserThemeSettings(userPrefs);
+        applyUserThemeSettings(userPrefs);
+        
+        toast({ title: "Login Successful", description: `Welcome back, ${result.user.name}!` });
+      } else {
+        console.log('[AuthContext] Authentication failed:', result.error);
+        toast({ title: "Login Failed", description: result.error || "Authentication failed", variant: "destructive" });
+      }
+      
+      setIsLoadingAuth(false);
+      return result;
+    } catch (error: any) {
+      setIsLoadingAuth(false);
+      const errorMsg = error.message || "Authentication error";
+      console.log('[AuthContext] Authentication error:', errorMsg);
+      toast({ title: "Login Error", description: errorMsg, variant: "destructive" });
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const createUser = async (
+    userData: Omit<User, 'id' | 'permissions' | 'createdAt' | 'cloudPinHash' | 'deviceIds'>,
+    pin: string
+  ): Promise<{ success: boolean; user?: User; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: "Must be logged in to create users" };
+    }
+    
+    try {
+      const result = await userManagement.createUser(userData, pin, currentUser.id);
+      
+      if (result.success) {
+        toast({ title: "User Created", description: `Successfully created user ${userData.name}` });
+      } else {
+        toast({ title: "Creation Failed", description: result.error || "Failed to create user", variant: "destructive" });
+      }
+      
+      return result;
+    } catch (error: any) {
+      const errorMsg = error.message || "User creation error";
+      toast({ title: "Creation Error", description: errorMsg, variant: "destructive" });
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const changePin = async (oldPin: string, newPin: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: "Must be logged in to change PIN" };
+    }
+    
+    try {
+      const result = await userManagement.changeUserPin(currentUser.id, oldPin, newPin);
+      
+      if (result.success) {
+        toast({ title: "PIN Changed", description: "Your PIN has been successfully updated" });
+      } else {
+        toast({ title: "PIN Change Failed", description: result.error || "Failed to change PIN", variant: "destructive" });
+      }
+      
+      return result;
+    } catch (error: any) {
+      const errorMsg = error.message || "PIN change error";
+      toast({ title: "PIN Change Error", description: errorMsg, variant: "destructive" });
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const getAllUsers = async (): Promise<{ success: boolean; users?: User[]; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: "Must be logged in to view users" };
+    }
+    
+    try {
+      const result = await userManagement.getAllUsers(currentUser.id);
+      
+      if (!result.success) {
+        toast({ title: "Access Denied", description: result.error || "Cannot access user list", variant: "destructive" });
+      }
+      
+      return result;
+    } catch (error: any) {
+      const errorMsg = error.message || "Error fetching users";
+      toast({ title: "Fetch Error", description: errorMsg, variant: "destructive" });
+      return { success: false, error: errorMsg };
+    }
+  };
 
   const completePinSetupAndLogin = async (userId: string, newPin: string): Promise<boolean> => {
     setIsLoadingAuth(true);
@@ -429,7 +549,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         defaultHeaderLogoLightUrl: _defaultHeaderLogoLightUrlInternal, 
         defaultHeaderLogoDarkUrl: _defaultHeaderLogoDarkUrlInternal,
         currentUserThemeSettings,
-        login, logout, completePinSetupAndLogin, updateUserProfilePicture,
+        login, logout, authenticateWithPin, createUser, changePin, getAllUsers,
+        completePinSetupAndLogin, updateUserProfilePicture,
         updateHeaderLogoLight, updateHeaderLogoDark, 
         setDefaultHeaderLogoLight, setDefaultHeaderLogoDark,
         updateCustomAccentColor,
@@ -439,7 +560,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     currentUser, isAuthenticated, isLoadingAuth, pinSetupRequiredForUser,
     headerLogoLightUrl, headerLogoDarkUrl, _defaultHeaderLogoLightUrlInternal, _defaultHeaderLogoDarkUrlInternal,
     currentUserThemeSettings,
-    login, logout, completePinSetupAndLogin, updateUserProfilePicture,
+    login, logout, authenticateWithPin, createUser, changePin, getAllUsers,
+    completePinSetupAndLogin, updateUserProfilePicture,
     updateHeaderLogoLight, updateHeaderLogoDark, setDefaultHeaderLogoLight, setDefaultHeaderLogoDark,
     updateCustomAccentColor,
     updateChartPieColorOpen, updateChartPieColorClosed, updateChartPieColorMissed, updateChartPieColorOther,

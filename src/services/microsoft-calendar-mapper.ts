@@ -36,10 +36,20 @@ export function mapToMicrosoftCalendarEvent(
       const task = item as Task;
       if (task.dueDate) {
         const dueDate = new Date(task.dueDate);
-        event.start.dateTime = dueDate.toISOString();
-        // Tasks get 1 hour duration by default
-        const endDate = new Date(dueDate.getTime() + 60 * 60 * 1000);
-        event.end.dateTime = endDate.toISOString();
+        if (!isNaN(dueDate.getTime())) {
+          event.start.dateTime = dueDate.toISOString();
+          // Tasks get 1 hour duration by default
+          const endDate = new Date(dueDate.getTime() + 60 * 60 * 1000);
+          event.end.dateTime = endDate.toISOString();
+        } else {
+          // Invalid due date, schedule for tomorrow at 9 AM
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(9, 0, 0, 0);
+          event.start.dateTime = tomorrow.toISOString();
+          const endDate = new Date(tomorrow.getTime() + 60 * 60 * 1000);
+          event.end.dateTime = endDate.toISOString();
+        }
       } else {
         // If no due date, schedule for tomorrow at 9 AM
         const tomorrow = new Date();
@@ -55,27 +65,51 @@ export function mapToMicrosoftCalendarEvent(
     case 'reminder':
       const reminder = item as Reminder;
       const reminderDate = new Date(reminder.dateTime);
-      event.start.dateTime = reminderDate.toISOString();
-      // Reminders get 30 minutes duration by default
-      const reminderEndDate = new Date(reminderDate.getTime() + 30 * 60 * 1000);
-      event.end.dateTime = reminderEndDate.toISOString();
+      if (!isNaN(reminderDate.getTime())) {
+        event.start.dateTime = reminderDate.toISOString();
+        // Reminders get 30 minutes duration by default
+        const reminderEndDate = new Date(reminderDate.getTime() + 30 * 60 * 1000);
+        event.end.dateTime = reminderEndDate.toISOString();
+      } else {
+        // Invalid reminder date, schedule for 1 hour from now
+        const now = new Date();
+        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+        event.start.dateTime = oneHourLater.toISOString();
+        const reminderEndDate = new Date(oneHourLater.getTime() + 30 * 60 * 1000);
+        event.end.dateTime = reminderEndDate.toISOString();
+      }
       event.showAs = 'free'; // Reminders don't block time
       break;
 
     case 'appointment':
       const appointment = item as Appointment;
       const startDate = new Date(appointment.date);
-      event.start.dateTime = startDate.toISOString();
-      
-      // Calculate end time based on end property or default to 1 hour
-      let endDate: Date;
-      if (appointment.end) {
-        endDate = new Date(appointment.end);
+      if (!isNaN(startDate.getTime())) {
+        event.start.dateTime = startDate.toISOString();
+        
+        // Calculate end time based on end property or default to 1 hour
+        let endDate: Date;
+        if (appointment.end) {
+          const appointmentEndDate = new Date(appointment.end);
+          if (!isNaN(appointmentEndDate.getTime())) {
+            endDate = appointmentEndDate;
+          } else {
+            // Invalid end date, default to 1 hour duration
+            endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+          }
+        } else {
+          // Default to 1 hour duration
+          endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+        }
+        event.end.dateTime = endDate.toISOString();
       } else {
-        // Default to 1 hour duration
-        endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+        // Invalid appointment date, schedule for 1 hour from now
+        const now = new Date();
+        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+        event.start.dateTime = oneHourLater.toISOString();
+        const endDate = new Date(oneHourLater.getTime() + 60 * 60 * 1000);
+        event.end.dateTime = endDate.toISOString();
       }
-      event.end.dateTime = endDate.toISOString();
       
       // Add location if provided
       if (appointment.location) {

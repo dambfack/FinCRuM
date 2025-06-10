@@ -5,7 +5,7 @@ const { spawn } = require('child_process');
 
 // Load environment variables for packaged app
 if (app.isPackaged) {
-  const envPath = path.join(process.resourcesPath, '.env.production');
+  const envPath = path.join(process.resourcesPath, '.env.local');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
     envContent.split('\n').forEach(line => {
@@ -14,7 +14,7 @@ if (app.isPackaged) {
         process.env[key.trim()] = value.trim();
       }
     });
-    console.log('Loaded environment variables from .env.production');
+    console.log('Loaded environment variables from .env.local');
   }
 }
 
@@ -170,14 +170,14 @@ function loadMainApplication() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  log('App is ready, starting production server...');
+  log('App is ready, starting local server...');
   
   try {
-    // Start the production server first
-    await startProductionServer();
-    log('Production server started, creating window...');
+    // Start the local server first
+    await startLocalServer();
+    log('Local server started, creating window...');
   } catch (error) {
-    log('Failed to start production server:', error);
+    log('Failed to start local server:', error);
     log('Proceeding with window creation anyway...');
   }
   
@@ -196,7 +196,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   log('All windows closed');
-  stopProductionServer();
+  stopLocalServer();
   if (process.platform !== 'darwin') {
     log('Quitting application...');
     app.quit();
@@ -204,8 +204,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  log('App is about to quit, stopping production server...');
-  stopProductionServer();
+  log('App is about to quit, stopping local server...');
+  stopLocalServer();
 });
 
 // Handle any uncaught exceptions
@@ -219,9 +219,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 let serverProcess = null;
 
-function startProductionServer() {
+function startLocalServer() {
   return new Promise((resolve, reject) => {
-    log('Starting production server on port 9002...');
+    log('Starting local server on port 9002...');
     
     const serverCwd = app.isPackaged 
       ? path.join(process.resourcesPath, 'app.asar.unpacked')
@@ -229,7 +229,7 @@ function startProductionServer() {
     
     log('Server working directory:', serverCwd);
     
-    // Start the Next.js production server
+    // Start the Next.js local server
     serverProcess = spawn('npx', ['next', 'start', '-p', '9002'], {
       cwd: serverCwd,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -247,7 +247,7 @@ function startProductionServer() {
       if (output.includes('Ready') || output.includes('started server') || output.includes('localhost:9002')) {
         if (!serverStarted) {
           serverStarted = true;
-          log('Production server is ready!');
+          log('Local server is ready!');
           resolve();
         }
       }
@@ -282,15 +282,15 @@ function startProductionServer() {
   });
 }
 
-function stopProductionServer() {
+function stopLocalServer() {
   if (serverProcess && !serverProcess.killed) {
-    log('Stopping production server...');
+    log('Stopping local server...');
     serverProcess.kill('SIGTERM');
     
     // Force kill after 5 seconds if it doesn't stop gracefully
     setTimeout(() => {
       if (serverProcess && !serverProcess.killed) {
-        log('Force killing production server...');
+        log('Force killing local server...');
         serverProcess.kill('SIGKILL');
       }
     }, 5000);

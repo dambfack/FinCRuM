@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { Reminder, DataItemType, Contact, User } from '../lib/types'; // Added Contact, User
-import { useDataSync } from '../hooks/use-data-sync';
-import { getData, deleteItemById, formatDateTime } from '../lib/utils'; 
+import { useDataSync, getGoogleCalendarTokensFromStorage } from '../hooks/use-data-sync';
+import { getData, deleteItemById, formatDateTime } from '../lib/utils';
+import { deleteCalendarEventAction } from '@/app/actions/google-calendar-actions'; 
 import { Button } from './ui/button'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Trash2, Edit, Eye, User as UserIcon } from 'lucide-react'; // Added UserIcon
@@ -24,17 +25,41 @@ const ReminderList: React.FC<ReminderListProps> = ({ onEdit }) => {
       const storedReminders = getData<Reminder[]>(DataItemType.Reminders) || [];
       const storedContacts = getData<Contact[]>(DataItemType.Contacts) || [];
       const storedUsers = getData<User[]>(DataItemType.Users) || [];
-      setReminders(storedReminders.sort((a, b) => new Date(a.dateTime as string).getTime() - new Date(b.dateTime as string).getTime()));
+      setReminders(storedReminders
+        .filter(reminder => reminder.dateTime) // Filter out reminders without dateTime
+        .sort((a, b) => {
+          const dateA = a.dateTime ? new Date(a.dateTime as string).getTime() : 0;
+          const dateB = b.dateTime ? new Date(b.dateTime as string).getTime() : 0;
+          return dateA - dateB;
+        })
+      );
       setContacts(storedContacts);
       setUsers(storedUsers);
     };
     fetchRemindersData();
   }, []);
 
-  const handleDelete = (reminderId: string) => { 
+  const handleDelete = async (reminderId: string) => { 
+    // Find the reminder to get its Google Calendar event ID
+    const reminderToDelete = reminders.find(reminder => reminder.id === reminderId);
+    
+    // Delete from local storage first
     const updatedReminders = deleteItemById<Reminder>(DataItemType.Reminders, reminderId);
     if (updatedReminders) {
       setReminders(updatedReminders);
+    }
+    
+    // If the reminder has a Google Calendar event ID, delete it from Google Calendar
+    if (reminderToDelete?.googleCalendarEventId) {
+      try {
+        const googleTokens = getGoogleCalendarTokensFromStorage();
+        if (googleTokens && googleTokens.access_token) {
+          await deleteCalendarEventAction(reminderToDelete.googleCalendarEventId, googleTokens);
+        }
+      } catch (error) {
+        console.error('Failed to delete reminder from Google Calendar:', error);
+        // Note: We don't show an error toast here as the local deletion was successful
+      }
     }
   };
 

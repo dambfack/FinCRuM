@@ -22,7 +22,7 @@ const SyncManager = () => {
     isOneDriveConnected,   // Now directly from the hook
   } = useDataSync();
 
-  const formattedLastSyncTime = lastSyncTime ? formatDateTime(lastSyncTime) : 'Never';
+  const formattedLastSyncTime = lastSyncTime && typeof lastSyncTime === 'string' && lastSyncTime.trim() !== '' ? formatDateTime(lastSyncTime) : 'Never';
   
   const isAnyProviderConfigured = useCallback(() => {
     // Correctly use the state values which can be null initially

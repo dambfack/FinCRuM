@@ -21,11 +21,44 @@ export const mapToGoogleCalendarEvent = (
       const checklistString = task.checklist.map(ci => `${ci.completed ? '[x]' : '[ ]'} ${ci.text}`).join('\n');
       descriptionContent += `\n\nChecklist:\n${checklistString}`;
     }
+    
+    // Add repetition info to description
+    if (task.isRepetitive && task.repetitionType) {
+      let repetitionText = `\n\nRepetition: ${task.repetitionType}`;
+      if (task.repetitionInterval && task.repetitionInterval > 1) {
+        repetitionText += ` (every ${task.repetitionInterval} ${task.repetitionType}s)`;
+      }
+      if (task.repetitionType === 'weekly' && task.repetitionDays && task.repetitionDays.length > 0) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const selectedDays = task.repetitionDays.map(day => dayNames[day]).join(', ');
+        repetitionText += ` on ${selectedDays}`;
+      }
+      descriptionContent += repetitionText;
+    }
+    
     if (task.dueDate) {
       const dueDateObj = new Date(task.dueDate as string);
       if (!isNaN(dueDateObj.getTime())) {
-        start = { dateTime: dueDateObj.toISOString(), timeZone };
-        end = { dateTime: new Date(dueDateObj.getTime() + 60 * 60 * 1000).toISOString(), timeZone }; // 1 hour duration for tasks
+        if (task.dueTime) {
+          // Task has specific time
+          const year = dueDateObj.getFullYear();
+          const month = String(dueDateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dueDateObj.getDate()).padStart(2, '0');
+          const dateTimeString = `${year}-${month}-${day}T${task.dueTime}:00`;
+          const taskDateTime = new Date(dateTimeString);
+          
+          start = { dateTime: taskDateTime.toISOString(), timeZone };
+          end = { dateTime: new Date(taskDateTime.getTime() + 60 * 60 * 1000).toISOString(), timeZone }; // 1 hour duration
+        } else {
+          // All-day task
+          const year = dueDateObj.getFullYear();
+          const month = String(dueDateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dueDateObj.getDate()).padStart(2, '0');
+          const dateString = `${year}-${month}-${day}`;
+          
+          start = { date: dateString };
+          end = { date: dateString };
+        }
       }
     }
   } else if (type === 'reminder') {
@@ -47,7 +80,9 @@ export const mapToGoogleCalendarEvent = (
         end = { dateTime: endObj.toISOString(), timeZone };
         }
     } else if (appointment.date && appointment.time) {
-        const appointmentDateTimeString = `${new Date(appointment.date as string).toISOString().split('T')[0]}T${appointment.time}:00`;
+        // Create date string using the stored date directly to avoid timezone issues
+        const appointmentDateOnly = appointment.date.split('T')[0]; // Extract YYYY-MM-DD part
+        const appointmentDateTimeString = `${appointmentDateOnly}T${appointment.time}:00`;
         const appointmentDateTime = new Date(appointmentDateTimeString);
         if (!isNaN(appointmentDateTime.getTime())) {
             start = { dateTime: appointmentDateTime.toISOString(), timeZone };
@@ -70,9 +105,14 @@ export const mapToGoogleCalendarEvent = (
     if (!summary) summary = "Untitled Event";
   }
 
+  // Add signature to description
+  const finalDescription = descriptionContent.trim() + 
+    (descriptionContent.trim() ? '\n\n' : '') + 
+    '-added from FinsculptCRM';
+
   const eventRequest: any = {
     summary,
-    description: descriptionContent.trim(),
+    description: finalDescription,
     start,
     end,
     reminders: {

@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { Appointment, DataItemType, Contact, User } from '../lib/types'; // Updated import
-import { useDataSync } from '../hooks/use-data-sync';
+import { useDataSync, getGoogleCalendarTokensFromStorage } from '../hooks/use-data-sync';
 import { getData, deleteItemById, formatDateTime } from '../lib/utils'; // Updated import
+import { deleteCalendarEventAction } from '@/app/actions/google-calendar-actions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Trash2, Edit, Eye, User as UserIcon } from 'lucide-react'; // Icons
@@ -26,14 +27,38 @@ const AppointmentList: React.FC<AppointmentListProps> = ({ onEditAppointment }) 
   const loadAppointmentsAndUsers = () => {
     const storedAppointments = getData<Appointment[]>(DataItemType.Appointments) || [];
     const storedUsers = getData<User[]>(DataItemType.Users) || [];
-    setAppointments(storedAppointments.sort((a,b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime()));
+    setAppointments(storedAppointments
+      .filter(appointment => appointment.date) // Filter out appointments without date
+      .sort((a,b) => {
+        const dateA = a.date ? new Date(a.date as string).getTime() : 0;
+        const dateB = b.date ? new Date(b.date as string).getTime() : 0;
+        return dateA - dateB;
+      })
+    );
     setUsers(storedUsers);
   };
 
-  const handleDeleteAppointment = (appointmentId: string) => {
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    // Find the appointment to get its Google Calendar event ID
+    const appointmentToDelete = appointments.find(apt => apt.id === appointmentId);
+    
+    // Delete from local storage first
     const updatedAppointments = deleteItemById<Appointment>(DataItemType.Appointments, appointmentId);
     if (updatedAppointments) {
       setAppointments(updatedAppointments);
+    }
+    
+    // If the appointment has a Google Calendar event ID, delete it from Google Calendar
+    if (appointmentToDelete?.googleCalendarEventId) {
+      try {
+        const googleTokens = getGoogleCalendarTokensFromStorage();
+        if (googleTokens && googleTokens.access_token) {
+          await deleteCalendarEventAction(appointmentToDelete.googleCalendarEventId, googleTokens);
+        }
+      } catch (error) {
+        console.error('Failed to delete appointment from Google Calendar:', error);
+        // Note: We don't show an error toast here as the local deletion was successful
+      }
     }
   };
 

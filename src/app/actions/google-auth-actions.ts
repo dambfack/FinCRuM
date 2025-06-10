@@ -1,16 +1,23 @@
 'use server';
 
-import { generateGoogleAuthUrl } from '@/services/google-calendar';
-import { exchangeCodeForTokens } from '@/services/google-oauth';
-import { revokeGoogleTokens } from '@/services/google-oauth';
 import { GoogleTokens } from '@/lib/types';
 
 export async function generateGoogleAuthUrlAction(
   scopes?: string[]
 ): Promise<{ success: boolean; authUrl?: string; error?: string }> {
   try {
-    const authUrl = await generateGoogleAuthUrl(scopes);
-    return { success: true, authUrl };
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+    const scopesParam = scopes ? scopes.join(',') : '';
+    const url = `${baseUrl}/api/auth/google${scopesParam ? `?scopes=${scopesParam}` : ''}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.success) {
+      return { success: true, authUrl: data.authUrl };
+    } else {
+      return { success: false, error: data.error };
+    }
   } catch (error) {
     console.error('Error in generateGoogleAuthUrlAction:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -38,8 +45,24 @@ export async function exchangeCodeForTokensAction(
   }, 5 * 60 * 1000);
   
   try {
-    const tokens = await exchangeCodeForTokens(code);
-    return { success: true, tokens };
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+    const response = await fetch(`${baseUrl}/api/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code, action: 'exchange' }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return { success: true, tokens: data.tokens };
+    } else {
+      // Remove from processed codes on error so it can be retried
+      processedCodes.delete(code);
+      return { success: false, error: data.error };
+    }
   } catch (error: any) {
      console.error('Error in exchangeCodeForTokensAction:', error);
      // Remove from processed codes on error so it can be retried
@@ -48,12 +71,24 @@ export async function exchangeCodeForTokensAction(
    }
  }
 
-export async function revokeGoogleTokensAction(
-  accessToken: string
-): Promise<{ success: boolean; error?: string }> {
+export async function revokeGoogleTokensAction(): Promise<{ success: boolean; error?: string }> {
   try {
-    await revokeGoogleTokens(accessToken);
-    return { success: true };
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+    const response = await fetch(`${baseUrl}/api/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'revoke' }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return { success: true };
+    } else {
+      return { success: false, error: data.error };
+    }
   } catch (error) {
     console.error('Error in revokeGoogleTokensAction:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

@@ -6,8 +6,14 @@ const CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET;
 const REDIRECT_URI = process.env.NEXT_PUBLIC_MICROSOFT_REDIRECT_URI;
 const TENANT_ID = process.env.MICROSOFT_TENANT_ID || 'common'; // 'common' allows personal and work accounts
 
-if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-  console.error("Microsoft OAuth environment variables (CLIENT_ID, CLIENT_SECRET, REDIRECT_URI) are not fully set.");
+// Check if Microsoft OAuth is properly configured
+export function isMicrosoftOAuthConfigured(): boolean {
+  return !!(CLIENT_ID && CLIENT_SECRET && REDIRECT_URI);
+}
+
+// Helper function to throw configuration error
+function throwConfigurationError(): never {
+  throw new Error('Microsoft OAuth is not configured. Please set NEXT_PUBLIC_MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, and NEXT_PUBLIC_MICROSOFT_REDIRECT_URI environment variables.');
 }
 
 const MICROSOFT_AUTH_URL = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize`;
@@ -21,6 +27,10 @@ export async function generateMicrosoftAuthUrl(scopes: string[] = [
   'https://graph.microsoft.com/Files.ReadWrite',
   'offline_access'
 ]): Promise<string> {
+  if (!isMicrosoftOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   // Generate a unique state parameter to prevent CSRF attacks
   const state = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
   
@@ -44,6 +54,10 @@ export async function generateMicrosoftAuthUrl(scopes: string[] = [
  * Exchanges authorization code for access and refresh tokens
  */
 export async function exchangeCodeForTokens(code: string): Promise<MicrosoftTokens> {
+  if (!isMicrosoftOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const params = new URLSearchParams({
     client_id: CLIENT_ID!,
     client_secret: CLIENT_SECRET!,
@@ -91,6 +105,10 @@ export async function exchangeCodeForTokens(code: string): Promise<MicrosoftToke
  * Refreshes Microsoft access token using refresh token
  */
 export async function refreshMicrosoftTokens(refreshToken: string): Promise<MicrosoftTokens> {
+  if (!isMicrosoftOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const params = new URLSearchParams({
     client_id: CLIENT_ID!,
     client_secret: CLIENT_SECRET!,
@@ -137,6 +155,10 @@ export async function refreshMicrosoftTokens(refreshToken: string): Promise<Micr
  * Gets a valid access token, refreshing if necessary
  */
 export async function getValidMicrosoftToken(tokens: MicrosoftTokens): Promise<{ accessToken: string, newTokens?: MicrosoftTokens }> {
+  if (!isMicrosoftOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   // Check if token is expired (with 5 minute buffer)
   const now = Date.now();
   const expiresAt = tokens.expires_at || 0;
@@ -172,6 +194,10 @@ export async function makeAuthenticatedRequest(
   tokens: MicrosoftTokens,
   options: RequestInit = {}
 ): Promise<{ response: Response, newTokens?: MicrosoftTokens }> {
+  if (!isMicrosoftOAuthConfigured()) {
+    throwConfigurationError();
+  }
+  
   const { accessToken, newTokens } = await getValidMicrosoftToken(tokens);
   
   const response = await fetch(url, {

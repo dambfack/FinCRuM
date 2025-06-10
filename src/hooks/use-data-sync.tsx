@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { uploadToOneDrive, downloadFromOneDrive, fetchOneDriveFileMetadata } from '@/services/onedrive'; // Added fetchOneDriveFileMetadata
 import { uploadToGoogleDriveAction, downloadFromGoogleDriveAction, fetchGoogleDriveFileMetadataAction } from '@/app/actions/google-drive-actions';
 import { generateGoogleAuthUrlAction } from '@/app/actions/google-auth-actions';
+// Removed direct import of isGoogleOAuthConfigured to avoid client-side google-auth-library issues
 import {
   createCalendarEventAction,
   updateCalendarEventAction,
@@ -31,7 +32,7 @@ import { cn, formatDateTime, getData, saveData } from '@/lib/utils';
 export function useDataSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [conflicts, setConflicts] = useState<DataConflict[]>([]);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const { toast } = useToast();
   // States to track connection status for UI updates
@@ -55,6 +56,19 @@ export function useDataSync() {
     return null;
   };
 
+  const getGoogleCalendarTokensFromStorage = (): GoogleTokens | null => {
+    if (typeof window === 'undefined') return null;
+    const accessToken = localStorage.getItem(DataItemType.GoogleCalendarAccessToken);
+    const refreshToken = localStorage.getItem(DataItemType.GoogleCalendarRefreshToken);
+    const expiryDateStr = localStorage.getItem('googleCalendarTokenExpiry');
+    const expiry_date = expiryDateStr ? parseInt(expiryDateStr, 10) : null;
+
+    if (accessToken) {
+      return { access_token: accessToken, refresh_token: refreshToken, expiry_date };
+    }
+    return null;
+  };
+
   const storeGoogleTokens = (tokens: GoogleTokens) => {
     if (typeof window === 'undefined') return;
     if (tokens.access_token) {
@@ -69,11 +83,31 @@ export function useDataSync() {
     setIsGoogleDriveConnectedInternal(!!tokens.access_token); // Update internal state
   };
 
+  const storeGoogleCalendarTokens = (tokens: GoogleTokens) => {
+    if (typeof window === 'undefined') return;
+    if (tokens.access_token) {
+      localStorage.setItem(DataItemType.GoogleCalendarAccessToken, tokens.access_token);
+    }
+    if (tokens.refresh_token) {
+      localStorage.setItem(DataItemType.GoogleCalendarRefreshToken, tokens.refresh_token);
+    }
+    if (tokens.expiry_date) {
+      localStorage.setItem('googleCalendarTokenExpiry', tokens.expiry_date.toString());
+    }
+  };
+
   const clearGoogleTokens = () => {
     if (typeof window !== 'undefined') {
+      // Clear Google Drive tokens
       localStorage.removeItem(DataItemType.GoogleDriveAccessToken);
       localStorage.removeItem(DataItemType.GoogleDriveRefreshToken);
       localStorage.removeItem('googleDriveTokenExpiry');
+      
+      // Clear Google Calendar tokens
+      localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
+      localStorage.removeItem(DataItemType.GoogleCalendarRefreshToken);
+      localStorage.removeItem('googleCalendarTokenExpiry');
+      
       setIsGoogleDriveConnectedInternal(false); // Update internal state
     }
   };
@@ -108,7 +142,20 @@ export function useDataSync() {
         toast({ title: "Google Drive Syncing...", description: "Fetching remote data..." });
         const downloadResult = await downloadFromGoogleDriveAction(googleTokens);
         if (!downloadResult.success) {
-          throw new Error(downloadResult.error || 'Failed to download from Google Drive');
+          const errorMessage = downloadResult.error && typeof downloadResult.error === 'string' && downloadResult.error.trim() !== '' 
+            ? downloadResult.error 
+            : 'Failed to download from Google Drive';
+          // If the error message indicates an authentication issue, clear tokens immediately.
+          if (errorMessage.toLowerCase().includes('authentication') || 
+              errorMessage.toLowerCase().includes('invalid_grant') || 
+              errorMessage.toLowerCase().includes('status 401') || // Check for status codes in string
+              errorMessage.toLowerCase().includes('status 403') ||
+              errorMessage.toLowerCase().includes('401') || // Also check for bare status codes
+              errorMessage.toLowerCase().includes('403')) {
+            clearGoogleTokens();
+            toast({ title: "Google Authentication Invalid", description: "Your Google session is invalid. Please re-connect Google services.", variant: "destructive" });
+          }
+          throw new Error(errorMessage);
         }
         const cloudData = downloadResult.data;
         const gDriveRefreshedTokens = null; // Token refresh handled internally by server action
@@ -134,7 +181,10 @@ export function useDataSync() {
           if (uploadResult.success) {
             toast({ title: "Google Drive Synced", description: "Customer data backed up to Google Drive." });
           } else {
-            throw new Error(uploadResult.error || 'Failed to upload to Google Drive');
+            const errorMessage = uploadResult.error && typeof uploadResult.error === 'string' && uploadResult.error.trim() !== '' 
+              ? uploadResult.error 
+              : 'Failed to upload to Google Drive';
+            throw new Error(errorMessage);
           }
         } else if (!isAnyLocalDataPresent && cloudData) {
            saveData<ExcelData>(DataItemType.CustomerData, cloudData); // Save cloud data locally if no local data
@@ -211,7 +261,7 @@ export function useDataSync() {
 
     if (encounteredConflicts.length === 0) {
         const now = new Date();
-        setLastSyncTime(now);
+        setLastSyncTime(now.toISOString());
         saveData<string>(DataItemType.LastSyncTime, now.toISOString());
         setSyncStatus('synced');
         toast({ title: "Sync Complete", description: "Data synchronization finished." });
@@ -226,7 +276,7 @@ export function useDataSync() {
 
 
   const syncCalendar = useCallback(async (showIndividualToasts = true) => {
-    let googleTokens = getGoogleTokensFromStorage();
+    let googleTokens = getGoogleCalendarTokensFromStorage();
     if (!googleTokens || !googleTokens.access_token) {
       if (showIndividualToasts) {
         toast({ title: "Google Calendar Sync Failed", description: "Not authenticated with Google. Please link Google Calendar.", variant: "destructive"});
@@ -262,13 +312,16 @@ export function useDataSync() {
                     }
                     if (result.success && result.data) {
                       if (result.data.newTokens) {
-                        storeGoogleTokens(result.data.newTokens);
+                        storeGoogleCalendarTokens(result.data.newTokens);
                         currentTokens = result.data.newTokens; 
                       }
                       syncedItemsAccumulator.push({ ...item, googleCalendarEventId: result.data.event.id });
                     } else {
                       // Handle failed result
-                      throw new Error(result.error || 'Failed to sync calendar event');
+                      const errorMessage = result.error && typeof result.error === 'string' && result.error.trim() !== '' 
+                        ? result.error 
+                        : 'Failed to sync calendar event';
+                      throw new Error(errorMessage);
                     }
                 } catch (error: any) {
                      console.error(`Error syncing ${itemType} ${item.id} with Google Calendar:`, error);
@@ -355,7 +408,10 @@ export function useDataSync() {
                       syncedItemsAccumulator.push({ ...item, microsoftCalendarEventId: result.event?.id });
                     } else {
                       // Handle failed result
-                      throw new Error(result.error || 'Failed to sync Microsoft calendar event');
+                      const errorMessage = result.error && typeof result.error === 'string' && result.error.trim() !== '' 
+                        ? result.error 
+                        : 'Failed to sync Microsoft calendar event';
+                      throw new Error(errorMessage);
                     }
                 } catch (error: any) {
                      console.error(`Error syncing ${itemType} ${item.id} with Microsoft Calendar:`, error);
@@ -402,7 +458,7 @@ export function useDataSync() {
     if (typeof window !== 'undefined') {
         const storedLastSyncTimeString = getData<string>(DataItemType.LastSyncTime);
         if (storedLastSyncTimeString) {
-            setLastSyncTime(new Date(storedLastSyncTimeString));
+            setLastSyncTime(storedLastSyncTimeString);
         }
     }
   }, []); 
@@ -438,6 +494,30 @@ export function useDataSync() {
 
     const initiateAuthentication = async (provider: 'onedrive' | 'googledrive' | 'googlecalendar' | 'google' | 'microsoft' | 'microsoftcalendar') => {
       if (provider === 'googledrive' || provider === 'googlecalendar' || provider === 'google') {
+        // Check Google OAuth configuration via API
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+          const response = await fetch(`${baseUrl}/api/auth/google/config`);
+          const { isConfigured } = await response.json();
+          
+          if (!isConfigured) {
+            toast({
+              title: 'Google OAuth Not Configured',
+              description: 'Google OAuth environment variables are not properly set. Please configure NEXT_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and NEXT_PUBLIC_GOOGLE_REDIRECT_URI.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking Google OAuth configuration:', error);
+          toast({
+            title: 'Configuration Check Failed',
+            description: 'Unable to verify Google OAuth configuration.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
         try {
           // Clear all Google tokens before starting new auth for unified login
           localStorage.removeItem(DataItemType.GoogleCalendarAccessToken);
@@ -454,7 +534,10 @@ export function useDataSync() {
           
           const authUrlResult = await generateGoogleAuthUrlAction(scopes);
           if (!authUrlResult.success) {
-            throw new Error(authUrlResult.error || 'Failed to generate auth URL');
+            const errorMessage = authUrlResult.error && typeof authUrlResult.error === 'string' && authUrlResult.error.trim() !== '' 
+              ? authUrlResult.error 
+              : 'Failed to generate auth URL';
+            throw new Error(errorMessage);
           }
           const authUrl = authUrlResult.authUrl!;
           
@@ -507,11 +590,26 @@ export function useDataSync() {
     isOneDriveConnected: isOneDriveConnectedInternal,     // Expose internal state
     isMicrosoftCalendarConnected: isMicrosoftCalendarConnectedInternal, // Expose internal state
     getLocalData: getData, 
-    setLocalData: saveData
+    setLocalData: saveData,
+    getGoogleCalendarTokensFromStorage
   };
 }
 
-const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflict[]; onResolve: (resolvedConflict: DataConflict) => void }) => {
+// Export the function at module level for direct import
+export const getGoogleCalendarTokensFromStorage = (): GoogleTokens | null => {
+  if (typeof window === 'undefined') return null;
+  const accessToken = localStorage.getItem(DataItemType.GoogleCalendarAccessToken);
+  const refreshToken = localStorage.getItem(DataItemType.GoogleCalendarRefreshToken);
+  const expiryDateStr = localStorage.getItem('googleCalendarTokenExpiry');
+  const expiry_date = expiryDateStr ? parseInt(expiryDateStr, 10) : null;
+
+  if (accessToken) {
+    return { access_token: accessToken, refresh_token: refreshToken, expiry_date };
+  }
+  return null;
+};
+
+export const ConflictResolutionUI: React.FC<ConflictResolutionUIProps> = ({ conflicts, onResolve }) => {
     const [resolutions, setResolutions] = useState<Record<number, 'local' | 'cloud' | 'manual'>>({});
     const [manualValues, setManualValues] = useState<Record<number, string[]>>({});
     const { toast } = useToast();
@@ -664,6 +762,3 @@ const ConflictResolutionUI = ({ conflicts, onResolve }: { conflicts: DataConflic
             </div>
         );
 };
-
-
-export { ConflictResolutionUI };
