@@ -4,7 +4,7 @@ process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
 process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI = 'http://localhost:3000/api/auth/callback/google';
 
 import * as googleCalendar from '../google-calendar';
-import { OAuth2Client } from 'google-auth-library';
+// Removed direct import of OAuth2Client to avoid client-side bundling issues
 
 // Mock the google-auth-library
 const mockOAuth2Client = {
@@ -23,7 +23,7 @@ const mockOAuth2Client = {
     refresh_token: 'test-refresh-token',
     expiry_date: Date.now() + 3600 * 1000
   }
-} as unknown as jest.Mocked<OAuth2Client>;
+} as unknown as jest.Mocked<any>;
 
 // Mock the google-auth-library
 jest.mock('google-auth-library', () => ({
@@ -115,7 +115,7 @@ describe('Google Calendar Service', () => {
       const callArgs = mockCalendarEvents.insert.mock.calls[0][0];
       expect(callArgs.calendarId).toBe('primary');
       expect(callArgs.requestBody.summary).toBe('Test Appointment');
-      expect(callArgs.requestBody.description).toBe('Test Description');
+      expect(callArgs.requestBody.description).toBe('Test Description\n\n-added from FinsculptCRM');
       expect(callArgs.requestBody.location).toBe('Test Location');
       expect(callArgs.conferenceDataVersion).toBe(1);
     });

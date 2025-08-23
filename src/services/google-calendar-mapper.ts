@@ -4,8 +4,8 @@ import type { Task, Reminder, Appointment } from '@/lib/types';
  * Maps internal event types to Google Calendar event format
  */
 export const mapToGoogleCalendarEvent = (
-  item: Task | Reminder | Appointment,
-  type: 'task' | 'reminder' | 'appointment'
+  item: Reminder | Appointment, // Task removed
+  type: 'reminder' | 'appointment' // Task removed
 ) => {
   let summary = '';
   let descriptionContent = item.description || '';
@@ -14,54 +14,7 @@ export const mapToGoogleCalendarEvent = (
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   let attendees: { email: string, displayName?: string }[] = [];
 
-  if (type === 'task') {
-    const task = item as Task;
-    summary = `Task: ${task.title}`;
-    if (task.checklist && task.checklist.length > 0) {
-      const checklistString = task.checklist.map(ci => `${ci.completed ? '[x]' : '[ ]'} ${ci.text}`).join('\n');
-      descriptionContent += `\n\nChecklist:\n${checklistString}`;
-    }
-    
-    // Add repetition info to description
-    if (task.isRepetitive && task.repetitionType) {
-      let repetitionText = `\n\nRepetition: ${task.repetitionType}`;
-      if (task.repetitionInterval && task.repetitionInterval > 1) {
-        repetitionText += ` (every ${task.repetitionInterval} ${task.repetitionType}s)`;
-      }
-      if (task.repetitionType === 'weekly' && task.repetitionDays && task.repetitionDays.length > 0) {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const selectedDays = task.repetitionDays.map(day => dayNames[day]).join(', ');
-        repetitionText += ` on ${selectedDays}`;
-      }
-      descriptionContent += repetitionText;
-    }
-    
-    if (task.dueDate) {
-      const dueDateObj = new Date(task.dueDate as string);
-      if (!isNaN(dueDateObj.getTime())) {
-        if (task.dueTime) {
-          // Task has specific time
-          const year = dueDateObj.getFullYear();
-          const month = String(dueDateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dueDateObj.getDate()).padStart(2, '0');
-          const dateTimeString = `${year}-${month}-${day}T${task.dueTime}:00`;
-          const taskDateTime = new Date(dateTimeString);
-          
-          start = { dateTime: taskDateTime.toISOString(), timeZone };
-          end = { dateTime: new Date(taskDateTime.getTime() + 60 * 60 * 1000).toISOString(), timeZone }; // 1 hour duration
-        } else {
-          // All-day task
-          const year = dueDateObj.getFullYear();
-          const month = String(dueDateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dueDateObj.getDate()).padStart(2, '0');
-          const dateString = `${year}-${month}-${day}`;
-          
-          start = { date: dateString };
-          end = { date: dateString };
-        }
-      }
-    }
-  } else if (type === 'reminder') {
+  if (type === 'reminder') { // Task block removed
     const reminder = item as Reminder;
     summary = `Reminder: ${reminder.title}`;
     const remindAtObj = new Date(reminder.dateTime as string);
@@ -81,7 +34,8 @@ export const mapToGoogleCalendarEvent = (
         }
     } else if (appointment.date && appointment.time) {
         // Create date string using the stored date directly to avoid timezone issues
-        const appointmentDateOnly = appointment.date.split('T')[0]; // Extract YYYY-MM-DD part
+        const dateString = typeof appointment.date === 'string' ? appointment.date : appointment.date.toISOString();
+        const appointmentDateOnly = dateString.split('T')[0]; // Extract YYYY-MM-DD part
         const appointmentDateTimeString = `${appointmentDateOnly}T${appointment.time}:00`;
         const appointmentDateTime = new Date(appointmentDateTimeString);
         if (!isNaN(appointmentDateTime.getTime())) {
@@ -122,6 +76,19 @@ export const mapToGoogleCalendarEvent = (
 
   if (attendees.length > 0) {
     eventRequest.attendees = attendees;
+  }
+
+  // Add conference data for online appointments
+  if (type === 'appointment') {
+    const appointment = item as Appointment;
+    if ((appointment as any).isOnline) {
+      eventRequest.conferenceData = {
+        createRequest: {
+          requestId: Math.random().toString(36).substring(2, 15),
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      };
+    }
   }
 
   return eventRequest;

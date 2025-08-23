@@ -1,0 +1,18 @@
+   ▲ Next.js 15.2.3
+   - Local:        http://localhost:9002
+   - Network:      http://192.168.1.8:9002
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 15.5s (7657 modules)
+ GET /?ide_webview_request_time=1750099027945 200 in 17977ms
+ ✓ Compiled in 3.1s (3367 modules)
+Google Drive access token expired or expiring soon, attempting to refresh...
+(node:14608) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Google Drive access token refreshed.
+Google Drive file 'finsculpt_crm_data.json' not found.
+ POST /?ide_webview_request_time=1750099027945 200 in 3029ms
+[?25h

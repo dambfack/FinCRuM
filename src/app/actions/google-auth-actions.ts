@@ -3,12 +3,18 @@
 import { GoogleTokens } from '@/lib/types';
 
 export async function generateGoogleAuthUrlAction(
-  scopes?: string[]
+  scopes?: string[],
+  isElectron?: boolean
 ): Promise<{ success: boolean; authUrl?: string; error?: string }> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
     const scopesParam = scopes ? scopes.join(',') : '';
-    const url = `${baseUrl}/api/auth/google${scopesParam ? `?scopes=${scopesParam}` : ''}`;
+    
+    const params = new URLSearchParams();
+    if (scopesParam) params.set('scopes', scopesParam);
+    if (isElectron) params.set('electron', 'true');
+    
+    const url = `${baseUrl}/api/auth/google${params.toString() ? `?${params.toString()}` : ''}`;
     
     const response = await fetch(url);
     const data = await response.json();
@@ -25,10 +31,11 @@ export async function generateGoogleAuthUrlAction(
 }
 
 // Track processed codes to prevent duplicate processing
-const processedCodes = new Set<string>();
+let processedCodes = new Set<string>();
 
 export async function exchangeCodeForTokensAction(
-  code: string
+  code: string,
+  isElectron?: boolean
 ): Promise<{ success: boolean; tokens?: GoogleTokens; error?: string }> {
   // Prevent processing the same code multiple times
   if (processedCodes.has(code)) {
@@ -46,12 +53,13 @@ export async function exchangeCodeForTokensAction(
   
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002';
+    
     const response = await fetch(`${baseUrl}/api/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ code, action: 'exchange' }),
+      body: JSON.stringify({ code, action: 'exchange', isElectron }),
     });
     
     const data = await response.json();

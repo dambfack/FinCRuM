@@ -14,6 +14,11 @@ export default function MicrosoftCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // Check if we're in a browser environment
+        if (typeof window === 'undefined') {
+          return;
+        }
+
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');

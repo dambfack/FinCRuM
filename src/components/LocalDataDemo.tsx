@@ -73,8 +73,9 @@ export function LocalDataDemo() {
     try {
       const newContact: Contact = {
         id: `contact-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        name: newContactForm.name.trim(),
-        email: newContactForm.email.trim() || undefined,
+        firstName: newContactForm.name.trim().split(' ')[0] || '',
+        lastName: newContactForm.name.trim().split(' ').slice(1).join(' ') || '',
+        email: newContactForm.email.trim() || '',
         phone: newContactForm.phone.trim() || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -127,7 +128,8 @@ export function LocalDataDemo() {
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         title: `Sample Task ${Date.now()}`,
         description: 'This is a sample task to demonstrate cloud sync',
-        status: 'pending',
+        completed: false,
+        status: 'todo',
         priority: 'medium',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -258,8 +260,14 @@ export function LocalDataDemo() {
                     {editingContact?.id === contact.id ? (
                       <div className="space-y-2">
                         <Input
-                          value={editingContact.name}
-                          onChange={(e) => setEditingContact(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          value={`${editingContact.firstName} ${editingContact.lastName}`.trim()}
+                          onChange={(e) => {
+                            const fullName = e.target.value.trim();
+                            const firstName = fullName.split(' ')[0] || '';
+                            const lastName = fullName.split(' ').slice(1).join(' ') || '';
+                            setEditingContact(prev => prev ? { ...prev, firstName, lastName } : null);
+                          }}
+                          placeholder="Full Name"
                         />
                         <Input
                           value={editingContact.email || ''}
@@ -285,7 +293,7 @@ export function LocalDataDemo() {
                     ) : (
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{contact.name}</p>
+                          <p className="font-medium">{`${contact.firstName} ${contact.lastName}`.trim()}</p>
                           {contact.email && <p className="text-sm text-muted-foreground">{contact.email}</p>}
                           {contact.phone && <p className="text-sm text-muted-foreground">{contact.phone}</p>}
                         </div>

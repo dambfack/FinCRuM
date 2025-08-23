@@ -8,21 +8,32 @@ import { useToast } from '@/hooks/use-toast';
 import { ImageUp, CheckCircle, Trash2 } from 'lucide-react';
 import { DataItemType, LocalData } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 
-const APP_HARDCODED_DEFAULT_BACKGROUND = 'https://placehold.co/1920x1080.png';
+const APP_DEFAULT_LIGHT_BACKGROUND = '/default-bg-light.svg';
+const APP_DEFAULT_DARK_BACKGROUND = '/default-bg-dark.svg';
 
 const BackgroundImageSwitcher: React.FC = () => {
   const [currentCustomBg, setCurrentCustomBg] = useState<string | null>(null);
   const [currentDefaultBg, setCurrentDefaultBg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { theme, resolvedTheme } = useTheme();
+
+  // Get the appropriate default background based on theme
+  const getThemeDefaultBackground = useCallback(() => {
+    const currentTheme = resolvedTheme || theme;
+    return currentTheme === 'dark' ? APP_DEFAULT_DARK_BACKGROUND : APP_DEFAULT_LIGHT_BACKGROUND;
+  }, [theme, resolvedTheme]);
 
   const applyBackground = useCallback((url: string | null) => {
     if (typeof window !== 'undefined') {
-      document.body.style.backgroundImage = url ? `url('${url}')` : '';
       if (url) {
+        document.body.style.backgroundImage = `url('${url}')`;
         document.body.setAttribute('data-ai-hint', 'custom background');
       } else {
+        // Remove the inline style to let CSS defaults take effect
+        document.body.style.removeProperty('background-image');
         document.body.setAttribute('data-ai-hint', 'abstract gradient'); // Default hint
       }
     }
@@ -40,9 +51,31 @@ const BackgroundImageSwitcher: React.FC = () => {
     } else if (storedDefaultBg) {
       applyBackground(storedDefaultBg);
     } else {
-      applyBackground(APP_HARDCODED_DEFAULT_BACKGROUND);
+      // Let CSS defaults handle the theme-appropriate background
+      applyBackground(null);
     }
-  }, [applyBackground]);
+  }, [applyBackground, getThemeDefaultBackground]);
+
+  // Listen for theme changes and update background appropriately
+  useEffect(() => {
+    const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
+    const storedDefaultBg = getData<string>(DataItemType.DefaultBackgroundImage);
+    
+    // Update background based on priority:
+    // 1. Custom background (highest priority - don't change)
+    // 2. User-set default background (medium priority - don't change)
+    // 3. Theme-appropriate app default (lowest priority - handled by CSS)
+    if (storedCustomBg) {
+      // Keep custom background regardless of theme
+      applyBackground(storedCustomBg);
+    } else if (storedDefaultBg) {
+      // Keep user-set default background regardless of theme
+      applyBackground(storedDefaultBg);
+    } else {
+      // Let CSS handle the theme-appropriate app default
+      applyBackground(null);
+    }
+  }, [theme, resolvedTheme, applyBackground, getThemeDefaultBackground]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,10 +140,10 @@ const BackgroundImageSwitcher: React.FC = () => {
     setCurrentDefaultBg(null);
     localStorage.removeItem(DataItemType.BackgroundImage);
     localStorage.removeItem(DataItemType.DefaultBackgroundImage);
-    applyBackground(APP_HARDCODED_DEFAULT_BACKGROUND);
+    applyBackground(getThemeDefaultBackground());
     toast({
       title: 'Background Reset',
-      description: 'Background image has been reset to the application default.',
+      description: 'Background image has been reset to the theme-appropriate default.',
     });
   };
 

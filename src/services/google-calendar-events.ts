@@ -1,5 +1,5 @@
-import { google } from 'googleapis';
-import type { Task, Reminder, Appointment, GoogleTokens } from '@/lib/types';
+// Removed direct import of googleapis to avoid client-side bundling issues
+import type { Reminder, Appointment, GoogleTokens } from '@/lib/types';
 import { getAuthenticatedClient } from './google-oauth';
 import { mapToGoogleCalendarEvent } from './google-calendar-mapper';
 
@@ -7,13 +7,14 @@ import { mapToGoogleCalendarEvent } from './google-calendar-mapper';
  * Creates a new event in the user's Google Calendar
  */
 export async function createCalendarEvent(
-  item: Task | Reminder | Appointment,
-  type: 'task' | 'reminder' | 'appointment',
+  item: Reminder | Appointment,
+  type: 'reminder' | 'appointment',
   tokens: GoogleTokens
 ): Promise<{ event: any, newTokens?: GoogleTokens }> {
   try {
     // Get authenticated client (will refresh tokens if needed)
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const calendar = google.calendar({ version: 'v3', auth: client });
     
     // Convert our internal event format to Google Calendar event format
@@ -65,13 +66,14 @@ export async function createCalendarEvent(
  */
 export async function updateCalendarEvent(
   eventId: string,
-  item: Task | Reminder | Appointment,
-  type: 'task' | 'reminder' | 'appointment',
+  item: Reminder | Appointment,
+  type: 'reminder' | 'appointment',
   tokens: GoogleTokens
 ): Promise<{ event: any, newTokens?: GoogleTokens }> {
   try {
     // Get authenticated client (will refresh tokens if needed)
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const calendar = google.calendar({ version: 'v3', auth: client });
     
     // Convert our internal event format to Google Calendar event format
@@ -129,6 +131,7 @@ export async function deleteCalendarEvent(
   try {
     // Get authenticated client (will refresh tokens if needed)
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const calendar = google.calendar({ version: 'v3', auth: client });
     
     console.log(`Deleting event from Google Calendar:`, eventId);
@@ -182,6 +185,7 @@ export async function listCalendarEvents(
   try {
     // Get authenticated client (will refresh tokens if needed)
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const calendar = google.calendar({ version: 'v3', auth: client });
     
     // Set default time range if not provided

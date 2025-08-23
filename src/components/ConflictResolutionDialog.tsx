@@ -18,6 +18,9 @@ import { AlertTriangle, User, Cloud, Merge, Clock } from 'lucide-react';
 import { DataConflictWithResolution, ConflictResolution } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 
+// Dialog-specific resolution type for UI
+type DialogConflictResolution = 'user_precedence' | 'cloud_precedence' | 'merge';
+
 interface ConflictResolutionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,13 +36,27 @@ export function ConflictResolutionDialog({
   onResolve,
   isResolving = false
 }: ConflictResolutionDialogProps) {
-  const [resolutions, setResolutions] = useState<Map<string, ConflictResolution>>(new Map());
+  const [resolutions, setResolutions] = useState<Map<string, DialogConflictResolution>>(new Map());
   const [selectedConflictIndex, setSelectedConflictIndex] = useState(0);
 
-  const handleResolutionChange = (conflictId: string, resolution: ConflictResolution) => {
+  const handleResolutionChange = (conflictId: string, resolution: DialogConflictResolution) => {
     const newResolutions = new Map(resolutions);
     newResolutions.set(conflictId, resolution);
     setResolutions(newResolutions);
+  };
+
+  // Convert dialog resolution to ConflictResolution format
+  const convertToConflictResolution = (dialogResolution: DialogConflictResolution): ConflictResolution => {
+    switch (dialogResolution) {
+      case 'user_precedence':
+        return { action: 'keep_local', reason: 'User chose to keep local changes' };
+      case 'cloud_precedence':
+        return { action: 'keep_cloud', reason: 'User chose to accept cloud changes' };
+      case 'merge':
+        return { action: 'merge_manual', reason: 'User chose to merge both versions' };
+      default:
+        return { action: 'keep_local', reason: 'Default resolution' };
+    }
   };
 
   const handleResolveAll = async () => {
@@ -51,7 +68,13 @@ export function ConflictResolutionDialog({
       }
     });
 
-    await onResolve(finalResolutions);
+    // Convert dialog resolutions to ConflictResolution format
+    const convertedResolutions = new Map<string, ConflictResolution>();
+    finalResolutions.forEach((dialogResolution, conflictId) => {
+      convertedResolutions.set(conflictId, convertToConflictResolution(dialogResolution));
+    });
+
+    await onResolve(convertedResolutions);
     setResolutions(new Map());
     setSelectedConflictIndex(0);
   };
@@ -62,7 +85,7 @@ export function ConflictResolutionDialog({
     onOpenChange(false);
   };
 
-  const getResolutionIcon = (resolution: ConflictResolution) => {
+  const getResolutionIcon = (resolution: DialogConflictResolution) => {
     switch (resolution) {
       case 'user_precedence':
         return <User className="h-4 w-4" />;
@@ -75,7 +98,7 @@ export function ConflictResolutionDialog({
     }
   };
 
-  const getResolutionDescription = (resolution: ConflictResolution) => {
+  const getResolutionDescription = (resolution: DialogConflictResolution) => {
     switch (resolution) {
       case 'user_precedence':
         return 'Keep your local changes and overwrite cloud data';
@@ -172,7 +195,7 @@ export function ConflictResolutionDialog({
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="font-medium text-gray-700 mb-2">Conflict Reason:</h4>
-                    <p className="text-sm bg-orange-50 p-3 rounded border border-orange-200">
+                    <p className="text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                       {currentConflict.reason}
                     </p>
                   </div>
@@ -185,48 +208,69 @@ export function ConflictResolutionDialog({
                     <RadioGroup
                       value={resolutions.get(currentConflict.id) || ''}
                       onValueChange={(value) => 
-                        handleResolutionChange(currentConflict.id, value as ConflictResolution)
+                        handleResolutionChange(currentConflict.id, value as DialogConflictResolution)
                       }
                     >
                       <div className="space-y-3">
-                        <div className="flex items-center space-x-2 p-3 border rounded hover:bg-blue-50">
+                        <Label
+                          htmlFor="user_precedence"
+                          className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            resolutions.get(currentConflict.id) === 'user_precedence'
+                              ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 dark:border-blue-400'
+                              : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
                           <RadioGroupItem value="user_precedence" id="user_precedence" />
-                          <Label htmlFor="user_precedence" className="flex-1 cursor-pointer">
+                          <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <User className="h-4 w-4 text-blue-600" />
                               <span className="font-medium">Keep My Changes (Recommended)</span>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {getResolutionDescription('user_precedence')}
                             </p>
-                          </Label>
-                        </div>
+                          </div>
+                        </Label>
 
-                        <div className="flex items-center space-x-2 p-3 border rounded hover:bg-green-50">
+                        <Label
+                          htmlFor="cloud_precedence"
+                          className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            resolutions.get(currentConflict.id) === 'cloud_precedence'
+                              ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 dark:border-blue-400'
+                              : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
                           <RadioGroupItem value="cloud_precedence" id="cloud_precedence" />
-                          <Label htmlFor="cloud_precedence" className="flex-1 cursor-pointer">
+                          <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <Cloud className="h-4 w-4 text-green-600" />
                               <span className="font-medium">Accept Cloud Changes</span>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {getResolutionDescription('cloud_precedence')}
                             </p>
-                          </Label>
-                        </div>
+                          </div>
+                        </Label>
 
-                        <div className="flex items-center space-x-2 p-3 border rounded hover:bg-purple-50">
+                        <Label
+                          htmlFor="merge"
+                          className={`flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            resolutions.get(currentConflict.id) === 'merge'
+                              ? 'bg-blue-100 dark:bg-blue-900 border-blue-500 dark:border-blue-400'
+                              : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
                           <RadioGroupItem value="merge" id="merge" />
-                          <Label htmlFor="merge" className="flex-1 cursor-pointer">
+                          <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <Merge className="h-4 w-4 text-purple-600" />
                               <span className="font-medium">Merge Both Versions</span>
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {getResolutionDescription('merge')}
                             </p>
-                          </Label>
-                        </div>
+                          </div>
+                        </Label>
                       </div>
                     </RadioGroup>
                   </div>

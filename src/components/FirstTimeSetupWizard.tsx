@@ -20,7 +20,8 @@ import {
   Globe,
   Database
 } from 'lucide-react';
-import { getCloudDatabase } from '@/services/shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+import { CloudDatabaseService } from '@/services/shared-cloud-database';
 import { securityComplianceService } from '@/services/security-compliance';
 
 interface SetupChoice {
@@ -33,7 +34,7 @@ interface SetupChoice {
 }
 
 interface CloudAccount {
-  provider: 'google' | 'onedrive';
+  provider: 'googledrive' | 'onedrive';
   email: string;
   hasExistingUsers: boolean;
   userCount: number;
@@ -53,9 +54,17 @@ interface FirstTimeSetupWizardProps {
 }
 
 export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSetupComplete }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedStep = localStorage.getItem('first_time_setup_step');
+      if (savedStep && !isNaN(parseInt(savedStep, 10))) {
+        return parseInt(savedStep, 10);
+      }
+    }
+    return 0;
+  });
   const [setupChoice, setSetupChoice] = useState<'local' | 'cloud' | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<'google' | 'onedrive' | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<'googledrive' | 'onedrive' | null>(null);
   const [cloudAccount, setCloudAccount] = useState<CloudAccount | null>(null);
   const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -63,6 +72,47 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
   const [isComplete, setIsComplete] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('first_time_setup_step', currentStep.toString());
+    }
+  }, [currentStep]);
+
+  const handleNext = () => {
+    if (currentStep === steps.length - 1) {
+      finalizeSetup();
+    } else if (currentStep === 0 && !setupChoice) {
+      setSetupError("Please select a setup type.");
+      setTimeout(() => setSetupError(null), 3000);
+    } else if (currentStep === 1 && setupChoice === 'cloud' && !selectedProvider) {
+      setSetupError("Please select a cloud provider.");
+      setTimeout(() => setSetupError(null), 3000);
+    } else if (currentStep === 2 && setupChoice === 'cloud' && !cloudAccount) {
+      // This case is handled by the connectToCloudAccount button itself
+      // Or, if the button changes to 'Next' after connection, this logic might be needed.
+    } else {
+      // Logic for advancing, considering cloud skips
+      let nextStep = currentStep;
+      if (setupChoice === 'cloud' && currentStep === 2 && cloudAccount && !cloudAccount.hasExistingUsers) {
+        nextStep = currentStep + 2; // Skip conflict resolution
+      } else {
+        nextStep = currentStep + 1;
+      }
+      setCurrentStep(nextStep);
+    }
+  };
+
+  const isNextDisabled = () => {
+    if (isProcessing) return true;
+    if (currentStep === 0 && !setupChoice) return true;
+    if (currentStep === 1 && setupChoice === 'cloud' && !selectedProvider) return true;
+    // Disable Next/Finish on Account Setup step if cloudAccount is not yet set (i.e., still showing 'Connect')
+    if (currentStep === 2 && setupChoice === 'cloud' && !cloudAccount) return true;
+    // Disable Finish on the last step if processing (already covered by isProcessing)
+    return false;
+  };
 
   const setupChoices: SetupChoice[] = [
     {
@@ -134,31 +184,92 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
     }
   };
 
-  const handleProviderSelection = (provider: 'google' | 'onedrive') => {
+  const handleProviderSelection = async (provider: 'googledrive' | 'onedrive') => {
     setSelectedProvider(provider);
     setSetupProgress(50);
-    setCurrentStep(currentStep + 1);
+    setSetupError(null);
+    
+    // Immediately initiate the authentication flow
+    try {
+      if (provider === 'googledrive') {
+        // Import Google auth action dynamically
+        const { generateGoogleAuthUrlAction } = await import('@/app/actions/google-auth-actions');
+        const result = await generateGoogleAuthUrlAction();
+        
+        if (result.success && result.authUrl) {
+          // Redirect to the authentication URL
+        window.location.href = result.authUrl;
+        } else {
+          throw new Error(result.error || 'Failed to generate Google auth URL');
+        }
+      } else if (provider === 'onedrive') {
+        // Import Microsoft auth function dynamically
+        const { generateMicrosoftAuthUrl, isMicrosoftOAuthConfigured } = await import('@/services/microsoft-oauth');
+        
+        // Check if Microsoft OAuth is configured
+        if (!isMicrosoftOAuthConfigured()) {
+          throw new Error('Microsoft OAuth is not configured. Please set up your Microsoft OAuth credentials in the environment variables.');
+        }
+        
+        const authUrl = await generateMicrosoftAuthUrl();
+        
+        // Redirect to the authentication URL
+        window.location.href = authUrl;
+      }
+      
+      // Move to the next step
+      setCurrentStep(currentStep + 1);
+    } catch (error) {
+      console.error('Failed to initiate authentication:', error);
+      setSetupError(`Failed to start ${provider} authentication: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const connectToCloudAccount = async () => {
     if (!selectedProvider) return;
     
     setIsConnecting(true);
+    setSetupError(null);
+    
     try {
-      // Simulate cloud account connection and check for existing users
-      const mockAccount: CloudAccount = {
+      // Check if authentication tokens exist
+      let isAuthenticated = false;
+      let userEmail = '';
+      
+      if (selectedProvider === 'googledrive') {
+        const googleTokens = localStorage.getItem('google_access_token');
+        if (googleTokens) {
+          isAuthenticated = true;
+          userEmail = 'user@gmail.com'; // In real implementation, get from Google API
+        }
+      } else if (selectedProvider === 'onedrive') {
+        const microsoftTokens = localStorage.getItem('microsoft_access_token');
+        if (microsoftTokens) {
+          isAuthenticated = true;
+          userEmail = 'user@outlook.com'; // In real implementation, get from Microsoft API
+        }
+      }
+      
+      if (!isAuthenticated) {
+        setSetupError(`Please authenticate with ${selectedProvider} first. Click the provider card above to sign in.`);
+        setIsConnecting(false);
+        return;
+      }
+      
+      // Create cloud account object
+      const cloudAccount: CloudAccount = {
         provider: selectedProvider,
-        email: selectedProvider === 'google' ? 'user@gmail.com' : 'user@outlook.com',
+        email: userEmail,
         hasExistingUsers: Math.random() > 0.5, // Simulate 50% chance of existing users
         userCount: Math.floor(Math.random() * 5) + 1,
         lastSync: Math.random() > 0.3 ? new Date().toISOString() : null
       };
       
-      setCloudAccount(mockAccount);
+      setCloudAccount(cloudAccount);
       setSetupProgress(75);
       
       // Check for conflicts if there are existing users
-      if (mockAccount.hasExistingUsers) {
+      if (cloudAccount.hasExistingUsers) {
         const mockConflicts: ConflictItem[] = [
           {
             type: 'user',
@@ -183,6 +294,7 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
       }
     } catch (error) {
       console.error('Failed to connect to cloud account:', error);
+      setSetupError(`Failed to connect to ${selectedProvider}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsConnecting(false);
     }
@@ -215,6 +327,7 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
         }
         
         // Initialize cloud sync with rate limiting
+        const getCloudDatabase = () => CloudDatabaseService.getInstance();
         await getCloudDatabase().initializeCloudSync({
           provider: selectedProvider!,
           rateLimitEnabled: true,
@@ -233,14 +346,11 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
       localStorage.setItem('fincrm_setup_date', new Date().toISOString());
       
       // Log setup completion
-      securityComplianceService.logSecurityEvent({
-        type: 'setup_completed',
-        details: {
-          storageMode: setupChoice,
-          cloudProvider: selectedProvider,
-          multiUserEnabled: setupChoice === 'cloud',
-          timestamp: new Date().toISOString()
-        }
+      securityComplianceService.logSecurityEvent('setup_completed', {
+        storageMode: setupChoice,
+        cloudProvider: selectedProvider,
+        multiUserEnabled: setupChoice === 'cloud',
+        timestamp: new Date().toISOString()
       });
       
       // Small delay to show completion
@@ -276,48 +386,278 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
     }
   };
 
-  const goBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      setSetupProgress(Math.max(0, setupProgress - 25));
+  const renderStepContent = () => {
+    // Determine the actual content based on currentStep and setupChoice
+    let stepSpecificContent = null;
+    switch (currentStep) {
+      case 0: // Choose Setup Type
+        stepSpecificContent = (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-center">{steps[currentStep]}</h3>
+            <p className="text-sm text-muted-foreground text-center">Select how you want to store and access your data.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              {setupChoices.map((choice) => (
+                <Card
+                  key={choice.type}
+                  className={`cursor-pointer hover:shadow-lg transition-shadow ${setupChoice === choice.type ? 'ring-2 ring-primary' : ''}`}
+                  onClick={() => handleSetupChoice(choice.type)}
+                >
+                  <CardHeader>
+                    <div className="flex items-center space-x-3">
+                      {choice.icon}
+                      <CardTitle>{choice.title}</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm text-muted-foreground">{choice.description}</p>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1 text-green-500">Features:</h4>
+                      <ul className="list-disc list-inside text-xs space-y-1">
+                        {choice.features.map((feature, i) => <li key={i}>{feature}</li>)}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1 text-red-500">Limitations:</h4>
+                      <ul className="list-disc list-inside text-xs space-y-1">
+                        {choice.limitations.map((limitation, i) => <li key={i}>{limitation}</li>)}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {setupError && currentStep === 0 && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{setupError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        );
+        break;
+      case 1: // Select Cloud Provider or Configure Local Storage
+        if (setupChoice === 'cloud') {
+          stepSpecificContent = (
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-center">{steps[currentStep]}</h3>
+              <p className="text-sm text-muted-foreground text-center">Choose your preferred cloud service for synchronization.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                <Card 
+                  className={`cursor-pointer hover:shadow-lg transition-shadow ${
+                    selectedProvider === 'googledrive' ? 'ring-2 ring-primary' : ''
+                  } ${
+                    localStorage.getItem('google_access_token') ? 'bg-green-50 border-green-200' : ''
+                  }`}
+                  onClick={() => handleProviderSelection('googledrive')}
+                >
+                  <CardHeader className="flex flex-row items-center space-x-3">
+                    <Globe className="h-8 w-8 text-red-500" /> 
+                    <CardTitle className="flex items-center space-x-2">
+                      <span>Google Drive</span>
+                      {localStorage.getItem('google_access_token') && (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {localStorage.getItem('google_access_token') 
+                        ? 'Connected! Click to re-authenticate or continue.' 
+                        : 'Click to sign in with your Google Drive account.'}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card 
+                  className={`cursor-pointer hover:shadow-lg transition-shadow ${
+                    selectedProvider === 'onedrive' ? 'ring-2 ring-primary' : ''
+                  } ${
+                    localStorage.getItem('microsoft_access_token') ? 'bg-green-50 border-green-200' : ''
+                  }`}
+                  onClick={() => handleProviderSelection('onedrive')}
+                >
+                  <CardHeader className="flex flex-row items-center space-x-3">
+                    <Cloud className="h-8 w-8 text-blue-500" />
+                    <CardTitle className="flex items-center space-x-2">
+                      <span>Microsoft OneDrive</span>
+                      {localStorage.getItem('microsoft_access_token') && (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {localStorage.getItem('microsoft_access_token') 
+                        ? 'Connected! Click to re-authenticate or continue.' 
+                        : 'Click to sign in with your OneDrive account.'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              {setupError && currentStep === 1 && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{setupError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          );
+        } else { // Local Storage - this step is skipped, effectively part of step 0 or finalization
+          stepSpecificContent = (
+            <div className="text-center space-y-2">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                <h3 className="text-xl font-semibold">Local Storage Configured</h3>
+                <p className="text-sm text-muted-foreground">Your data will be stored locally on this device.</p>
+            </div>
+          );
+        }
+        break;
+      case 2: // Account Setup (Cloud) or Complete Setup (Local)
+        if (setupChoice === 'cloud') {
+          stepSpecificContent = (
+            <div className="space-y-4 text-center">
+              <h3 className="text-xl font-semibold">{steps[currentStep]}</h3>
+              {cloudAccount ? (
+                <div className="space-y-2">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                  <p>Connected to {cloudAccount.provider} as {cloudAccount.email}.</p>
+                  {cloudAccount.hasExistingUsers && <p>{cloudAccount.userCount} existing users found.</p>}
+                  {cloudAccount.lastSync && <p>Last sync: {new Date(cloudAccount.lastSync).toLocaleString()}</p>}
+                </div>
+              ) : (
+                <Button onClick={connectToCloudAccount} disabled={isConnecting || !selectedProvider}>
+                  {isConnecting ? 'Connecting...' : `Connect to ${selectedProvider}`}
+                  {isConnecting && <Zap className="ml-2 h-4 w-4 animate-spin" />}
+                </Button>
+              )}
+            </div>
+          );
+        } else { // Local - Finalize
+           stepSpecificContent = (
+            <div className="text-center space-y-2">
+                <Settings className="h-12 w-12 text-primary mx-auto" />
+                <h3 className="text-xl font-semibold">Ready to Complete Setup</h3>
+                <p className="text-sm text-muted-foreground">Click 'Finish' to save your local storage configuration.</p>
+            </div>
+          );
+        }
+        break;
+      case 3: // Resolve Conflicts (Cloud only)
+        if (setupChoice === 'cloud' && conflicts.length > 0) {
+          stepSpecificContent = (
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-center">{steps[currentStep]}</h3>
+              <p className="text-sm text-muted-foreground text-center">Resolve conflicts between local and cloud data.</p>
+              {conflicts.map((conflict, index) => (
+                <Card key={index} className="bg-amber-50/20 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center text-foreground">
+                      <AlertTriangle className="h-5 w-5 mr-2 text-amber-600 dark:text-amber-400" /> Conflict: {conflict.description}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-xs space-y-2 text-foreground">
+                    <p><strong>Local:</strong> {JSON.stringify(conflict.localValue)}</p>
+                    <p><strong>Cloud:</strong> {JSON.stringify(conflict.cloudValue)}</p>
+                    <div className="space-y-3 pt-2">
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`conflict-${index}`}
+                            value="keep_local"
+                            checked={conflict.resolution === 'keep_local'}
+                            onChange={() => resolveConflict(index, 'keep_local')}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-300">Keep Local Data</span>
+                        </label>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`conflict-${index}`}
+                            value="keep_cloud"
+                            checked={conflict.resolution === 'keep_cloud'}
+                            onChange={() => resolveConflict(index, 'keep_cloud')}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-300">Keep Cloud Data</span>
+                        </label>
+                        {conflict.type === 'data' && (
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`conflict-${index}`}
+                              value="merge"
+                              checked={conflict.resolution === 'merge'}
+                              onChange={() => resolveConflict(index, 'merge')}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-300">Merge Both Versions</span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          );
+        } else if (setupChoice === 'cloud') { // No conflicts, or step not applicable
+            stepSpecificContent = (
+                <div className="text-center space-y-2">
+                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                    <h3 className="text-xl font-semibold">No Conflicts Found</h3>
+                    <p className="text-sm text-muted-foreground">Proceeding to finalize setup.</p>
+                </div>
+            );
+        }
+        break;
+      case 4: // Finalize Setup (Cloud) or effectively this is the state for local after step 2
+         stepSpecificContent = (
+          <div className="text-center space-y-2">
+            {isProcessing ? (
+              <>
+                <Database className="h-12 w-12 text-primary mx-auto animate-pulse" />
+                <h3 className="text-xl font-semibold">Finalizing Setup...</h3>
+                <p className="text-sm text-muted-foreground">Please wait while we configure your system.</p>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+                <h3 className="text-xl font-semibold">Setup Almost Complete!</h3>
+                <p className="text-sm text-muted-foreground">Click 'Finish' to complete the setup process.</p>
+              </>
+            )}
+            {setupError && (
+                <Alert variant="destructive" className="mt-4 text-left">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Setup Failed</AlertTitle>
+                    <AlertDescription>{setupError}</AlertDescription>
+                </Alert>
+            )}
+          </div>
+        );
+        break;
+      default:
+        stepSpecificContent = <div>Unknown step</div>;
     }
-  };
 
-  const goNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
+    return stepSpecificContent;
   };
 
   if (isComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <Card className="w-full max-w-md shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <CardTitle className="text-2xl">Setup Complete!</CardTitle>
-            <CardDescription>
-              FinCRuM is ready to use with your selected configuration
-            </CardDescription>
+            <CardDescription>FinCRuM is now configured and ready to use.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-sm font-medium">Configuration Summary</div>
-              <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                <div>Storage Mode: {setupChoice === 'local' ? 'Local Only' : 'Cloud Sync'}</div>
-                {setupChoice === 'cloud' && (
-                  <>
-                    <div>Provider: {selectedProvider}</div>
-                    <div>Multi-User: Enabled</div>
-                    <div>Rate Limiting: Enabled</div>
-                  </>
-                )}
-              </div>
-            </div>
-            <Button onClick={() => onSetupComplete({ setupChoice, selectedProvider })} className="w-full">
-              Start Using FinCRuM
+          <CardContent className="text-center">
+            <Button onClick={() => onSetupComplete({ setupChoice, cloudAccount })}> 
+              Go to Dashboard
             </Button>
           </CardContent>
         </Card>
@@ -326,470 +666,55 @@ export const FirstTimeSetupWizard: React.FC<FirstTimeSetupWizardProps> = ({ onSe
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-4xl">
-        <CardHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <Card className="w-full max-w-2xl shadow-2xl bg-transparent">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">Welcome to FinCRuM</CardTitle>
-              <CardDescription>
-                Let's set up your financial CRM system
-              </CardDescription>
+            <div className="flex items-center space-x-2">
+              <Database className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl font-bold">Welcome to FinCRuM</CardTitle>
             </div>
-            <Badge variant="outline">
-              Step {currentStep + 1} of {steps.length}
-            </Badge>
+            <Badge variant="outline">First Time Setup</Badge>
           </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Setup Progress</span>
-              <span>{setupProgress}%</span>
-            </div>
-            <Progress value={setupProgress} className="w-full" />
+          <CardDescription className="pt-1">Configure your data storage and preferences.</CardDescription>
+          <Progress value={setupProgress} className="mt-2 h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            {steps.map((step, index) => (
+              <span key={step} className={`${index === currentStep ? 'font-semibold text-primary' : ''} ${index < currentStep ? 'text-green-600' : ''}`}>
+                {step}
+              </span>
+            ))}
           </div>
         </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {/* Step 1: Choose Setup Type */}
-          {currentStep === 0 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Choose Your Setup Type</h3>
-                <p className="text-muted-foreground">
-                  Select how you want to store and access your data
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {setupChoices.map((choice) => (
-                  <Card 
-                    key={choice.type}
-                    className={`cursor-pointer transition-all hover:shadow-lg ${
-                      setupChoice === choice.type ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                    onClick={() => handleSetupChoice(choice.type)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        {choice.icon}
-                        <div>
-                          <CardTitle className="text-lg">{choice.title}</CardTitle>
-                          <CardDescription>{choice.description}</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <h4 className="font-medium text-green-700 mb-2 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Features
-                        </h4>
-                        <ul className="text-sm space-y-1">
-                          {choice.features.map((feature, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="w-1 h-1 bg-green-500 rounded-full" />
-                              {feature}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-orange-700 mb-2 flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4" />
-                          Limitations
-                        </h4>
-                        <ul className="text-sm space-y-1">
-                          {choice.limitations.map((limitation, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="w-1 h-1 bg-orange-500 rounded-full" />
-                              {limitation}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Cloud Provider Selection */}
-          {currentStep === 1 && setupChoice === 'cloud' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Select Cloud Provider</h3>
-                <p className="text-muted-foreground">
-                  Choose your preferred cloud storage provider
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card 
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    selectedProvider === 'google' ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => handleProviderSelection('google')}
-                >
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <Globe className="h-6 w-6 text-red-600" />
-                      </div>
-                      <div>
-                        <CardTitle>Google Drive</CardTitle>
-                        <CardDescription>15GB free storage</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="text-sm space-y-1">
-                      <li>• Excellent integration with Google services</li>
-                      <li>• Reliable sync performance</li>
-                      <li>• Advanced sharing capabilities</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-                
-                <Card 
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    selectedProvider === 'onedrive' ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => handleProviderSelection('onedrive')}
-                >
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Database className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <CardTitle>OneDrive</CardTitle>
-                        <CardDescription>5GB free storage</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="text-sm space-y-1">
-                      <li>• Deep Windows integration</li>
-                      <li>• Office 365 compatibility</li>
-                      <li>• Enterprise-grade security</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Rate Limiting Notice</AlertTitle>
-                <AlertDescription>
-                  To respect personal cloud account limits, sync operations will be rate-limited to 30 requests per minute and 1000 requests per hour.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Step 3: Account Setup */}
-          {currentStep === 2 && setupChoice === 'cloud' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Connect Your Account</h3>
-                <p className="text-muted-foreground">
-                  Authenticate with {selectedProvider === 'google' ? 'Google' : 'Microsoft'} to enable cloud sync
-                </p>
-              </div>
-              
-              {!cloudAccount ? (
-                <div className="text-center space-y-4">
-                  <Button 
-                    onClick={connectToCloudAccount}
-                    disabled={isConnecting}
-                    size="lg"
-                    className="w-full max-w-md"
-                  >
-                    {isConnecting ? (
-                      <>
-                        <Settings className="h-4 w-4 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="h-4 w-4 mr-2" />
-                        Connect to {selectedProvider === 'google' ? 'Google Drive' : 'OneDrive'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Account Connected Successfully</AlertTitle>
-                    <AlertDescription>
-                      Connected to {cloudAccount.email} ({cloudAccount.provider})
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Account Analysis</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between">
-                        <span>Email:</span>
-                        <span className="font-medium">{cloudAccount.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Existing Users:</span>
-                        <Badge variant={cloudAccount.hasExistingUsers ? 'default' : 'secondary'}>
-                          {cloudAccount.hasExistingUsers ? `${cloudAccount.userCount} users found` : 'New account'}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Last Sync:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {cloudAccount.lastSync ? new Date(cloudAccount.lastSync).toLocaleDateString() : 'Never'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {cloudAccount.hasExistingUsers ? (
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Existing Data Detected</AlertTitle>
-                      <AlertDescription>
-                        This account already has user data. Cloud data will take precedence, and conflicts will need to be resolved manually.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <Alert>
-                      <Info className="h-4 w-4" />
-                      <AlertTitle>New Account Setup</AlertTitle>
-                      <AlertDescription>
-                        This is a new account. Your existing local data will be synced to the cloud, and you'll have full access to multi-user features.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Conflict Resolution */}
-          {currentStep === 3 && setupChoice === 'cloud' && conflicts.length > 0 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Resolve Data Conflicts</h3>
-                <p className="text-muted-foreground">
-                  Choose how to handle conflicts between local and cloud data
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                {conflicts.map((conflict, index) => (
-                  <Card key={index}>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                        {conflict.description}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-3 border rounded-lg">
-                          <h4 className="font-medium mb-2">Local Data</h4>
-                          <pre className="text-xs bg-gray-50 p-2 rounded overflow-auto">
-                            {JSON.stringify(conflict.localValue, null, 2)}
-                          </pre>
-                        </div>
-                        <div className="p-3 border rounded-lg">
-                          <h4 className="font-medium mb-2">Cloud Data</h4>
-                          <pre className="text-xs bg-gray-50 p-2 rounded overflow-auto">
-                            {JSON.stringify(conflict.cloudValue, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Resolution Strategy:</label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          {[
-                            { value: 'keep_cloud', label: 'Keep Cloud', color: 'bg-blue-100 text-blue-700' },
-                            { value: 'keep_local', label: 'Keep Local', color: 'bg-green-100 text-green-700' },
-                            { value: 'merge', label: 'Merge', color: 'bg-purple-100 text-purple-700' },
-                            { value: 'manual', label: 'Manual', color: 'bg-orange-100 text-orange-700' }
-                          ].map((option) => (
-                            <Button
-                              key={option.value}
-                              variant={conflict.resolution === option.value ? 'default' : 'outline'}
-                              size="sm"
-                              onClick={() => resolveConflict(index, option.value as ConflictItem['resolution'])}
-                              className={conflict.resolution === option.value ? '' : option.color}
-                            >
-                              {option.label}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Local Setup Completion */}
-          {currentStep === 2 && setupChoice === 'local' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Local Storage Configuration</h3>
-                <p className="text-muted-foreground">
-                  Your data will be stored locally on this device only
-                </p>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configuration Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span>Storage Mode:</span>
-                    <Badge>Local Only</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Multi-User Support:</span>
-                    <Badge variant="secondary">Disabled</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cloud Sync:</span>
-                    <Badge variant="secondary">Disabled</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Data Location:</span>
-                    <span className="text-sm text-muted-foreground">Browser Local Storage</span>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Important Notes</AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <div>• You can enable cloud sync later from the settings menu</div>
-                  <div>• Multi-user features will only be available after enabling cloud sync</div>
-                  <div>• Regular backups are recommended to prevent data loss</div>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Final Step: Complete Setup */}
-          {currentStep === steps.length - 1 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Ready to Complete Setup</h3>
-                <p className="text-muted-foreground">
-                  Review your configuration and finalize the setup
-                </p>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Final Configuration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span>Storage Mode:</span>
-                    <Badge>{setupChoice === 'local' ? 'Local Only' : 'Cloud Sync'}</Badge>
-                  </div>
-                  {setupChoice === 'cloud' && (
-                    <>
-                      <div className="flex justify-between">
-                        <span>Cloud Provider:</span>
-                        <Badge>{selectedProvider}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Account:</span>
-                        <span className="text-sm">{cloudAccount?.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Multi-User:</span>
-                        <Badge>Enabled</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Rate Limiting:</span>
-                        <Badge>Enabled</Badge>
-                      </div>
-                      {conflicts.length > 0 && (
-                        <div className="flex justify-between">
-                          <span>Conflicts Resolved:</span>
-                          <Badge>{conflicts.length} items</Badge>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-              
-              {setupError && (
-                <Alert className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Setup Error</AlertTitle>
-                  <AlertDescription>{setupError}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="text-center">
-                <Button 
-                  onClick={finalizeSetup} 
-                  size="lg" 
-                  className="w-full max-w-md"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Complete Setup
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <Separator />
-          <div className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={goBack}
-              disabled={currentStep === 0}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            
-            <Button 
-              onClick={goNext}
-              disabled={
-                currentStep === steps.length - 1 ||
-                (currentStep === 0 && !setupChoice) ||
-                (currentStep === 1 && setupChoice === 'cloud' && !selectedProvider) ||
-                (currentStep === 2 && setupChoice === 'cloud' && !cloudAccount)
-              }
-            >
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+        <Separator />
+        <CardContent className="pt-6 pb-6 min-h-[300px]">
+          {renderStepContent()}
         </CardContent>
+        <Separator />
+        <div className="flex justify-between p-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setCurrentStep(prev => Math.max(0, prev - (setupChoice === 'cloud' && prev === 3 && cloudAccount && !cloudAccount.hasExistingUsers ? 2 : 1)))}
+            disabled={currentStep === 0 || isProcessing}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleNext} 
+            disabled={isNextDisabled()}
+          >
+            {currentStep === steps.length - 1 ? 'Finish' : 'Next'} 
+            {currentStep === steps.length - 1 ? <CheckCircle className="ml-2 h-4 w-4" /> : <ArrowRight className="ml-2 h-4 w-4" />}
+          </Button>
+        </div>
+        {setupError && currentStep > 1 && (
+          <Alert variant="destructive" className="m-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Setup Error</AlertTitle>
+            <AlertDescription>{setupError}</AlertDescription>
+          </Alert>
+        )}
       </Card>
     </div>
   );

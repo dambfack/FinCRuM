@@ -108,7 +108,7 @@ export function LocalDataStatus({ className, showDetails = true }: LocalDataStat
             <Button
               variant="ghost"
               size="sm"
-              onClick={actions.syncNow}
+              onClick={() => actions.syncNow()}
               disabled={state.isSyncing}
               className="h-6 px-2"
             >
@@ -177,7 +177,7 @@ export function LocalDataStatus({ className, showDetails = true }: LocalDataStat
           {/* Sync Button */}
           {state.isConnected && !state.hasUnresolvedConflicts && (
             <Button
-              onClick={actions.syncNow}
+              onClick={() => actions.syncNow()}
               disabled={state.isSyncing}
               className="w-full"
               variant={state.error ? 'destructive' : 'default'}
@@ -223,5 +223,5 @@ export function LocalDataStatus({ className, showDetails = true }: LocalDataStat
  * Compact version for use in headers or toolbars
  */
 export function LocalDataStatusCompact({ className }: { className?: string }) {
-  return <LocalDataStatus className={className} showDetails={false} /;
+  return <LocalDataStatus className={className} showDetails={false} />;
 }

@@ -358,14 +358,11 @@ export class RateLimiterService {
       request.resolve(result);
       
       // Log successful request
-      securityComplianceService.logSecurityEvent({
-        type: 'rate_limit_request_success',
-        details: {
-          requestId: request.id,
-          priority: request.priority,
-          waitTime,
-          executionTime: Date.now() - startTime
-        }
+      securityComplianceService.logSecurityEvent('rate_limit_request_success', {
+        requestId: request.id,
+        priority: request.priority,
+        waitTime,
+        executionTime: Date.now() - startTime
       });
     } catch (error) {
       this.updateMetrics(false, Date.now() - request.timestamp);
@@ -375,24 +372,18 @@ export class RateLimiterService {
         request.timestamp = Date.now();
         this.addToQueue(request);
         
-        securityComplianceService.logSecurityEvent({
-          type: 'rate_limit_request_retry',
-          details: {
-            requestId: request.id,
-            retryCount: request.retryCount,
-            error: error.message
-          }
+        securityComplianceService.logSecurityEvent('rate_limit_request_retry', {
+          requestId: request.id,
+          retryCount: request.retryCount,
+          error: error.message
         });
       } else {
         request.reject(error);
         
-        securityComplianceService.logSecurityEvent({
-          type: 'rate_limit_request_failed',
-          details: {
-            requestId: request.id,
-            retryCount: request.retryCount,
-            error: error.message
-          }
+        securityComplianceService.logSecurityEvent('rate_limit_request_failed', {
+          requestId: request.id,
+          retryCount: request.retryCount,
+          error: error.message
         });
       }
     }
@@ -417,15 +408,12 @@ export class RateLimiterService {
       this.state.isThrottled = true;
       this.state.throttledUntil = Date.now() + this.config.cooldownPeriod;
       
-      securityComplianceService.logSecurityEvent({
-        type: 'rate_limit_throttled',
-        details: {
-          reason: 'Rate limit exceeded',
-          requestsThisMinute: this.state.requestsThisMinute,
-          requestsThisHour: this.state.requestsThisHour,
-          requestsThisDay: this.state.requestsThisDay,
-          burstCount: this.state.burstCount
-        }
+      securityComplianceService.logSecurityEvent('rate_limit_throttled', {
+        reason: 'Rate limit exceeded',
+        requestsThisMinute: this.state.requestsThisMinute,
+        requestsThisHour: this.state.requestsThisHour,
+        requestsThisDay: this.state.requestsThisDay,
+        burstCount: this.state.burstCount
       });
     }
 

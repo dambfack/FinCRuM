@@ -8,10 +8,10 @@ const Card = forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border shadow-xl", // Base border, increased rounding
-      "bg-card/70 dark:bg-card/60", // Translucent background based on --card
-      "glass-effect", // Applies backdrop-blur-lg and existing shadow-xl
-      "border-white/20 dark:border-white/10", // Glass-like border for subtlety
+      "rounded-xl border shadow-2xl", // Base border, increased rounding
+      "bg-sidebar-background/50 dark:bg-sidebar-background/60", // Match sidebar background
+      "backdrop-blur-xl", // Match sidebar blur effect
+      "border border-sidebar-border", // Match sidebar border
       "transition-all duration-300 ease-in-out hover:shadow-2xl hover:border-white/30 dark:hover:border-white/20",
       "hover:scale-102 hover:-translate-y-1",
       className

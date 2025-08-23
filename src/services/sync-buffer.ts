@@ -1,5 +1,6 @@
 import { getData, saveData } from '@/lib/utils';
 import { getRateLimiterService } from './rate-limiter';
+import { DataItemType } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface BufferedOperation {
@@ -218,6 +219,11 @@ class SyncBufferService {
 
   // Network Management
   private setupNetworkListeners(): void {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     window.addEventListener('online', () => {
       this.networkStatus.isOnline = true;
       this.networkStatus.lastOnlineTime = new Date().toISOString();
@@ -239,6 +245,12 @@ class SyncBufferService {
     // Simple connection quality assessment
     if (!this.networkStatus.isOnline) {
       this.networkStatus.connectionQuality = 'offline';
+      return;
+    }
+
+    // Check if we're in a browser environment
+    if (typeof navigator === 'undefined') {
+      this.networkStatus.connectionQuality = 'good';
       return;
     }
 
@@ -348,9 +360,11 @@ class SyncBufferService {
 
   private async executeCloudOperation(operation: BufferedOperation): Promise<void> {
     // Import cloud database service dynamically to avoid circular dependency
-    const { sharedCloudDatabase } = await import('./shared-cloud-database');
-    
-    if (!sharedCloudDatabase.isCloudEnabled || !sharedCloudDatabase.cloudProvider) {
+    const { getCloudDatabase } = await import('./shared-cloud-database');
+    const cloudDatabase = getCloudDatabase();
+
+    const provider = cloudDatabase.getPreferredProvider();
+    if (!provider) {
       throw new Error('Cloud sync not enabled or provider not available');
     }
     
@@ -359,43 +373,25 @@ class SyncBufferService {
       case 'update':
         if (operation.itemType === 'full_sync') {
           // Full sync operation
-          const localData = sharedCloudDatabase.getAllData();
-          const cloudData = await sharedCloudDatabase.cloudProvider.getData();
-          
-          // Check for conflicts
-          if (await this.detectConflict(operation, cloudData)) {
-            const error = new Error('Conflict detected');
-            (error as any).status = 409;
-            (error as any).conflictData = cloudData;
-            throw error;
+          const result = await cloudDatabase.syncToCloud(provider);
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to sync to cloud');
           }
-          
-          // Merge and save
-          const mergedData = { ...cloudData, ...localData };
-          await sharedCloudDatabase.cloudProvider.saveData(mergedData);
         } else {
-          // Individual item sync
-          const cloudData = await sharedCloudDatabase.cloudProvider.getData();
-          const existingItem = cloudData[operation.itemType];
-          
-          // Check for conflicts
-          if (await this.detectConflict(operation, existingItem)) {
-            const error = new Error('Conflict detected');
-            (error as any).status = 409;
-            (error as any).conflictData = existingItem;
-            throw error;
+          // Individual item sync - use the cloud database service
+          const result = await cloudDatabase.syncToCloud(provider);
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to sync to cloud');
           }
-          
-          // Update cloud data
-          const updatedCloudData = { ...cloudData, [operation.itemType]: operation.data };
-          await sharedCloudDatabase.cloudProvider.saveData(updatedCloudData);
         }
         break;
         
       case 'delete':
-        const cloudData = await sharedCloudDatabase.cloudProvider.getData();
-        delete cloudData[operation.itemType];
-        await sharedCloudDatabase.cloudProvider.saveData(cloudData);
+        // For delete operations, sync to cloud
+        const result = await cloudDatabase.syncToCloud(provider);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to sync to cloud');
+        }
         break;
     }
   }
@@ -433,17 +429,17 @@ class SyncBufferService {
   // Storage Management
   private loadBufferFromStorage(): void {
     try {
-      const savedBuffer = getData('sync_buffer');
+      const savedBuffer = getData(DataItemType.SyncBuffer);
       if (savedBuffer && Array.isArray(savedBuffer)) {
         this.buffer = savedBuffer;
       }
 
-      const savedConflicts = getData('sync_conflicts');
+      const savedConflicts = getData(DataItemType.SyncConflicts);
       if (savedConflicts && Array.isArray(savedConflicts)) {
         this.conflicts = savedConflicts;
       }
 
-      const savedConfig = getData('sync_buffer_config');
+      const savedConfig = getData(DataItemType.SyncBufferConfig) as SyncBufferConfig;
       if (savedConfig) {
         this.config = { ...this.config, ...savedConfig };
       }
@@ -454,7 +450,7 @@ class SyncBufferService {
 
   private saveBufferToStorage(): void {
     try {
-      saveData('sync_buffer', this.buffer);
+      saveData(DataItemType.SyncBuffer, this.buffer);
     } catch (error) {
       console.error('Failed to save buffer to storage:', error);
     }
@@ -462,7 +458,7 @@ class SyncBufferService {
 
   private saveConflictsToStorage(): void {
     try {
-      saveData('sync_conflicts', this.conflicts);
+      saveData(DataItemType.SyncConflicts, this.conflicts);
     } catch (error) {
       console.error('Failed to save conflicts to storage:', error);
     }
@@ -522,7 +518,7 @@ class SyncBufferService {
 
   updateConfig(newConfig: Partial<SyncBufferConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    saveData('sync_buffer_config', this.config);
+    saveData(DataItemType.SyncBufferConfig, this.config);
   }
 
   destroy(): void {

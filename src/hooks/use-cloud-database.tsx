@@ -1,8 +1,10 @@
 // src/hooks/use-cloud-database.tsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCloudDatabase } from '@/services/shared-cloud-database';
-import type { CloudProvider, DataItemType, DataConflictWithResolution, ConflictResolution } from '@/lib/types';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from '@/services/shared-cloud-database';
+import type { CloudProvider, DataConflictWithResolution, ConflictResolution } from '@/lib/types';
+import { DataItemType } from '@/lib/types';
 import { conflictResolutionLog } from '@/services/conflict-resolution-log';
 import { getData, saveData } from '@/lib/utils';
 
@@ -54,12 +56,13 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
   });
 
   const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(
-    getData<boolean>('autoSyncEnabled') ?? true
+    getData<boolean>(DataItemType.AutoSyncEnabled) ?? true
   );
 
   // Initialize state on mount
   useEffect(() => {
-    const initializeState = () => {
+    const initializeState = async () => {
+      const { getCloudDatabase } = await import('@/services/shared-cloud-database');
       const cloudDatabase = getCloudDatabase();
       const provider = cloudDatabase.getPreferredProvider();
       const lastSyncTime = getData<string>(DataItemType.LastSyncTime);
@@ -124,7 +127,8 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isSyncing: true, error: null }));
 
     try {
-      const cloudDatabase = CloudDatabaseService.getInstance();
+      const { getCloudDatabase } = await import('@/services/shared-cloud-database');
+      const cloudDatabase = getCloudDatabase();
       const result = await cloudDatabase.syncWithCloud(state.provider, manualResolutions);
       
       if (result.success) {
@@ -173,7 +177,8 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const cloudDatabase = CloudDatabaseService.getInstance();
+      const { getCloudDatabase } = await import('@/services/shared-cloud-database');
+      const cloudDatabase = getCloudDatabase();
       const result = await cloudDatabase.addOrUpdateItem(state.provider, dataType, item, manualResolutions);
       
       if (result.success) {
@@ -223,7 +228,8 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const cloudDatabase = CloudDatabaseService.getInstance();
+      const { getCloudDatabase } = await import('@/services/shared-cloud-database');
+      const cloudDatabase = getCloudDatabase();
       const result = await cloudDatabase.deleteItem(state.provider, dataType, itemId, manualResolutions);
       
       if (result.success) {
@@ -263,7 +269,7 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
    */
   const enableAutoSync = useCallback((enabled: boolean): void => {
     setAutoSyncEnabled(enabled);
-    saveData('autoSyncEnabled', enabled);
+    saveData(DataItemType.AutoSyncEnabled, enabled);
   }, []);
 
   /**
@@ -281,7 +287,8 @@ export function useCloudDatabase(): UseCloudDatabaseReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const cloudDatabase = CloudDatabaseService.getInstance();
+      const { getCloudDatabase } = await import('@/services/shared-cloud-database');
+      const cloudDatabase = getCloudDatabase();
       const result = await cloudDatabase.resolveConflicts(state.conflicts, resolutions);
       
       if (result.success) {

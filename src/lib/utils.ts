@@ -4,7 +4,8 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { DataItemType, type Notification } from "./types"; // Added Notification type
 import { format } from 'date-fns';
-import { getCloudDatabase } from '@/services/shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from '@/services/shared-cloud-database';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -188,6 +189,7 @@ export async function saveDataWithCloudSync<T>(key: DataItemType, data: T): Prom
 
   // Attempt cloud sync
   try {
+    const { getCloudDatabase } = await import('@/services/shared-cloud-database');
     const provider = getCloudDatabase().getPreferredProvider();
   if (provider) {
     await getCloudDatabase().syncWithCloud(provider);
@@ -277,46 +279,116 @@ export function getFirstInitial(name?: string, fallback: string = '?'): string {
  * @returns HSL string or null if conversion fails.
  */
 export function hexToHslString(hex: string): string | null {
-  if (!hex) return null;
-
-  let r = 0, g = 0, b = 0;
-  if (hex.length === 4) { // #RGB
-    r = parseInt(hex[1] + hex[1], 16);
-    g = parseInt(hex[2] + hex[2], 16);
-    b = parseInt(hex[3] + hex[3], 16);
-  } else if (hex.length === 7) { // #RRGGBB
-    r = parseInt(hex.substring(1, 3), 16);
-    g = parseInt(hex.substring(3, 5), 16);
-    b = parseInt(hex.substring(5, 7), 16);
-  } else {
-    return null; // Invalid hex format
+  if (!hex || typeof hex !== 'string') {
+    return null;
   }
 
-  r /= 255;
-  g /= 255;
-  b /= 255;
+  // Remove the hash if present
+  const cleanHex = hex.replace('#', '');
 
+  // Validate hex format
+  if (!/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
+    return null;
+  }
+
+  // Parse r, g, b values
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+  // Find the maximum and minimum values
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0, s = 0;
+  const diff = max - min;
+
+  // Calculate lightness
   const l = (max + min) / 2;
 
-  if (max === min) {
-    h = s = 0; // achromatic
-  } else {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  let s = 0;
+
+  if (diff !== 0) {
+    // Calculate saturation
+    s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+
+    // Calculate hue
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / diff + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / diff + 2;
+        break;
+      case b:
+        h = (r - g) / diff + 4;
+        break;
     }
     h /= 6;
   }
 
-  const hDisplay = Math.round(h * 360);
-  const sDisplay = Math.round(s * 100);
-  const lDisplay = Math.round(l * 100);
+  // Convert to degrees and percentages
+  const hDeg = Math.round(h * 360);
+  const sPercent = Math.round(s * 100);
+  const lPercent = Math.round(l * 100);
 
-  return `${hDisplay} ${sDisplay}% ${lDisplay}%`;
+  return `${hDeg} ${sPercent}% ${lPercent}%`;
+}
+
+/**
+ * Applies theme settings to the document by setting CSS custom properties.
+ * @param settings The theme settings to apply.
+ */
+export function applyThemeSettingsToDocument(settings: any): void {
+  if (typeof document === 'undefined') return;
+  
+  const root = document.documentElement;
+  
+  // Apply accent color
+  if (settings.accentColor) {
+    const hslValue = hexToHslString(settings.accentColor);
+    if (hslValue) {
+      root.style.setProperty('--accent', hslValue);
+    }
+  }
+  
+  // Apply chart colors
+  if (settings.chartColors) {
+    Object.entries(settings.chartColors).forEach(([key, color]) => {
+      if (typeof color === 'string') {
+        const hslValue = hexToHslString(color);
+        if (hslValue) {
+          root.style.setProperty(`--chart-${key}`, hslValue);
+        }
+      }
+    });
+  }
+  
+  // Apply chart pie colors
+  if (settings.chartPieColorOpen) {
+    const hslValue = hexToHslString(settings.chartPieColorOpen);
+    if (hslValue) {
+      root.style.setProperty('--chart-pie-open', hslValue);
+    }
+  }
+  
+  if (settings.chartPieColorClosed) {
+    const hslValue = hexToHslString(settings.chartPieColorClosed);
+    if (hslValue) {
+      root.style.setProperty('--chart-pie-closed', hslValue);
+    }
+  }
+  
+  if (settings.chartPieColorMissed) {
+    const hslValue = hexToHslString(settings.chartPieColorMissed);
+    if (hslValue) {
+      root.style.setProperty('--chart-pie-missed', hslValue);
+    }
+  }
+  
+  if (settings.chartPieColorOther) {
+    const hslValue = hexToHslString(settings.chartPieColorOther);
+    if (hslValue) {
+      root.style.setProperty('--chart-pie-other', hslValue);
+    }
+  }
 }

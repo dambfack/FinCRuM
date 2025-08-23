@@ -1,5 +1,6 @@
 import { User, UserPermissions } from '@/lib/types';
-import { getCloudDatabase } from './shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from './shared-cloud-database';
 import { getData, saveData } from '@/lib/utils';
 import { DataItemType } from '@/lib/types';
 import crypto from 'crypto';
@@ -30,6 +31,7 @@ export class UserManagementService {
           canCreateUsers: true,
           canDeleteUsers: true,
           canModifyUsers: true,
+          canManageUsers: true,
           canViewAllContacts: true,
           canModifyAllContacts: true,
           canDeleteContacts: true,
@@ -43,6 +45,7 @@ export class UserManagementService {
           canCreateUsers: true,
           canDeleteUsers: false,
           canModifyUsers: true,
+          canManageUsers: true,
           canViewAllContacts: true,
           canModifyAllContacts: true,
           canDeleteContacts: true,
@@ -56,6 +59,7 @@ export class UserManagementService {
           canCreateUsers: false,
           canDeleteUsers: false,
           canModifyUsers: false,
+          canManageUsers: false,
           canViewAllContacts: false,
           canModifyAllContacts: false,
           canDeleteContacts: false,
@@ -145,6 +149,7 @@ export class UserManagementService {
       saveData(DataItemType.Users, users);
 
       // Sync to cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       await getCloudDatabase().syncToCloud('googledrive');
       await getCloudDatabase().syncToCloud('onedrive');
 
@@ -239,6 +244,7 @@ export class UserManagementService {
       saveData(DataItemType.Users, users);
 
       // Sync to cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       await getCloudDatabase().syncToCloud('googledrive');
       await getCloudDatabase().syncToCloud('onedrive');
 
@@ -293,6 +299,88 @@ export class UserManagementService {
       return { success: true };
     } catch (error: any) {
       console.error('Error changing user PIN:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set user PIN (for initial PIN setup)
+   */
+  public async setUserPin(
+    userId: string,
+    newPin: string
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const user = await this.getUserById(userId);
+      if (!user) {
+        return { success: false, error: 'User not found' };
+      }
+
+      // Set new PIN
+      user.cloudPinHash = this.hashPin(newPin, userId);
+      const updateResult = await this.updateUser(user);
+      
+      if (updateResult.success) {
+        return { success: true, user };
+      } else {
+        return { success: false, error: updateResult.error };
+      }
+    } catch (error: any) {
+      console.error('Error setting user PIN:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Update user profile picture
+   */
+  public async updateUserProfilePicture(
+    userId: string,
+    profilePictureUrl: string
+  ): Promise<boolean> {
+    try {
+      const user = await this.getUserById(userId);
+      if (!user) {
+        return false;
+      }
+
+      user.profilePictureUrl = profilePictureUrl;
+      const updateResult = await this.updateUser(user);
+      
+      return updateResult.success;
+    } catch (error: any) {
+      console.error('Error updating user profile picture:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Admin reset user PIN (admin only)
+   */
+  public async adminResetUserPin(
+    adminUserId: string,
+    targetUserId: string,
+    newPin: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Verify admin has permission
+      const admin = await this.getUserById(adminUserId);
+      if (!admin?.permissions?.canCreateUsers) {
+        return { success: false, error: 'Insufficient permissions to reset user PIN' };
+      }
+
+      const targetUser = await this.getUserById(targetUserId);
+      if (!targetUser) {
+        return { success: false, error: 'Target user not found' };
+      }
+
+      // Set new PIN
+      targetUser.cloudPinHash = this.hashPin(newPin, targetUserId);
+      await this.updateUser(targetUser);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error resetting user PIN:', error);
       return { success: false, error: error.message };
     }
   }

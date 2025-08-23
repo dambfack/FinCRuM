@@ -368,8 +368,8 @@ export class SecurityComplianceService {
         type: eventType,
         timestamp: new Date().toISOString(),
         data: eventData,
-        userAgent: navigator.userAgent,
-        url: window.location.href
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        url: typeof window !== 'undefined' ? window.location.href : 'unknown'
       };
       
       auditLog.push(logEntry);

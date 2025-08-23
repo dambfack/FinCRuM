@@ -1,0 +1,23 @@
+[0]    ▲ Next.js 15.2.3
+[0]    - Local:        http://localhost:9002
+[0]    - Network:      http://192.168.1.8:9002
+[0]    - Environments: .env.local
+[0] 
+[0]  ✓ Starting...
+[0]  ✓ Ready in 7.9s
+[0]  ○ Compiling /_not-found ...
+[0]  ⨯ node:events
+[0] Module build failed: UnhandledSchemeError: Reading from "node:events" is not handled by plugins (Unhandled scheme).
+[0] Webpack supports "data:" and "file:" URIs by default.
+[0] You may need an additional plugin to handle "node:" URIs.
+[0] Import trace for requested module:
+[0] node:events
+[0] ./node_modules/google-logging-utils/build/src/logging-utils.js
+[0] ./node_modules/google-logging-utils/build/src/index.js
+[0] ./node_modules/gcp-metadata/build/src/index.js
+[0] ./node_modules/google-auth-library/build/src/index.js
+[0] ./src/services/google-drive.ts
+[0] ./src/services/shared-cloud-database.ts
+[0] ./src/services/sync-buffer.ts
+[0] ./src/components/SyncBufferManager.tsx
+[0] ./src/components/Dashboard.tsx

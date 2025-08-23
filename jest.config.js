@@ -17,11 +17,14 @@ module.exports = {
   },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
-    '<rootDir>/node_modules/',
-    '<rootDir>/cypress/'
+    '<rootDir>/cypress/',
+    '<rootDir>/fincrm-android/'
+  ],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@testing-library/react|lucide-react|react-native|@react-native-community|@react-navigation|@react-native))',
   ],
   transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
@@ -58,9 +61,6 @@ module.exports = {
   // Temporarily disable sonar reporter to fix the module resolution issue
   // testResultsProcessor: 'jest-sonar-reporter',
   verbose: true,
-  testEnvironmentOptions: {
-    url: 'http://localhost:9002'
-  },
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.jest.json'

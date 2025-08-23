@@ -13,7 +13,7 @@ import type { User } from '@/lib/types';
 import { DataItemType } from '@/lib/types';
 import { getData, saveData } from '@/lib/utils';
 
-const userRoleSchema = z.enum(['partner', 'employee']);
+const userRoleSchema = z.enum(['admin', 'partner', 'employee']);
 
 const userFormSchema = z.object({
   id: z.string().optional(),
@@ -130,6 +130,7 @@ const UserForm: React.FC<UserFormProps> = ({ initialData, onSave, onCancel }) =>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="partner">Partner</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
                 </SelectContent>

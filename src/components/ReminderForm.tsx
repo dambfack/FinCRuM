@@ -40,7 +40,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   
-  const { syncCalendar, syncMicrosoftCalendar } = useDataSync();
+  const { syncCalendarOnly } = useDataSync();
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
   const { currentUser } = useAuth(); // Get current user
@@ -208,13 +208,7 @@ const ReminderForm: React.FC<ReminderFormProps> = ({ initialReminder, initialSel
       toast({ title: "Google Calendar Error", description: `Failed to sync reminder: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
     }
 
-    // Microsoft Calendar sync
-    try {
-      await syncMicrosoftCalendar();
-    } catch (error) {
-      console.error('Failed to sync reminder to Microsoft Calendar:', error);
-      toast({ title: "Microsoft Calendar Sync Error", description: `Failed to sync reminder: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
-    }
+    // Microsoft Calendar sync would be handled by the main sync process
     
     onSave(newOrUpdatedReminder);
   };

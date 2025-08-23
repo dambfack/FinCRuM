@@ -1,0 +1,185 @@
+src/components/__tests__/google-calendar-sync.test.tsx(14,5): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GoogleTokens'. Did you mean to write 'access_token'?
+src/components/__tests__/google-calendar-sync.test.tsx(22,5): error TS2353: Object literal may only specify known properties, and 'date' does not exist in type 'Reminder'.
+src/components/__tests__/google-calendar-sync.test.tsx(33,5): error TS2353: Object literal may only specify known properties, and 'startTime' does not exist in type 'Appointment'.
+src/components/__tests__/google-calendar-sync.test.tsx(48,22): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GoogleTokens'. Did you mean to write 'access_token'?
+src/components/__tests__/google-calendar-sync.test.tsx(53,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(60,39): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/__tests__/google-calendar-sync.test.tsx(69,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(73,39): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/__tests__/google-calendar-sync.test.tsx(80,22): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GoogleTokens'. Did you mean to write 'access_token'?
+src/components/__tests__/google-calendar-sync.test.tsx(90,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(97,39): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/__tests__/google-calendar-sync.test.tsx(109,22): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GoogleTokens'. Did you mean to write 'access_token'?
+src/components/__tests__/google-calendar-sync.test.tsx(114,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(121,39): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/__tests__/google-calendar-sync.test.tsx(130,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(144,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(156,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/__tests__/google-calendar-sync.test.tsx(173,9): error TS2559: Type '{ accessToken: string; refreshToken: string; }' has no properties in common with type 'GoogleTokens'.
+src/components/__tests__/google-calendar-sync.test.tsx(178,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/components/common/__tests__/ErrorBoundary.test.tsx(60,46): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(70,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(71,43): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(76,17): error TS2540: Cannot assign to 'NODE_ENV' because it is a read-only property.
+src/components/common/__tests__/ErrorBoundary.test.tsx(84,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(85,44): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(87,17): error TS2540: Cannot assign to 'NODE_ENV' because it is a read-only property.
+src/components/common/__tests__/ErrorBoundary.test.tsx(99,21): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(100,14): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(103,14): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(104,32): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(116,26): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(118,14): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(129,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(132,25): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(135,52): error TS2551: Property 'toThrow' does not exist on type 'Assertion'. Did you mean 'throw'?
+src/components/common/__tests__/ErrorBoundary.test.tsx(147,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(158,48): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(166,54): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(175,45): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(183,62): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(184,47): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(192,26): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/components/common/__tests__/ErrorBoundary.test.tsx(194,14): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/hooks/__tests__/use-data-sync.test.tsx(110,38): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(111,38): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/hooks/__tests__/use-data-sync.test.tsx(112,41): error TS2339: Property 'toBeNull' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(113,39): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(133,41): error TS2551: Property 'toMatch' does not exist on type 'Assertion'. Did you mean 'match'?
+src/hooks/__tests__/use-data-sync.test.tsx(134,25): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(135,16): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/hooks/__tests__/use-data-sync.test.tsx(136,25): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/hooks/__tests__/use-data-sync.test.tsx(150,47): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(165,47): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(179,33): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/hooks/__tests__/use-data-sync.test.tsx(191,36): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(43,33): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(44,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(52,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(53,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(61,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(62,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(70,33): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(71,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(82,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(83,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(92,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(93,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(95,36): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(96,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(104,25): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(105,32): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(106,32): error TS2551: Property 'toBeGreaterThan' does not exist on type 'Assertion'. Did you mean 'greaterThan'?
+src/lib/__tests__/logger.test.ts(112,26): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(121,40): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(123,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(131,44): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(139,20): error TS2339: Property 'toHaveLength' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(140,31): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(145,43): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(164,25): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(166,16): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(171,24): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(186,62): error TS2551: Property 'toThrow' does not exist on type 'Assertion'. Did you mean 'throw'?
+src/lib/__tests__/logger.test.ts(199,37): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(200,36): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(201,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(202,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(204,33): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(205,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(217,28): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(218,22): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(219,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(220,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(221,16): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(223,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(224,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(225,16): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(233,40): error TS2339: Property 'rejects' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(235,34): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(236,17): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(237,17): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(257,32): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(271,33): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/lib/__tests__/logger.test.ts(272,16): error TS2339: Property 'stringContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(273,16): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(274,25): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/lib/__tests__/logger.test.ts(277,27): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(14,15): error TS2428: All declarations of 'Matchers' must have identical type parameters.
+src/services/__tests__/google-calendar.extended.test.ts(31,5): error TS2698: Spread types may only be created from object types.
+src/services/__tests__/google-calendar.extended.test.ts(35,32): error TS2339: Property 'expiry_date' does not exist on type 'unknown'.
+src/services/__tests__/google-calendar.extended.test.ts(35,54): error TS2339: Property 'expiry_date' does not exist on type 'unknown'.
+src/services/__tests__/google-calendar.extended.test.ts(38,31): error TS2339: Property 'refresh_token' does not exist on type 'unknown'.
+src/services/__tests__/google-calendar.extended.test.ts(116,27): error TS2352: Conversion of type 'Mock<UnknownFunction>' to type 'Mock<Promise<{ tokens: { access_token: string; refresh_token?: string; expiry_date: number; }; }>>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The types returned by 'getMockImplementation()' are incompatible between these types.
+    Type 'UnknownFunction' is not comparable to type 'Promise<{ tokens: { access_token: string; refresh_token?: string; expiry_date: number; }; }>'.
+src/services/__tests__/google-calendar.extended.test.ts(116,53): error TS2344: Type 'Promise<{ tokens: { access_token: string; refresh_token?: string; expiry_date: number; }; }>' does not satisfy the constraint 'FunctionLike'.
+  Type 'Promise<{ tokens: { access_token: string; refresh_token?: string; expiry_date: number; }; }>' provides no match for the signature '(...args: any): any'.
+src/services/__tests__/google-calendar.extended.test.ts(124,33): error TS2352: Conversion of type 'Mock<UnknownFunction>' to type 'Mock<void>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'mock' are incompatible.
+    Type 'MockFunctionState<UnknownFunction>' is not comparable to type 'MockFunctionState<void>'.
+      Type 'UnknownFunction' is not comparable to type 'void'.
+src/services/__tests__/google-calendar.extended.test.ts(124,65): error TS2344: Type 'void' does not satisfy the constraint 'FunctionLike'.
+src/services/__tests__/google-calendar.extended.test.ts(126,37): error TS2352: Conversion of type 'Mock<UnknownFunction>' to type 'Mock<Promise<{ credentials: { access_token: string; expiry_date: number; }; }>>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The types returned by 'getMockImplementation()' are incompatible between these types.
+    Type 'UnknownFunction' is not comparable to type 'Promise<{ credentials: { access_token: string; expiry_date: number; }; }>'.
+src/services/__tests__/google-calendar.extended.test.ts(126,73): error TS2344: Type 'Promise<{ credentials: { access_token: string; expiry_date: number; }; }>' does not satisfy the constraint 'FunctionLike'.
+  Type 'Promise<{ credentials: { access_token: string; expiry_date: number; }; }>' provides no match for the signature '(...args: any): any'.
+src/services/__tests__/google-calendar.extended.test.ts(284,22): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(287,32): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(298,24): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(299,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(299,31): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(301,22): error TS2339: Property 'anything' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(309,19): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(315,35): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(315,63): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(326,22): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/services/__tests__/google-calendar.extended.test.ts(329,29): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(335,42): error TS2345: Argument of type 'Error' is not assignable to parameter of type 'never'.
+src/services/__tests__/google-calendar.extended.test.ts(337,59): error TS2339: Property 'rejects' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(348,21): error TS2339: Property 'toMatchObject' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(358,21): error TS2339: Property 'toMatchObject' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(374,22): error TS2551: Property 'toHaveProperty' does not exist on type 'Assertion'. Did you mean 'haveOwnProperty'?
+src/services/__tests__/google-calendar.extended.test.ts(375,31): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(376,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(376,47): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(378,29): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(395,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(395,47): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(395,75): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(397,29): error TS2339: Property 'objectContaining' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(400,33): error TS2339: Property 'any' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(414,22): error TS2551: Property 'toHaveProperty' does not exist on type 'Assertion'. Did you mean 'haveOwnProperty'?
+src/services/__tests__/google-calendar.extended.test.ts(415,36): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(416,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(416,47): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(419,29): error TS2339: Property 'anything' does not exist on type 'ExpectStatic'.
+src/services/__tests__/google-calendar.extended.test.ts(429,22): error TS2339: Property 'toMatchObject' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(430,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(430,47): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(445,22): error TS2551: Property 'toHaveProperty' does not exist on type 'Assertion'. Did you mean 'haveOwnProperty'?
+src/services/__tests__/google-calendar.extended.test.ts(446,29): error TS2339: Property 'toHaveLength' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(447,14): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(447,45): error TS2339: Property 'toHaveBeenCalledWith' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(464,25): error TS2304: Cannot find name 'google'.
+src/services/__tests__/google-calendar.extended.test.ts(465,32): error TS2339: Property 'timeMin' does not exist on type 'unknown'.
+src/services/__tests__/google-calendar.extended.test.ts(465,52): error TS2339: Property 'toBeCloseTo' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(466,32): error TS2339: Property 'timeMax' does not exist on type 'unknown'.
+src/services/__tests__/google-calendar.extended.test.ts(466,52): error TS2339: Property 'toBeCloseTo' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.extended.test.ts(479,22): error TS2551: Property 'toHaveProperty' does not exist on type 'Assertion'. Did you mean 'haveOwnProperty'?
+src/services/__tests__/google-calendar.extended.test.ts(480,46): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(63,23): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(66,48): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(68,36): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(69,30): error TS2551: Property 'toEqual' does not exist on type 'Assertion'. Did you mean 'equal'?
+src/services/__tests__/google-calendar.test.ts(70,31): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(110,22): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(111,28): error TS2339: Property 'toBeDefined' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(114,41): error TS2339: Property 'toHaveBeenCalled' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(116,35): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(117,44): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(118,48): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(119,45): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(120,46): error TS2339: Property 'toBe' does not exist on type 'Assertion'.
+src/services/__tests__/google-calendar.test.ts(128,15): error TS2428: All declarations of 'Matchers' must have identical type parameters.

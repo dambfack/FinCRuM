@@ -12,7 +12,15 @@ export async function createCalendarEventAction(
   tokens: GoogleTokens
 ) {
   try {
-    const result = await createCalendarEvent(item, type, tokens);
+    // Tasks are not supported for Google Calendar events
+    if (type === 'task') {
+      return {
+        success: false,
+        error: 'Tasks are not supported for Google Calendar events. Only reminders and appointments can be synced.'
+      };
+    }
+    
+    const result = await createCalendarEvent(item as Reminder | Appointment, type, tokens);
     return { success: true, data: result };
   } catch (error: any) {
     console.error('Error in createCalendarEventAction:', error);
@@ -33,7 +41,15 @@ export async function updateCalendarEventAction(
   tokens: GoogleTokens
 ) {
   try {
-    const result = await updateCalendarEvent(eventId, item, type, tokens);
+    // Tasks are not supported for Google Calendar events
+    if (type === 'task') {
+      return {
+        success: false,
+        error: 'Tasks are not supported for Google Calendar events. Only reminders and appointments can be synced.'
+      };
+    }
+    
+    const result = await updateCalendarEvent(eventId, item as Reminder | Appointment, type, tokens);
     return { success: true, data: result };
   } catch (error: any) {
     console.error('Error in updateCalendarEventAction:', error);

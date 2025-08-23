@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DataItemType } from '@/lib/types';
 import { revokeGoogleTokensAction } from '@/app/actions/google-auth-actions';
 // Removed direct import of isGoogleOAuthConfigured to avoid client-side google-auth-library issues
-import { Unlink, Calendar, HardDrive, CheckCircle, AlertCircle } from 'lucide-react';
+import { Unlink, Calendar, HardDrive, CheckCircle, AlertCircle, Link } from 'lucide-react';
 
 interface GoogleService {
   name: string;
@@ -24,6 +24,8 @@ export function GoogleAuthManager() {
   const [services, setServices] = useState<GoogleService[]>([]);
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [configLoading, setConfigLoading] = useState<boolean>(true);
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
 
   // Check if Google OAuth is configured
   useEffect(() => {
@@ -84,6 +86,31 @@ export function GoogleAuthManager() {
     return () => clearInterval(interval);
   }, []);
 
+  // Update Google connection state based on services
+  useEffect(() => {
+    const hasConnectedGoogleServices = services.some(s => s.isConnected);
+    setIsGoogleConnected(hasConnectedGoogleServices);
+  }, [services]);
+
+  const handleConnectService = async (service: GoogleService) => {
+    setIsGoogleLoading(true);
+    try {
+      // For now, just show a message that connection should be handled elsewhere
+      toast({
+        title: 'Connect to Google',
+        description: 'Please use the Google Drive sync feature in the main dashboard to connect to Google services.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Connection Failed',
+        description: error.message || 'Failed to connect to Google service.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const handleRevokeService = async (service: GoogleService) => {
     if (!service.accessToken) {
       toast({
@@ -96,7 +123,7 @@ export function GoogleAuthManager() {
 
     setIsRevoking(service.name);
     try {
-      const result = await revokeGoogleTokensAction([service.accessTokenKey]);
+      const result = await revokeGoogleTokensAction();
       
       if (result.success) {
         // Remove tokens from localStorage
@@ -146,8 +173,7 @@ export function GoogleAuthManager() {
 
     setIsRevoking('all');
     try {
-      const tokenKeys = connectedServices.map(s => s.accessTokenKey);
-      const result = await revokeGoogleTokensAction(tokenKeys);
+      const result = await revokeGoogleTokensAction();
       
       // Process results
       const successful: string[] = [];
@@ -253,17 +279,26 @@ export function GoogleAuthManager() {
                     <Badge variant={service.isConnected ? 'default' : 'secondary'}>
                       {service.isConnected ? 'Active' : 'Inactive'}
                     </Badge>
-                    {service.isConnected && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevokeService(service)}
-                        disabled={isRevoking === service.name}
-                      >
-                        {isRevoking === service.name ? 'Disconnecting...' : 'Disconnect'}
-                      </Button>
-                    )}
-                  </div>
+                  {/* Service connection buttons logic updated to use useGoogleSync state */}
+                  {service.isConnected && isGoogleConnected ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRevokeService(service)}
+                      disabled={isRevoking === service.name || isRevoking === 'all' || isGoogleLoading}
+                    >
+                      {isRevoking === service.name ? 'Revoking...' : <><Unlink className="mr-2 h-4 w-4" /> Disconnect</>}
+                    </Button>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleConnectService(service)} 
+                      disabled={configLoading || !isConfigured || isRevoking === 'all' || isGoogleLoading || (isGoogleConnected && service.isConnected) }
+                    >
+                      {isGoogleLoading ? 'Connecting...' : ((isGoogleConnected && service.isConnected) ? <><CheckCircle className="mr-2 h-4 w-4" />Connected</> : <><Link className="mr-2 h-4 w-4" />Connect</>)}
+                    </Button>
+                  )}
+              </div>
                 </div>
               ))}
             </div>

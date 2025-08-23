@@ -66,7 +66,7 @@ jest.mock('googleapis', () => ({
 }));
 
 // Import the module after setting up mocks
-import { google } from 'googleapis';
+// Removed direct import of googleapis to avoid client-side bundling issues
 import * as googleCalendar from '../google-calendar';
 
 // Test data

@@ -122,7 +122,8 @@ export class CloudDatabaseService {
       if (provider === 'googledrive') {
         const tokens = getGoogleTokens();
         if (!tokens?.access_token) {
-          return { success: false, error: 'Google Drive not authenticated' };
+          console.warn('Google Drive not authenticated - skipping upload');
+          return { success: false, error: 'Google Drive authentication required' };
         }
 
         const result = await uploadToGoogleDrive(database as any, tokens);
@@ -134,8 +135,7 @@ export class CloudDatabaseService {
         }
 
         await uploadToOneDrive(database as any, {
-          accessToken: tokens.access_token,
-          provider: 'onedrive'
+          accessToken: tokens.access_token
         });
         return { success: true };
       }
@@ -157,7 +157,8 @@ export class CloudDatabaseService {
       if (provider === 'googledrive') {
         const tokens = getGoogleTokens();
         if (!tokens?.access_token) {
-          return { success: false, error: 'Google Drive not authenticated' };
+          console.warn('Google Drive not authenticated - skipping download');
+          return { success: false, error: 'Google Drive authentication required' };
         }
 
         const result = await downloadFromGoogleDrive(tokens);
@@ -172,8 +173,7 @@ export class CloudDatabaseService {
         }
 
         const data = await downloadFromOneDrive({
-          accessToken: tokens.access_token,
-          provider: 'onedrive'
+          accessToken: tokens.access_token
         });
         if (data) {
           return { success: true, database: data as any };
@@ -299,8 +299,9 @@ export class CloudDatabaseService {
   }> {
     const merged = new Map<string, T>();
     const conflicts: DataConflictWithResolution[] = [];
-    const auth = await getAuthInfo();
-    const currentUser = auth?.user;
+    // Get current user from localStorage
+    const currentUserData = typeof window !== 'undefined' ? localStorage.getItem(DataItemType.CurrentUser) : null;
+    const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
 
     // Add cloud items first
     cloudArray.forEach(item => {
@@ -390,18 +391,23 @@ export class CloudDatabaseService {
             case 'skip':
               // Skip this conflict for now
               conflicts.push({
+                id: `conflict_${Date.now()}_${Math.random()}`,
                 itemId: localItem.id,
-                localVersion: localItem,
-                cloudVersion: existingItem,
-                dataType,
+                localValue: [JSON.stringify(localItem)],
+                cloudValue: [JSON.stringify(existingItem)],
+                dataType: dataType.toString(),
+                reason: 'Manual resolution required',
+                rowIndex: 0,
+                status: 'pending',
+                timestamp: new Date().toISOString(),
                 resolution: resolution
               });
               break;
           }
         } else {
           // Compare updatedAt timestamps to determine which is newer
-          const existingTime = existingItem.updatedAt && existingItem.updatedAt.trim() !== '' ? new Date(existingItem.updatedAt).getTime() : 0;
-          const localTime = localItem.updatedAt && localItem.updatedAt.trim() !== '' ? new Date(localItem.updatedAt).getTime() : 0;
+          const existingTime = existingItem.updatedAt && (typeof existingItem.updatedAt === 'string' ? existingItem.updatedAt.trim() !== '' : true) ? new Date(existingItem.updatedAt).getTime() : 0;
+          const localTime = localItem.updatedAt && (typeof localItem.updatedAt === 'string' ? localItem.updatedAt.trim() !== '' : true) ? new Date(localItem.updatedAt).getTime() : 0;
           
           if (localTime > existingTime) {
             merged.set(localItem.id, localItem);
@@ -415,10 +421,15 @@ export class CloudDatabaseService {
             if (localStr !== cloudStr) {
               // Content differs despite same timestamp, add to conflicts
               conflicts.push({
+                id: `conflict_${Date.now()}_${Math.random()}`,
                 itemId: localItem.id,
-                localVersion: localItem,
-                cloudVersion: existingItem,
-                dataType
+                localValue: [JSON.stringify(localItem)],
+                cloudValue: [JSON.stringify(existingItem)],
+                dataType: dataType.toString(),
+                reason: 'Content differs despite same timestamp',
+                rowIndex: 0,
+                status: 'pending',
+                timestamp: new Date().toISOString()
               });
             }
             // If identical, keep cloud version (already in map)
@@ -452,7 +463,8 @@ export class CloudDatabaseService {
       return await getRateLimiterService().executeRequest(async () => {
         // Register device if not already registered
         if (deviceId) {
-          const deviceResult = await getDeviceManager().registerCurrentDevice();
+          const currentUserId = this.getCurrentUserId();
+          const deviceResult = await getDeviceManager().registerDevice(currentUserId);
           if (!deviceResult.success) {
             console.warn('Device registration failed:', deviceResult.error);
           }
@@ -490,10 +502,7 @@ export class CloudDatabaseService {
         // Update last sync time
         saveData(DataItemType.LastSyncTime, new Date().toISOString());
         
-        // Notify real-time sync service of successful sync
-        if (realTimeSync) {
-          getRealTimeSync().onSyncComplete(true);
-        }
+        // Sync completed successfully
         
         console.log('Cloud sync completed successfully');
         return { success: true, conflicts: mergeResult.conflicts };
@@ -501,10 +510,7 @@ export class CloudDatabaseService {
     } catch (error: any) {
       console.error('Error syncing with cloud:', error);
       
-      // Notify real-time sync service of failed sync
-      if (realTimeSync) {
-        getRealTimeSync().onSyncComplete(false, error.message);
-      }
+      // Sync failed
       
       return { success: false, error: error.message, conflicts: [] };
     }
@@ -630,10 +636,7 @@ export class CloudDatabaseService {
         console.warn('Some conflicts remain unresolved:', result.conflicts.length);
       }
       
-      // Notify real-time sync service of conflict resolutions
-      if (realTimeSync) {
-        getRealTimeSync().onConflictsResolved(conflicts);
-      }
+      // Conflicts resolved
       
       return { success: result.success, error: result.error };
     } catch (error: any) {
@@ -673,20 +676,17 @@ export class CloudDatabaseService {
       }
       
       // Queue for cloud sync with rate limiting
-      if (realTimeSync) {
-        await getRateLimiterService().executeRequest(async () => {
-          await getRealTimeSync().queueChange({
-            id: uuidv4(),
-            itemType: itemType,
-            itemId,
-            operation,
-            data,
-            timestamp: new Date().toISOString(),
-            deviceId: await getDeviceManager().getCurrentDeviceId(),
-            userId: this.getCurrentUserId()
-          });
-        }, 'medium');
-      }
+      await getRateLimiterService().executeRequest(async () => {
+        // Use sync buffer service to queue the operation
+        await syncBufferService.addOperation({
+          type: operation,
+          itemType: itemType.toString(),
+          itemId,
+          data,
+          priority: 'medium',
+          maxRetries: 3
+        });
+      }, 'medium');
       
       return { success: true };
     } catch (error: any) {
@@ -702,7 +702,7 @@ export class CloudDatabaseService {
    * Get current user ID
    */
   private getCurrentUserId(): string {
-    const currentUser = getData<any>('currentUser');
+    const currentUser = getData<any>(DataItemType.CurrentUser);
     return currentUser?.id || 'unknown';
   }
   
@@ -711,7 +711,8 @@ export class CloudDatabaseService {
    */
   public async getDeviceSyncMetadata(deviceId: string): Promise<{ lastSyncTime: string | null; syncVersion: number }> {
     try {
-      const metadata = getData<any>(`deviceSync_${deviceId}`);
+      const allMetadata = getData<Record<string, any>>(DataItemType.DeviceSyncStatuses) || {};
+      const metadata = allMetadata[deviceId];
       if (metadata) {
         return metadata;
       }
@@ -727,8 +728,9 @@ export class CloudDatabaseService {
    */
   public async updateDeviceSyncMetadata(deviceId: string, lastSyncTime: string, syncVersion: number): Promise<void> {
     try {
-      const metadata = { lastSyncTime, syncVersion };
-      saveData(`deviceSync_${deviceId}`, metadata);
+      const allMetadata = getData<Record<string, any>>(DataItemType.DeviceSyncStatuses) || {};
+      allMetadata[deviceId] = { lastSyncTime, syncVersion };
+      saveData(DataItemType.DeviceSyncStatuses, allMetadata);
     } catch (error: any) {
       console.error('Error updating device sync metadata:', error);
     }
@@ -763,7 +765,7 @@ export class CloudDatabaseService {
         tasks: getData<any[]>(DataItemType.Tasks) || [],
         reminders: getData<any[]>(DataItemType.Reminders) || [],
         appointments: getData<any[]>(DataItemType.Appointments) || [],
-        userPreferences: getData<any>(DataItemType.UserThemePreferences) || {},
+        userPreferences: getData<any>(DataItemType.UserThemeSettings) || {},
         currentUserId: getData<string>(DataItemType.CurrentUserId) || null,
         lastSyncTime: new Date().toISOString(),
         deviceId: this.getCurrentUserId()
@@ -775,7 +777,7 @@ export class CloudDatabaseService {
       if (result.success) {
         console.log(`[CloudDatabase] Successfully synced to ${provider}`);
         // Update last sync time
-        saveData(`lastSyncTime_${provider}`, new Date().toISOString());
+        saveData(DataItemType.LastSyncTime, new Date().toISOString());
       } else {
         console.error(`[CloudDatabase] Failed to sync to ${provider}:`, result.error);
       }

@@ -156,7 +156,7 @@ export function MicrosoftAuthManager() {
             <Button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="w-full"
+              className="w-full ring-1 ring-inset ring-gray-300 dark:ring-gray-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               {isConnecting ? (
                 'Connecting...'

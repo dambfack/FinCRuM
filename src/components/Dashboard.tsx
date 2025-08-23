@@ -1,10 +1,10 @@
 // src/components/Dashboard.tsx
 'use client';
 
-import React, { FC, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive } from 'lucide-react';
+import { Users, UserPlus as UserPlusIcon, ListTodo, Calendar, Clock, PlusCircle, RefreshCw as RefreshCwIcon, Square, CheckSquare, User as UserAssignIcon, FileArchive, Shield, UserCheck, Settings, BarChart3, PieChart as PieChartIcon, TrendingDown } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -52,9 +52,14 @@ type BarChartTimeRange = '1m' | '3m' | '6m' | '12m';
 const MONTSERRAT_FONT_STACK = 'var(--font-montserrat), system-ui, -apple-system, sans-serif';
 const RECHARTS_FONT_STYLE = { fontFamily: MONTSERRAT_FONT_STACK };
 
-const Dashboard: FC = () => {
+const Dashboard = () => {
   // State declarations
-  const [stats, setStats] = useState<DashboardStats>(initialStats);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalCustomers: 0,
+    newCustomersTodayCount: 0,
+    tasksPending: 0,
+    appointmentsTodayCount: 0
+  });
   const [loading, setLoading] = useState(true);
   const [allContactsState, setAllContactsState] = useState<Contact[]>([]);
   const [allUsersState, setAllUsersState] = useState<User[]>([]);
@@ -63,6 +68,7 @@ const Dashboard: FC = () => {
   const [customerGrowthChartData, setCustomerGrowthChartData] = useState<{ name: string; customers: number }[]>([]);
   const [dealStatusSeries, setDealStatusSeries] = useState<number[]>([]);
   const [dealStatusLabels, setDealStatusLabels] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState<'admin' | 'partner' | 'employee'>('employee');
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isReminderFormOpen, setIsReminderFormOpen] = useState(false);
   const [isAppointmentFormOpen, setIsAppointmentFormOpen] = useState(false);
@@ -83,10 +89,17 @@ const Dashboard: FC = () => {
 
   // Hooks
   const { toast } = useToast();
-  const { performSync, syncStatus, syncCalendar, syncMicrosoftCalendar, initiateAuthentication, lastSyncTime, isGoogleDriveConnected, isMicrosoftCalendarConnected } = useDataSync();
+  const { performSync, syncStatus, syncCalendarOnly, initiateAuthentication, lastSyncTime, isGoogleDriveConnected, isMicrosoftConnected } = useDataSync();
   const { resolvedTheme, theme } = useTheme();
   const { currentUser, currentUserThemeSettings } = useAuth();
   const isGoogleCalendarLinked = isGoogleDriveConnected;
+  
+  // Set user role based on current user
+  useEffect(() => {
+    if (currentUser?.role) {
+      setUserRole(currentUser.role);
+    }
+  }, [currentUser]);
   
   // Helper functions
     // Helper functions
@@ -390,14 +403,14 @@ const Dashboard: FC = () => {
     }, [isGoogleCalendarLinked, initiateAuthentication, toast, loadDashboardData]);
 
     const handleMicrosoftCalendarAuth = useCallback(async () => {
-      if (isMicrosoftCalendarConnected) {
+      if (isMicrosoftConnected) {
         if (typeof window !== 'undefined') {
           // Remove Microsoft Calendar and OneDrive tokens
           localStorage.removeItem('microsoftAccessToken');
           localStorage.removeItem('microsoftRefreshToken');
           localStorage.removeItem('microsoftTokenExpiry');
           
-          // UI state will be updated automatically through isMicrosoftCalendarConnected
+          // UI state will be updated automatically through isMicrosoftConnected
           toast({ 
             title: "Microsoft Services Unlinked", 
             description: "You have been signed out of Microsoft services.",
@@ -418,7 +431,7 @@ const Dashboard: FC = () => {
         }
       }
       loadDashboardData(); // Reload to reflect connection status change
-    }, [isMicrosoftCalendarConnected, initiateAuthentication, toast, loadDashboardData]);
+    }, [isMicrosoftConnected, initiateAuthentication, toast, loadDashboardData]);
 
     const refreshData = useCallback(() => {
         loadDashboardData();
@@ -546,18 +559,16 @@ const dialogContentClassName = "sm:max-w-lg glass-effect bg-card/80 dark:bg-card
                 <Calendar className="mr-2 h-4 w-4" />
                 {isGoogleCalendarLinked ? 'Unlink Google Services' : 'Link Google Services'}
             </Button>
-            <Button onClick={handleMicrosoftCalendarAuth} size="sm" variant={isMicrosoftCalendarConnected ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
+            <Button onClick={handleMicrosoftCalendarAuth} size="sm" variant={isMicrosoftConnected ? 'outline' : 'default'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <Calendar className="mr-2 h-4 w-4" />
-                {isMicrosoftCalendarConnected ? 'Unlink Microsoft Services' : 'Link Microsoft Services'}
+                {isMicrosoftConnected ? 'Unlink Microsoft Services' : 'Link Microsoft Services'}
             </Button>
             <Button onClick={async () => {
               await performSync();
               if (isGoogleCalendarLinked) {
-                await syncCalendar(false); // Don't show individual toasts
+                await syncCalendarOnly(); // Don't show individual toasts
               }
-              if (isMicrosoftCalendarConnected) {
-                await syncMicrosoftCalendar(false); // Don't show individual toasts
-              }
+              // Microsoft Calendar sync would be handled by the main sync process
             }} size="sm" disabled={syncStatus === 'syncing'} className="h-11 px-4 py-3 whitespace-nowrap">
                 <RefreshCwIcon className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
                 {syncStatus === 'syncing' ? 'Syncing...' : (lastSyncTime ? `Last Sync: ${formatDateTime(lastSyncTime).split(',')[0]}` : 'Sync Now')}

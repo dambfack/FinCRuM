@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+// Removed direct import of googleapis to avoid client-side bundling issues
 import type { Task, GoogleTokens } from '@/lib/types';
 import { getAuthenticatedClient } from './google-oauth';
 
@@ -12,6 +12,7 @@ export async function createGoogleTask(
   try {
     // Get authenticated client (will refresh tokens if needed)
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const tasks = google.tasks({ version: 'v1', auth: client });
     
     // First, get the default task list
@@ -116,6 +117,7 @@ export async function updateGoogleTask(
 ): Promise<{ task: any, newTokens?: GoogleTokens }> {
   try {
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const tasks = google.tasks({ version: 'v1', auth: client });
     
     // Get the default task list
@@ -220,6 +222,7 @@ export async function deleteGoogleTask(
 ): Promise<{ success: boolean, newTokens?: GoogleTokens }> {
   try {
     const client = await getAuthenticatedClient(tokens);
+    const { google } = await import('googleapis');
     const tasks = google.tasks({ version: 'v1', auth: client });
     
     // Get the default task list

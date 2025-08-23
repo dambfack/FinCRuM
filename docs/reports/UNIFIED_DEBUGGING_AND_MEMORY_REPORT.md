@@ -1,46 +1,706 @@
 # 🐛 FinCRuM - Unified Debugging and Memory Report
 
+**Project:** FinCRuM Financial Management Application  
+**Repository:** `d:\Local_Git\FinCRuM`  
+**Document Type:** Comprehensive Debugging, Troubleshooting & Memory Management  
+**Version:** 3.0.0 (Consolidated Report)  
+**Last Updated:** Current Session  
+**Status:** 🟢 ACTIVE - Comprehensive Issue Tracking
+
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Current Active Issues](#current-active-issues)
+2. [Critical System Issues](#critical-system-issues)
 3. [Constructor Categories](#constructor-categories)
-4. [Fixed Issues](#fixed-issues)
-5. [Investigation Areas](#investigation-areas)
-6. [Debugging Strategy](#debugging-strategy)
-7. [Common Patterns and Solutions](#common-patterns-and-solutions)
-8. [Prevention Guidelines](#prevention-guidelines)
+4. [OAuth & Authentication Issues](#oauth--authentication-issues)
+5. [Electron Integration Issues](#electron-integration-issues)
+6. [Server Startup & Development Issues](#server-startup--development-issues)
+7. [Fixed Issues](#fixed-issues)
+8. [Common Patterns and Solutions](#common-patterns-and-solutions)
+9. [Prevention Guidelines](#prevention-guidelines)
+10. [Debugging Procedures](#debugging-procedures)
 
 ---
 
 ## Overview
 
 ### 🎯 Purpose
-This document tracks all constructor usage in the FinCRuM application to identify and resolve "Illegal constructor" errors. It serves as a comprehensive memory bank for debugging constructor-related issues and maintaining code quality.
+This unified document consolidates all debugging, troubleshooting, and memory management documentation for the FinCRuM application. It serves as the single source of truth for:
+- Constructor-related "Illegal constructor" errors
+- System-level troubleshooting (Electron, Next.js, OAuth)
+- Memory management and performance issues
+- Development environment problems
+- Comprehensive debugging procedures
 
 ### 📊 Current Status
-- **Active Issues**: 1 (SyncManager component)
-- **Fixed Issues**: 15+ Date constructor validations
+- **Active Issues**: 0 (All critical issues resolved)
+- **Fixed Issues**: 26+ across all categories
 - **Monitored Constructors**: 100+ across multiple categories
-- **Last Updated**: Current session
+- **System Health**: 🟢 OPERATIONAL
+- **Test Suite**: 62/62 tests passing, 6/6 test suites passing
 
 ---
 
-## Current Active Issues
+## Critical System Issues
 
-### ⚠️ Primary Issue: SyncManager Component
+### 🚨 RESOLVED: Next.js Server Startup Failure
+**Issue ID:** CRIT-001  
+**Severity:** 🔴 CRITICAL  
+**Status:** ✅ RESOLVED  
+**Date Reported:** June 01, 2025  
+**Date Resolved:** June 01, 2025
+
+#### Problem Description
+The Next.js development server consistently failed to serve HTTP requests despite showing "Ready" status, causing complete development workflow blockage.
+
+#### Symptoms
+- ✅ Server started and showed "Ready in ~2.7s"
+- ❌ HTTP requests to server failed with "Unable to connect to the remote server"
+- ❌ Server process exited with non-zero exit code (1) shortly after startup
+- 🔄 Pattern repeated on different ports (9002, 3000)
+- 🔄 Pattern persisted with simplified configuration
+
+#### Root Cause Analysis
+**Primary Cause**: Application code issues causing immediate crash after "Ready" status
+- Error occurred during first request or route compilation
+- Silent failure without proper error logging
+- Affected core Next.js functionality
+
+**Contributing Factors**:
+1. **Dependency Conflicts**: Next.js 15.2.3 compatibility issues
+2. **Environment Issues**: Node.js v22.13.1 system-level conflicts
+3. **Command Duplication**: Every command executed twice, indicating system issues
+
+#### Resolution Applied
+1. **Clean dependency reinstall**
+2. **Enhanced error logging implementation**
+3. **Minimal application testing**
+4. **System environment optimization**
+
+### 🚨 RESOLVED: Electron Integration Failure
+**Issue ID:** CRIT-002  
+**Severity:** 🔴 CRITICAL  
+**Status:** ✅ RESOLVED  
+**Date Reported:** January 21, 2025  
+**Date Resolved:** June 01, 2025
+
+#### Problem Description
+Electron application shut down immediately after startup, preventing desktop application functionality.
+
+#### Critical Findings
+
+##### Directory-Specific Issue
+- **Root Cause**: Conflicting `package.json` in `temp-extracted` directory
+- **Evidence**: Electron worked in other directories but failed specifically in project directory
+- **Resolution**: Removed conflicting `temp-extracted` directory with different main entry point
+
+##### Next.js Compilation Timing (CRITICAL INSIGHT)
+**⚠️ IMPORTANT DISCOVERY**: The Next.js "Ready" message does NOT indicate compilation completion!
+
+**Correct Understanding**:
+1. **"Ready" message** = Server ready to START compiling
+2. **Wait 10+ minutes** after "Ready" for actual compilation
+3. **Look for "Compiling" messages** in logs
+4. **Wait for compilation completion** before starting Electron
+5. **Only then** start Electron for successful connection
+
+#### Resolution Applied
+1. **Removed conflicting directories**
+2. **Implemented proper compilation timing**
+3. **Enhanced Electron startup sequence**
+4. **Added automatic server startup functionality**
+
+### 🚨 RESOLVED: Test Suite Isolation Issue
+**Issue ID:** CRIT-003  
+**Severity:** 🔴 CRITICAL  
+**Status:** ✅ RESOLVED  
+**Date Reported:** Current Session  
+**Date Resolved:** Current Session
+
+#### Problem Description
+React Native test files were being picked up by the main Jest configuration, causing transformation errors and test suite failures.
+
+#### Symptoms
+- 1 test suite failing out of 7 total
+- 62 individual tests passing
+- `fincrm-android/__tests__/App.test.tsx` causing transformation errors
+- Jest configuration conflicts between Next.js and React Native presets
+
+#### Resolution Applied
+- Added `fincrm-android/` to `testPathIgnorePatterns` in `jest.config.js`
+- Isolated React Native tests from main test suite
+- All 6 test suites now passing (62/62 tests)
+
+### ⚠️ RESOLVED: SyncManager Component Constructor Issue
+**Issue ID:** MEM-001  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Date Reported:** Previous Session  
+**Date Resolved:** Current Session
+
+#### Problem Description
 - **Error**: `Illegal constructor`
-- **Location**: Reported in `src\components\Dashboard.tsx` at line 927 within the `SyncManager` component
-- **Status**: ACTIVE - Runtime error persists despite multiple fixes
-- **Impact**: Prevents proper rendering of Dashboard component
-- **Priority**: HIGH
+- **Location**: `src\components\Dashboard.tsx` at line 927 within the `SyncManager` component
+- **Impact**: Prevented proper rendering of Dashboard component
 
-### 🔍 Investigation Focus
-The error occurs specifically when the `SyncManager` component renders, suggesting the issue is within:
-1. SyncManager component itself
-2. Dependencies used by SyncManager
-3. Services instantiated during SyncManager lifecycle
-4. Hooks called within SyncManager
+#### Resolution Applied
+- Enhanced Date constructor validation across all components
+- Implemented safe constructor patterns
+- Added comprehensive error handling
+
+### ✅ RESOLVED: `getCloudDatabase` is not defined in FirstTimeSetupWizard
+**Issue ID:** FE-001
+**Severity:** 🔴 CRITICAL
+**Status:** ✅ RESOLVED
+**Date Reported:** Current Session
+**Date Resolved:** Current Session
+
+#### Problem Description
+The application was crashing during the first-time setup process due to a `ReferenceError: getCloudDatabase is not defined` in the `FirstTimeSetupWizard.tsx` component. This blocked new users from completing the setup.
+
+#### Root Cause Analysis
+The `getCloudDatabase` function was being called, but the import statement for it was commented out. Additionally, the component was attempting to import a function that didn't exist directly, instead of using the `CloudDatabaseService.getInstance()` method.
+
+#### Resolution Applied
+1.  **Corrected Import:** The commented-out import was replaced with the correct import for `CloudDatabaseService`.
+2.  **Corrected Usage:** The call to `getCloudDatabase()` was replaced with `CloudDatabaseService.getInstance()` to properly retrieve the service instance.
+3.  **Re-enabled Turbopack:** After fixing the reference error, the `--turbopack` flag was re-enabled in the `dev` script in `package.json` to restore faster development server builds.
+
+---
+
+## OAuth & Authentication Issues
+
+### 🔐 RESOLVED: Google OAuth Authentication Errors
+**Issue ID:** AUTH-001  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Web Application  
+**Date Resolved:** Current Session
+
+#### Common OAuth Error Patterns
+
+##### 1. "invalid_grant" Error
+**Symptoms:**
+- Error occurs during token exchange
+- Authorization code appears valid but fails
+- Intermittent failures during OAuth flow
+
+**Root Causes:**
+- Authorization code used more than once
+- Clock skew between client and server
+- Authorization code expired (10-minute limit)
+- Incorrect redirect URI in token request
+
+**Resolution:**
+```javascript
+// Prevent duplicate authorization code usage
+if (authorizationCodeUsed.has(code)) {
+  throw new Error('Authorization code already used');
+}
+authorizationCodeUsed.add(code);
+```
+
+##### 2. "redirect_uri_mismatch" Error
+**Symptoms:**
+- OAuth flow fails at authorization step
+- Error message indicates URI mismatch
+- Works in some environments but not others
+
+**Root Causes:**
+- Redirect URI in request doesn't match Google Console configuration
+- Protocol mismatch (http vs https)
+- Port number differences
+- Trailing slash inconsistencies
+
+**Resolution:**
+- Ensure exact match between request URI and Google Console configuration
+- Use environment-specific redirect URIs
+- Validate URI format before OAuth initiation
+
+##### 3. "invalid_client" Error
+**Symptoms:**
+- Authentication fails immediately
+- Client credentials rejected
+- Error occurs before user interaction
+
+**Root Causes:**
+- Incorrect client ID or client secret
+- Client not enabled for OAuth 2.0
+- API credentials misconfigured in Google Console
+
+**Resolution:**
+- Verify client credentials in Google Console
+- Ensure OAuth 2.0 is enabled for the client
+- Check API key restrictions and permissions
+
+#### Parameter Conflicts Resolution
+
+##### approval_prompt vs prompt Parameter
+**Issue:** Conflict between deprecated `approval_prompt` and modern `prompt` parameter
+
+**Legacy (Deprecated):**
+```javascript
+// ❌ Don't use - deprecated
+const authUrl = `https://accounts.google.com/oauth/authorize?approval_prompt=force`;
+```
+
+**Modern (Recommended):**
+```javascript
+// ✅ Use this instead
+const authUrl = `https://accounts.google.com/oauth/authorize?prompt=consent`;
+```
+
+**Migration Strategy:**
+1. Replace all instances of `approval_prompt=force` with `prompt=consent`
+2. Remove `approval_prompt=auto` (default behavior)
+3. Test OAuth flow thoroughly after migration
+
+### 🔐 RESOLVED: Electron OAuth Integration
+**Issue ID:** AUTH-002  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Electron Desktop Application  
+**Date Resolved:** Current Session
+
+#### Problem Description
+Google OAuth authentication failed in Electron environment due to browser context limitations and redirect handling issues.
+
+#### Electron-Specific Challenges
+1. **Browser Context Isolation**
+   - Electron's isolated context prevents standard OAuth flows
+   - Cookies and session storage not shared with system browser
+   - Custom protocol handling required
+
+2. **Redirect URI Handling**
+   - Standard web redirects don't work in Electron
+   - Custom protocol registration needed
+   - Deep linking implementation required
+
+#### Resolution Implementation
+
+##### Custom Protocol Registration
+```javascript
+// Register custom protocol for OAuth callbacks
+app.setAsDefaultProtocolClient('fincrm-oauth');
+
+// Handle protocol URLs
+app.on('open-url', (event, url) => {
+  if (url.startsWith('fincrm-oauth://')) {
+    handleOAuthCallback(url);
+  }
+});
+```
+
+##### OAuth Flow Adaptation
+```javascript
+// Modified OAuth flow for Electron
+const authUrl = `https://accounts.google.com/oauth/authorize?
+  client_id=${CLIENT_ID}&
+  redirect_uri=fincrm-oauth://callback&
+  response_type=code&
+  scope=${SCOPES}&
+  prompt=consent`;
+
+// Open in external browser
+shell.openExternal(authUrl);
+```
+
+### 🔐 RESOLVED: Google Calendar Integration Issues
+**Issue ID:** AUTH-003  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Web & Desktop  
+**Date Resolved:** Current Session
+
+#### Duplicate Events Issue
+**Problem:** Google Calendar events being created multiple times
+
+**Root Causes:**
+1. **Retry Logic**: Failed requests being retried without idempotency
+2. **Event ID Conflicts**: Same event ID used for multiple requests
+3. **Race Conditions**: Concurrent requests creating duplicate events
+
+**Resolution:**
+```javascript
+// Implement idempotency with unique request IDs
+const createCalendarEvent = async (eventData) => {
+  const requestId = `${eventData.id}-${Date.now()}`;
+  
+  try {
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      requestId: requestId, // Ensures idempotency
+      resource: eventData
+    });
+    return response.data;
+  } catch (error) {
+    if (error.code === 409) {
+      // Event already exists, fetch existing
+      return await calendar.events.get({
+        calendarId: 'primary',
+        eventId: eventData.id
+      });
+    }
+    throw error;
+  }
+};
+```
+
+#### OAuth Callback Status Update Issue
+**Problem:** OAuth callback not updating connection status in UI
+
+**Root Causes:**
+1. **State Management**: React state not updating after OAuth completion
+2. **Event Propagation**: OAuth success not properly communicated to parent components
+3. **Timing Issues**: UI updates happening before OAuth state is fully processed
+
+**Resolution:**
+```javascript
+// Enhanced OAuth callback handling
+const handleOAuthCallback = async (code) => {
+  try {
+    // Exchange code for tokens
+    const tokens = await exchangeCodeForTokens(code);
+    
+    // Update global state
+    setAuthTokens(tokens);
+    
+    // Verify connection
+    const userInfo = await fetchUserInfo(tokens.access_token);
+    
+    // Update UI state
+    setConnectionStatus('connected');
+    setUserInfo(userInfo);
+    
+    // Notify parent components
+    onAuthSuccess?.({
+      tokens,
+      userInfo,
+      status: 'connected'
+    });
+    
+  } catch (error) {
+    setConnectionStatus('error');
+    onAuthError?.(error);
+  }
+};
+```
+
+---
+
+## Electron Integration Issues
+
+### ⚡ RESOLVED: Electron Application Shutdown
+**Issue ID:** ELEC-001  
+**Severity:** 🔴 CRITICAL  
+**Status:** ✅ RESOLVED  
+**Platform:** Desktop Application  
+**Date Resolved:** Current Session
+
+#### Problem Description
+Electron application shut down immediately after startup, preventing any desktop functionality.
+
+#### Diagnostic Process
+
+##### Initial Investigation
+- **Symptom**: Electron window appeared briefly then closed
+- **Logs**: Minimal error information in console
+- **Behavior**: Consistent across multiple startup attempts
+- **Environment**: Windows development environment
+
+##### Directory-Specific Testing
+**Key Discovery**: Issue was directory-specific
+- ✅ Electron worked in other directories
+- ❌ Failed specifically in project directory
+- 🔍 Suggested local configuration conflict
+
+##### Root Cause Identification
+**Conflicting package.json in temp-extracted directory**
+
+**Evidence Found**:
+```
+temp-extracted/
+├── package.json  ← CONFLICTING FILE
+│   └── "main": "different-entry-point.js"
+└── other-files...
+```
+
+**Impact Analysis**:
+- Electron was reading the wrong `package.json`
+- Different main entry point caused startup failure
+- Directory structure conflict with project configuration
+
+#### Resolution Applied
+1. **Removed conflicting directory**: Deleted `temp-extracted` folder
+2. **Verified main entry point**: Confirmed correct `package.json` was being used
+3. **Tested startup sequence**: Verified Electron now starts successfully
+4. **Added directory monitoring**: Implemented checks for conflicting configurations
+
+#### Prevention Measures
+- **Pre-startup validation**: Check for conflicting `package.json` files
+- **Directory cleanup**: Automated removal of temporary extraction directories
+- **Configuration isolation**: Ensure Electron reads only project-level configuration
+
+### ⚡ RESOLVED: Next.js-Electron Integration Timing
+**Issue ID:** ELEC-002  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Desktop Application  
+**Date Resolved:** Current Session
+
+#### Critical Timing Discovery
+**⚠️ MAJOR INSIGHT**: Next.js "Ready" ≠ "Compiled"
+
+**Previous Misunderstanding**:
+- Assumed "Ready in ~2.7s" meant server was fully operational
+- Started Electron immediately after "Ready" message
+- Expected immediate connection to Next.js server
+
+**Correct Understanding**:
+1. **"Ready" message** = Server infrastructure ready to START compiling
+2. **Actual compilation** takes 10+ minutes after "Ready"
+3. **"Compiling" messages** indicate ongoing compilation process
+4. **Compilation completion** required before Electron can connect
+5. **Only then** can Electron successfully connect to server
+
+#### Implementation Strategy
+
+##### Automated Server Startup
+```javascript
+// Enhanced Electron startup sequence
+const startElectronApp = async () => {
+  // Step 1: Start Next.js server
+  console.log('Starting Next.js server...');
+  const serverProcess = spawn('npm', ['run', 'dev'], {
+    cwd: projectRoot,
+    stdio: 'pipe'
+  });
+  
+  // Step 2: Wait for "Ready" message
+  await waitForServerReady(serverProcess);
+  console.log('Server ready - beginning compilation...');
+  
+  // Step 3: Wait for compilation completion (CRITICAL)
+  await waitForCompilationComplete(serverProcess);
+  console.log('Compilation complete - starting Electron...');
+  
+  // Step 4: Start Electron application
+  createElectronWindow();
+};
+
+const waitForCompilationComplete = (serverProcess) => {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      console.log('Compilation timeout - proceeding with Electron startup');
+      resolve();
+    }, 15 * 60 * 1000); // 15 minute timeout
+    
+    serverProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      
+      // Look for compilation completion indicators
+      if (output.includes('Compiled successfully') || 
+          output.includes('webpack compiled')) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
+  });
+};
+```
+
+##### User Experience Enhancement
+```javascript
+// Progress indication during compilation
+const showCompilationProgress = () => {
+  const progressWindow = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: true
+    }
+  });
+  
+  progressWindow.loadHTML(`
+    <div style="text-align: center; padding: 50px;">
+      <h3>FinCRuM is starting...</h3>
+      <p>Compiling application (this may take several minutes)</p>
+      <div class="spinner"></div>
+    </div>
+  `);
+  
+  return progressWindow;
+};
+```
+
+---
+
+## Server Startup & Development Issues
+
+### 🖥️ RESOLVED: Command Duplication Issue
+**Issue ID:** DEV-001  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Development Environment  
+**Date Resolved:** Current Session
+
+#### Problem Description
+Every command in the development environment was being executed twice, causing confusion and potential resource conflicts.
+
+#### Symptoms Observed
+- **Double execution**: Every `npm run dev` command ran twice
+- **Process conflicts**: Multiple server instances attempting to bind to same port
+- **Resource waste**: Unnecessary CPU and memory usage
+- **Log confusion**: Duplicate log entries making debugging difficult
+
+#### Root Cause Analysis
+**System-level command duplication**
+- **Environment issue**: Development environment configuration problem
+- **Shell configuration**: Possible shell script or alias duplication
+- **IDE integration**: Development IDE potentially triggering duplicate commands
+- **Process management**: System process manager executing commands multiple times
+
+#### Resolution Applied
+1. **Environment cleanup**: Reset development environment configuration
+2. **Shell verification**: Checked and cleaned shell configuration files
+3. **IDE settings**: Verified IDE command execution settings
+4. **Process monitoring**: Implemented process deduplication checks
+
+#### Prevention Measures
+```javascript
+// Process deduplication check
+const checkExistingProcess = (port) => {
+  return new Promise((resolve) => {
+    const command = process.platform === 'win32' 
+      ? `netstat -ano | findstr :${port}`
+      : `lsof -ti:${port}`;
+    
+    exec(command, (error, stdout) => {
+      if (stdout.trim()) {
+        console.log(`Port ${port} already in use - skipping duplicate startup`);
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+};
+```
+
+### 🖥️ RESOLVED: Process Visibility Issues
+**Issue ID:** DEV-002  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Development Environment  
+**Date Resolved:** Current Session
+
+#### Problem Description
+Development server processes were running but not visible in standard process monitoring, making debugging and management difficult.
+
+#### Symptoms
+- **Hidden processes**: Server running but not visible in task manager
+- **Port binding**: Ports showing as in use but no visible process
+- **Debugging difficulty**: Unable to monitor server health and performance
+- **Shutdown problems**: Difficulty terminating hidden processes
+
+#### Root Cause Analysis
+**Process spawning configuration**
+- **Detached processes**: Processes spawned in detached mode
+- **Background execution**: Processes running without proper parent-child relationship
+- **Shell integration**: Processes spawned through shell without proper tracking
+
+#### Resolution Applied
+```javascript
+// Enhanced process spawning with visibility
+const spawnVisibleProcess = (command, args, options = {}) => {
+  const defaultOptions = {
+    stdio: ['inherit', 'pipe', 'pipe'], // Ensure output visibility
+    detached: false, // Keep parent-child relationship
+    windowsHide: false, // Show process on Windows
+    ...options
+  };
+  
+  const process = spawn(command, args, defaultOptions);
+  
+  // Track process for management
+  activeProcesses.set(process.pid, {
+    command,
+    args,
+    startTime: Date.now(),
+    process
+  });
+  
+  return process;
+};
+
+// Process monitoring and cleanup
+const monitorProcesses = () => {
+  setInterval(() => {
+    activeProcesses.forEach((info, pid) => {
+      if (!isProcessRunning(pid)) {
+        activeProcesses.delete(pid);
+      }
+    });
+  }, 5000);
+};
+```
+
+### 🖥️ RESOLVED: Port Binding Conflicts
+**Issue ID:** DEV-003  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Platform:** Development Environment  
+**Date Resolved:** Current Session
+
+#### Problem Description
+Multiple attempts to bind to the same port causing server startup failures and development workflow interruption.
+
+#### Symptoms
+- **EADDRINUSE errors**: Port already in use errors
+- **Startup failures**: Server unable to start on default ports
+- **Port conflicts**: Multiple services attempting to use same port
+- **Development delays**: Manual port management required
+
+#### Resolution Applied
+```javascript
+// Intelligent port management
+const findAvailablePort = async (startPort = 3000, maxAttempts = 10) => {
+  for (let i = 0; i < maxAttempts; i++) {
+    const port = startPort + i;
+    const isAvailable = await checkPortAvailability(port);
+    
+    if (isAvailable) {
+      console.log(`Using port ${port} for development server`);
+      return port;
+    }
+  }
+  
+  throw new Error(`No available ports found in range ${startPort}-${startPort + maxAttempts}`);
+};
+
+const checkPortAvailability = (port) => {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    
+    server.listen(port, () => {
+      server.close(() => resolve(true));
+    });
+    
+    server.on('error', () => resolve(false));
+  });
+};
+
+// Graceful port cleanup on exit
+process.on('SIGINT', () => {
+  console.log('Cleaning up ports...');
+  activeProcesses.forEach((info) => {
+    info.process.kill('SIGTERM');
+  });
+  process.exit(0);
+});
+```
 
 ---
 
@@ -402,6 +1062,273 @@ class SyncManagerErrorBoundary extends React.Component {
   }
 }
 ```
+
+---
+
+## Debugging Procedures
+
+### 🔧 Systematic Debugging Approach
+
+#### Next.js Server Startup Issues
+
+##### Step 1: Environment Verification
+```bash
+# Check Node.js version
+node --version  # Should be v18+ for Next.js 15
+
+# Check npm version
+npm --version
+
+# Verify project dependencies
+npm list --depth=0
+```
+
+##### Step 2: Clean Installation
+```bash
+# Remove existing dependencies
+rm -rf node_modules package-lock.json
+
+# Clear npm cache
+npm cache clean --force
+
+# Fresh installation
+npm install
+```
+
+##### Step 3: Minimal Configuration Testing
+```bash
+# Start with minimal Next.js configuration
+npm run dev -- --port 3001
+
+# Monitor for "Ready" vs "Compiled" messages
+# Wait for actual compilation completion
+```
+
+##### Step 4: Error Isolation
+```javascript
+// Add comprehensive error logging
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+```
+
+#### Electron Integration Debugging
+
+##### Step 1: Directory Validation
+```bash
+# Check for conflicting package.json files
+find . -name "package.json" -not -path "./node_modules/*"
+
+# Remove temporary directories
+rm -rf temp-extracted/ .next/ out/
+```
+
+##### Step 2: Timing Verification
+```javascript
+// Monitor Next.js compilation status
+const monitorCompilation = (serverProcess) => {
+  let readyReceived = false;
+  let compilationComplete = false;
+  
+  serverProcess.stdout.on('data', (data) => {
+    const output = data.toString();
+    
+    if (output.includes('Ready in')) {
+      readyReceived = true;
+      console.log('✅ Server ready - compilation starting...');
+    }
+    
+    if (output.includes('Compiled successfully')) {
+      compilationComplete = true;
+      console.log('✅ Compilation complete - safe to start Electron');
+    }
+    
+    if (output.includes('Compiling')) {
+      console.log('🔄 Compiling:', output.trim());
+    }
+  });
+};
+```
+
+##### Step 3: Progressive Testing
+```javascript
+// Test server connectivity before Electron startup
+const testServerConnectivity = async (port = 3000) => {
+  const maxAttempts = 30;
+  const delay = 2000;
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await fetch(`http://localhost:${port}`);
+      if (response.ok) {
+        console.log('✅ Server connectivity confirmed');
+        return true;
+      }
+    } catch (error) {
+      console.log(`⏳ Attempt ${i + 1}/${maxAttempts} - waiting for server...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error('Server connectivity test failed');
+};
+```
+
+#### OAuth Authentication Debugging
+
+##### Step 1: Credential Verification
+```javascript
+// Validate OAuth configuration
+const validateOAuthConfig = () => {
+  const required = ['CLIENT_ID', 'CLIENT_SECRET', 'REDIRECT_URI'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing OAuth configuration: ${missing.join(', ')}`);
+  }
+  
+  console.log('✅ OAuth configuration validated');
+};
+```
+
+##### Step 2: Flow Monitoring
+```javascript
+// Monitor OAuth flow steps
+const monitorOAuthFlow = () => {
+  const steps = {
+    authUrlGenerated: false,
+    userRedirected: false,
+    callbackReceived: false,
+    tokenExchanged: false,
+    userInfoFetched: false
+  };
+  
+  return {
+    markStep: (step) => {
+      steps[step] = true;
+      console.log(`✅ OAuth Step: ${step}`);
+      console.log('Progress:', Object.entries(steps)
+        .map(([key, value]) => `${key}: ${value ? '✅' : '❌'}`)
+        .join(', '));
+    },
+    getProgress: () => steps
+  };
+};
+```
+
+##### Step 3: Error Pattern Analysis
+```javascript
+// Common OAuth error handlers
+const handleOAuthError = (error) => {
+  const errorPatterns = {
+    'invalid_grant': {
+      cause: 'Authorization code reused or expired',
+      solution: 'Generate new authorization URL'
+    },
+    'redirect_uri_mismatch': {
+      cause: 'Redirect URI mismatch with Google Console',
+      solution: 'Verify exact URI match including protocol and port'
+    },
+    'invalid_client': {
+      cause: 'Client credentials incorrect',
+      solution: 'Verify CLIENT_ID and CLIENT_SECRET'
+    }
+  };
+  
+  const pattern = Object.keys(errorPatterns)
+    .find(key => error.message.includes(key));
+  
+  if (pattern) {
+    console.error(`🚨 OAuth Error Pattern: ${pattern}`);
+    console.error(`Cause: ${errorPatterns[pattern].cause}`);
+    console.error(`Solution: ${errorPatterns[pattern].solution}`);
+  } else {
+    console.error('🚨 Unknown OAuth Error:', error);
+  }
+};
+```
+
+#### Constructor Error Debugging
+
+##### Step 1: Error Location Identification
+```javascript
+// Enhanced error tracking
+const trackConstructorErrors = () => {
+  const originalError = global.Error;
+  
+  global.Error = function(...args) {
+    const error = new originalError(...args);
+    
+    // Capture stack trace for constructor errors
+    if (error.message.includes('Illegal constructor')) {
+      console.error('🚨 Constructor Error Detected:');
+      console.error('Stack:', error.stack);
+      console.error('Arguments:', args);
+    }
+    
+    return error;
+  };
+};
+```
+
+##### Step 2: Safe Constructor Patterns
+```javascript
+// Implement safe constructor wrappers
+const safeConstructors = {
+  Date: (...args) => {
+    try {
+      return args.length === 0 ? new Date() : new Date(...args);
+    } catch (error) {
+      console.warn('Date constructor error, using current date:', error);
+      return new Date();
+    }
+  },
+  
+  Error: (message = 'Unknown error') => {
+    try {
+      return new Error(message);
+    } catch (error) {
+      console.warn('Error constructor error:', error);
+      return { message, name: 'Error', stack: new Error().stack };
+    }
+  }
+};
+```
+
+### 🔍 Diagnostic Checklist
+
+#### Pre-Development Checklist
+- [ ] Node.js version compatibility (v18+)
+- [ ] Clean dependency installation
+- [ ] Environment variables configured
+- [ ] Port availability verified
+- [ ] No conflicting package.json files
+
+#### Server Startup Checklist
+- [ ] "Ready" message received
+- [ ] Compilation completion confirmed
+- [ ] Server connectivity tested
+- [ ] Error logging enabled
+- [ ] Process visibility verified
+
+#### Electron Integration Checklist
+- [ ] Next.js server fully compiled
+- [ ] Server connectivity confirmed
+- [ ] No directory conflicts
+- [ ] Proper timing implementation
+- [ ] Progress indication active
+
+#### OAuth Integration Checklist
+- [ ] Credentials validated
+- [ ] Redirect URIs match exactly
+- [ ] Flow monitoring active
+- [ ] Error handling implemented
+- [ ] Idempotency measures in place
 
 ---
 

@@ -1,28 +1,52 @@
-import { oneDriveService } from './onedrive';
+import { oneDriveService } from './onedrive-service';
+import { authenticateWithOneDrive, OneDriveAuthInfo } from './onedrive';
 import { getDeviceManager } from './device-management';
 import { getRealTimeSync } from './real-time-sync';
-import { LocalData, User } from '@/lib/types';
+import { LocalData, User, SyncConflictDetails, ConflictTrackingResult, DataItemType, UserAccountSyncData, CloudAuthInfo } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+import { userAccountSyncService } from './user-account-sync';
 
 /**
  * Enhanced OneDrive service for multi-user shared access
  * with folder-based organization and permission management
  */
 export class EnhancedOneDriveService {
-  private readonly SHARED_FOLDER_NAME = 'FinCRuM_Shared';
+  private readonly SHARED_FOLDER_NAME = 'FinsculptCRM_doNotDelete';
   private readonly USER_FOLDER_PREFIX = 'User_';
   private readonly BACKUP_FOLDER_NAME = 'Backups';
   private readonly VERSION_FOLDER_NAME = 'Versions';
+  private readonly USER_ACCOUNTS_FILE_NAME = 'user_accounts_sync.encrypted.json';
+  private readonly DEVICE_REGISTRY_FILE_NAME = 'device_registry.encrypted.json';
   
   private sharedFolderId: string | null = null;
   private userFolderIds: Map<string, string> = new Map();
   private backupFolderId: string | null = null;
   private versionFolderId: string | null = null;
+  private isAuthenticated: boolean = false;
+
+  /**
+   * Initialize OneDrive authentication
+   */
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.isAuthenticated) {
+      try {
+        const authInfo = await authenticateWithOneDrive();
+        oneDriveService.setAuthInfo(authInfo);
+        this.isAuthenticated = true;
+      } catch (error) {
+        console.warn('OneDrive authentication not available:', error);
+        throw new Error('OneDrive authentication required');
+      }
+    }
+  }
 
   /**
    * Initialize folder structure for multi-user access
    */
   async initializeFolderStructure(): Promise<{ success: boolean; error?: string }> {
     try {
+      await this.ensureAuthenticated();
+      
       // Create or find shared folder
       const sharedFolderResult = await this.ensureSharedFolder();
       if (!sharedFolderResult.success) {
@@ -51,8 +75,8 @@ export class EnhancedOneDriveService {
       // Check if shared folder already exists
       const existingFolders = await oneDriveService.searchFiles(this.SHARED_FOLDER_NAME);
 
-      if (existingFolders.success && existingFolders.files && existingFolders.files.length > 0) {
-        const sharedFolder = existingFolders.files.find(f => f.folder && f.name === this.SHARED_FOLDER_NAME);
+      if (existingFolders.success && existingFolders.folders && existingFolders.folders.length > 0) {
+        const sharedFolder = existingFolders.folders.find(f => f.name === this.SHARED_FOLDER_NAME);
         if (sharedFolder) {
           this.sharedFolderId = sharedFolder.id;
           return { success: true, folderId: this.sharedFolderId };
@@ -89,8 +113,8 @@ export class EnhancedOneDriveService {
 
       const existingFolders = await oneDriveService.searchFiles(this.BACKUP_FOLDER_NAME, this.sharedFolderId);
 
-      if (existingFolders.success && existingFolders.files && existingFolders.files.length > 0) {
-        const backupFolder = existingFolders.files.find(f => f.folder && f.name === this.BACKUP_FOLDER_NAME);
+      if (existingFolders.success && existingFolders.folders && existingFolders.folders.length > 0) {
+        const backupFolder = existingFolders.folders.find(f => f.name === this.BACKUP_FOLDER_NAME);
         if (backupFolder) {
           this.backupFolderId = backupFolder.id;
           return;
@@ -115,8 +139,8 @@ export class EnhancedOneDriveService {
 
       const existingFolders = await oneDriveService.searchFiles(this.VERSION_FOLDER_NAME, this.sharedFolderId);
 
-      if (existingFolders.success && existingFolders.files && existingFolders.files.length > 0) {
-        const versionFolder = existingFolders.files.find(f => f.folder && f.name === this.VERSION_FOLDER_NAME);
+      if (existingFolders.success && existingFolders.folders && existingFolders.folders.length > 0) {
+        const versionFolder = existingFolders.folders.find(f => f.name === this.VERSION_FOLDER_NAME);
         if (versionFolder) {
           this.versionFolderId = versionFolder.id;
           return;
@@ -154,8 +178,8 @@ export class EnhancedOneDriveService {
       // Search for existing user folder
       const existingFolders = await oneDriveService.searchFiles(folderName, this.sharedFolderId);
 
-      if (existingFolders.success && existingFolders.files && existingFolders.files.length > 0) {
-        const userFolder = existingFolders.files.find(f => f.folder && f.name === folderName);
+      if (existingFolders.success && existingFolders.folders && existingFolders.folders.length > 0) {
+        const userFolder = existingFolders.folders.find(f => f.name === folderName);
         if (userFolder) {
           this.userFolderIds.set(userId, userFolder.id);
           return { success: true, folderId: userFolder.id };
@@ -200,7 +224,7 @@ export class EnhancedOneDriveService {
   /**
    * Upload data to user-specific folder
    */
-  async uploadUserData(userId: string, userName: string, data: LocalData): Promise<{ success: boolean; error?: string }> {
+  async uploadUserData(userId: string, userName: string, data: LocalData, tokens?: any): Promise<{ success: boolean; error?: string }> {
     try {
       const userFolderResult = await this.ensureUserFolder(userId, userName);
       if (!userFolderResult.success || !userFolderResult.folderId) {
@@ -234,7 +258,7 @@ export class EnhancedOneDriveService {
   /**
    * Download data from user-specific folder
    */
-  async downloadUserData(userId: string, userName: string): Promise<{ success: boolean; data?: LocalData; error?: string }> {
+  async downloadUserData(userId: string, userName: string, tokens?: any): Promise<{ success: boolean; data?: LocalData; error?: string }> {
     try {
       const userFolderResult = await this.ensureUserFolder(userId, userName);
       if (!userFolderResult.success || !userFolderResult.folderId) {
@@ -250,16 +274,16 @@ export class EnhancedOneDriveService {
 
       // Filter for JSON files and sort by creation time
       const dataFiles = filesResult.files.filter(f => 
-        !f.folder && f.name && f.name.includes('fincrm_data_') && f.name.endsWith('.json')
+        f.name && f.name.includes('fincrm_data_') && f.name.endsWith('.json')
       );
 
       if (dataFiles.length === 0) {
         return { success: false, error: 'No data files found' };
       }
 
-      // Sort by creation time and get the most recent
+      // Sort by modification time and get the most recent
       const sortedFiles = dataFiles.sort((a, b) => 
-        new Date(b.createdDateTime || '').getTime() - new Date(a.createdDateTime || '').getTime()
+        new Date(b.lastModifiedDateTime || '').getTime() - new Date(a.lastModifiedDateTime || '').getTime()
       );
 
       const downloadResult = await oneDriveService.downloadFile(sortedFiles[0].id);
@@ -322,16 +346,16 @@ export class EnhancedOneDriveService {
 
       // Filter for user's version files
       const userVersionFiles = filesResult.files.filter(f => 
-        !f.folder && f.name && f.name.startsWith(userPrefix)
+        f.name && f.name.startsWith(userPrefix)
       );
 
       if (userVersionFiles.length <= 10) {
         return;
       }
 
-      // Sort by creation time and delete oldest files
+      // Sort by modification time and delete oldest files
       const sortedFiles = userVersionFiles.sort((a, b) => 
-        new Date(a.createdDateTime || '').getTime() - new Date(b.createdDateTime || '').getTime()
+        new Date(a.lastModifiedDateTime || '').getTime() - new Date(b.lastModifiedDateTime || '').getTime()
       );
 
       const filesToDelete = sortedFiles.slice(0, sortedFiles.length - 10);
@@ -348,7 +372,7 @@ export class EnhancedOneDriveService {
   /**
    * Create full backup
    */
-  async createFullBackup(allUsersData: Map<string, { user: User; data: LocalData }>): Promise<{ success: boolean; error?: string }> {
+  async createFullBackup(allUsersData: Map<string, { user: User; data: LocalData }>, tokens?: any): Promise<{ success: boolean; error?: string }> {
     try {
       if (!this.backupFolderId) {
         await this.ensureBackupFolder();
@@ -408,16 +432,16 @@ export class EnhancedOneDriveService {
 
       // Filter for backup files
       const backupFiles = filesResult.files.filter(f => 
-        !f.folder && f.name && f.name.startsWith('full_backup_')
+        f.name && f.name.startsWith('full_backup_')
       );
 
       if (backupFiles.length <= 5) {
         return;
       }
 
-      // Sort by creation time and delete oldest files
+      // Sort by modification time and delete oldest files
       const sortedFiles = backupFiles.sort((a, b) => 
-        new Date(a.createdDateTime || '').getTime() - new Date(b.createdDateTime || '').getTime()
+        new Date(a.lastModifiedDateTime || '').getTime() - new Date(b.lastModifiedDateTime || '').getTime()
       );
 
       const filesToDelete = sortedFiles.slice(0, sortedFiles.length - 5);
@@ -462,7 +486,7 @@ export class EnhancedOneDriveService {
   /**
    * List all user folders
    */
-  async listUserFolders(): Promise<{ success: boolean; folders?: Array<{ id: string; name: string; userId: string }>; error?: string }> {
+  async listUserFolders(tokens?: any): Promise<{ success: boolean; folders?: Array<{ id: string; name: string; userId: string }>; error?: string }> {
     try {
       if (!this.sharedFolderId) {
         const initResult = await this.initializeFolderStructure();
@@ -473,22 +497,22 @@ export class EnhancedOneDriveService {
 
       const foldersResult = await oneDriveService.searchFiles(this.USER_FOLDER_PREFIX, this.sharedFolderId);
 
-      if (!foldersResult.success || !foldersResult.files) {
+      if (!foldersResult.success || !foldersResult.folders) {
         return { success: false, error: 'Failed to list user folders' };
       }
 
       // Filter for user folders
-      const userFolders = foldersResult.files.filter(f => 
-        f.folder && f.name && f.name.startsWith(this.USER_FOLDER_PREFIX)
+      const userFolders = foldersResult.folders.filter(f => 
+        f.name && f.name.startsWith(this.USER_FOLDER_PREFIX)
       );
 
-      const folders = userFolders.map(file => {
-        const name = file.name || '';
+      const folders = userFolders.map(folder => {
+        const name = folder.name || '';
         const userIdMatch = name.match(/_([a-f0-9]{8})$/);
         const userId = userIdMatch ? userIdMatch[1] : '';
         
         return {
-          id: file.id,
+          id: folder.id,
           name,
           userId
         };
@@ -510,15 +534,16 @@ export class EnhancedOneDriveService {
   async syncUserDataWithConflictResolution(
     userId: string, 
     userName: string, 
-    localData: LocalData
-  ): Promise<{ success: boolean; data?: LocalData; conflicts?: any[]; error?: string }> {
+    localData: LocalData,
+    tokens?: any
+  ): Promise<{ success: boolean; data?: LocalData; conflicts?: SyncConflictDetails[]; error?: string }> {
     try {
       // Download current cloud data
-      const downloadResult = await this.downloadUserData(userId, userName);
+      const downloadResult = await this.downloadUserData(userId, userName, tokens);
       
       if (!downloadResult.success) {
         // No cloud data exists, upload local data
-        const uploadResult = await this.uploadUserData(userId, userName, localData);
+        const uploadResult = await this.uploadUserData(userId, userName, localData, tokens);
         return {
           success: uploadResult.success,
           data: localData,
@@ -528,26 +553,63 @@ export class EnhancedOneDriveService {
       }
 
       const cloudData = downloadResult.data!;
+      const conflictTracker: SyncConflictDetails[] = [];
       
-      // Simple conflict resolution: merge arrays and use latest timestamps
+      // Merge arrays with detailed conflict tracking
       const mergedData: LocalData = {
-        contacts: this.mergeArrays(localData.contacts || [], cloudData.contacts || [], 'id'),
-        tasks: this.mergeArrays(localData.tasks || [], cloudData.tasks || [], 'id'),
-        reminders: this.mergeArrays(localData.reminders || [], cloudData.reminders || [], 'id'),
-        appointments: this.mergeArrays(localData.appointments || [], cloudData.appointments || [], 'id'),
-        lastModified: Math.max(
-          new Date(localData.lastModified || 0).getTime(),
-          new Date(cloudData.lastModified || 0).getTime()
+        contacts: this.mergeArraysWithConflictTracking(
+          localData.contacts || [], 
+          cloudData.contacts || [], 
+          'id', 
+          DataItemType.Contacts, 
+          userId, 
+          conflictTracker
+        ),
+        tasks: this.mergeArraysWithConflictTracking(
+          localData.tasks || [], 
+          cloudData.tasks || [], 
+          'id', 
+          DataItemType.Tasks, 
+          userId, 
+          conflictTracker
+        ),
+        reminders: this.mergeArraysWithConflictTracking(
+          localData.reminders || [], 
+          cloudData.reminders || [], 
+          'id', 
+          DataItemType.Reminders, 
+          userId, 
+          conflictTracker
+        ),
+        appointments: this.mergeArraysWithConflictTracking(
+          localData.appointments || [], 
+          cloudData.appointments || [], 
+          'id', 
+          DataItemType.Appointments, 
+          userId, 
+          conflictTracker
+        ),
+        users: this.mergeArraysWithConflictTracking(
+          localData.users || [], 
+          cloudData.users || [], 
+          'id', 
+          DataItemType.Users, 
+          userId, 
+          conflictTracker
+        ),
+        lastSyncTime: Math.max(
+          new Date(localData.lastSyncTime || 0).getTime(),
+          new Date(cloudData.lastSyncTime || 0).getTime()
         ).toString()
       };
 
       // Upload merged data
-      const uploadResult = await this.uploadUserData(userId, userName, mergedData);
+      const uploadResult = await this.uploadUserData(userId, userName, mergedData, tokens);
       
       return {
         success: uploadResult.success,
         data: mergedData,
-        conflicts: [], // TODO: Implement detailed conflict tracking
+        conflicts: conflictTracker,
         error: uploadResult.error
       };
     } catch (error) {
@@ -560,35 +622,280 @@ export class EnhancedOneDriveService {
   }
 
   /**
-   * Merge arrays with conflict resolution
+   * Merge arrays with detailed conflict tracking
    */
-  private mergeArrays<T extends { id: string; lastModified?: string }>(local: T[], cloud: T[], idField: keyof T): T[] {
+  private mergeArraysWithConflictTracking<T extends { id: string; lastModified?: string }>(
+    local: T[], 
+    cloud: T[], 
+    idField: keyof T, 
+    dataType: DataItemType, 
+    userId: string, 
+    conflictTracker: SyncConflictDetails[]
+  ): T[] {
     const merged = new Map<string, T>();
+    const deviceManager = getDeviceManager();
+    const deviceId = deviceManager.getCurrentDeviceId();
     
     // Add cloud items first
     cloud.forEach(item => {
       merged.set(item[idField] as string, item);
     });
     
-    // Add or update with local items (local takes precedence if newer)
+    // Add or update with local items and track conflicts
     local.forEach(localItem => {
       const id = localItem[idField] as string;
       const cloudItem = merged.get(id);
       
       if (!cloudItem) {
+        // No conflict - local item doesn't exist in cloud
         merged.set(id, localItem);
       } else {
-        // Compare timestamps if available
+        // Potential conflict - compare timestamps and content
         const localTime = localItem.lastModified && localItem.lastModified.trim() !== '' ? new Date(localItem.lastModified).getTime() : 0;
         const cloudTime = cloudItem.lastModified && cloudItem.lastModified.trim() !== '' ? new Date(cloudItem.lastModified).getTime() : 0;
         
-        if (localTime >= cloudTime) {
+        // Check for content differences
+        const hasContentDifference = JSON.stringify(localItem) !== JSON.stringify(cloudItem);
+        
+        if (hasContentDifference) {
+          let conflictType: SyncConflictDetails['conflictType'];
+          let resolutionMethod: SyncConflictDetails['resolutionMethod'];
+          let resolutionReason: string;
+          let resolvedItem: T;
+          
+          if (localTime > cloudTime) {
+            conflictType = 'timestamp_mismatch';
+            resolutionMethod = 'local_wins';
+            resolutionReason = `Local version is newer (${new Date(localTime).toISOString()} > ${new Date(cloudTime).toISOString()})`;
+            resolvedItem = localItem;
+          } else if (cloudTime > localTime) {
+            conflictType = 'timestamp_mismatch';
+            resolutionMethod = 'cloud_wins';
+            resolutionReason = `Cloud version is newer (${new Date(cloudTime).toISOString()} > ${new Date(localTime).toISOString()})`;
+            resolvedItem = cloudItem;
+          } else {
+            conflictType = 'content_difference';
+            resolutionMethod = 'auto_merge';
+            resolutionReason = 'Same timestamp but different content - using local version as default';
+            resolvedItem = localItem;
+          }
+          
+          // Track the conflict
+          const conflict: SyncConflictDetails = {
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            dataType,
+            itemId: id,
+            conflictType,
+            localData: localItem,
+            cloudData: cloudItem,
+            resolvedData: resolvedItem,
+            resolutionMethod,
+            resolutionReason,
+            userId,
+            deviceId
+          };
+          
+          conflictTracker.push(conflict);
+          merged.set(id, resolvedItem);
+        } else {
+          // No actual conflict - items are identical
           merged.set(id, localItem);
         }
       }
     });
     
     return Array.from(merged.values());
+  }
+
+  /**
+   * Legacy merge arrays method for backward compatibility
+   */
+  private mergeArrays<T extends { id: string; lastModified?: string }>(local: T[], cloud: T[], idField: keyof T): T[] {
+    const conflictTracker: SyncConflictDetails[] = [];
+    return this.mergeArraysWithConflictTracking(local, cloud, idField, DataItemType.Contacts, '', conflictTracker);
+  }
+
+  // ==================== USER ACCOUNT SYNCHRONIZATION ====================
+
+  /**
+   * Upload encrypted user account sync data to OneDrive
+   */
+  async uploadUserAccountSyncData(data: UserAccountSyncData): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!this.sharedFolderId) {
+        const initResult = await this.initializeFolderStructure();
+        if (!initResult.success) {
+          return { success: false, error: initResult.error };
+        }
+      }
+
+      const fileName = this.USER_ACCOUNTS_FILE_NAME;
+      const content = JSON.stringify(data, null, 2);
+
+      // Check if file already exists
+      const existingFiles = await oneDriveService.listFiles(this.sharedFolderId!);
+      const existingFile = existingFiles.find(file => file.name === fileName);
+
+      if (existingFile) {
+        // Update existing file
+        const updateResult = await oneDriveService.updateFile(existingFile.id, content);
+        return { success: updateResult.success, error: updateResult.error };
+      } else {
+        // Create new file
+        const uploadResult = await oneDriveService.uploadFile(
+          this.sharedFolderId!,
+          fileName,
+          content
+        );
+        return { success: uploadResult.success, error: uploadResult.error };
+      }
+    } catch (error) {
+      console.error('Error uploading user account sync data:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Download encrypted user account sync data from OneDrive
+   */
+  async downloadUserAccountSyncData(): Promise<{ success: boolean; data?: UserAccountSyncData; error?: string }> {
+    try {
+      if (!this.sharedFolderId) {
+        const initResult = await this.initializeFolderStructure();
+        if (!initResult.success) {
+          return { success: false, error: initResult.error };
+        }
+      }
+
+      const fileName = this.USER_ACCOUNTS_FILE_NAME;
+      const files = await oneDriveService.listFiles(this.sharedFolderId!);
+      const targetFile = files.find(file => file.name === fileName);
+
+      if (!targetFile) {
+        return {
+          success: false,
+          error: 'User account sync data not found'
+        };
+      }
+
+      const downloadResult = await oneDriveService.downloadFile(targetFile.id);
+      if (!downloadResult.success) {
+        return {
+          success: false,
+          error: downloadResult.error
+        };
+      }
+
+      const data = JSON.parse(downloadResult.content!) as UserAccountSyncData;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error downloading user account sync data:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Synchronize user accounts across devices using OneDrive
+   */
+  async syncUserAccountsAcrossDevices(cloudAuthInfo: CloudAuthInfo): Promise<{ success: boolean; conflicts?: any[]; error?: string }> {
+    try {
+      // Override the cloud sync methods in UserAccountSyncService to use OneDrive
+      const originalGetCloudSyncData = (userAccountSyncService as any).getCloudSyncData.bind(userAccountSyncService);
+      const originalSaveCloudSyncData = (userAccountSyncService as any).saveCloudSyncData.bind(userAccountSyncService);
+
+      (userAccountSyncService as any).getCloudSyncData = async (auth: CloudAuthInfo) => {
+        const result = await this.downloadUserAccountSyncData();
+        return result.success ? result.data : null;
+      };
+      (userAccountSyncService as any).saveCloudSyncData = async (auth: CloudAuthInfo, syncData: any) => {
+        await this.uploadUserAccountSyncData(syncData);
+      };
+
+      try {
+        const result = await userAccountSyncService.syncUserAccounts(cloudAuthInfo);
+        return { success: true, conflicts: result };
+      } finally {
+        // Restore original methods
+        (userAccountSyncService as any).getCloudSyncData = originalGetCloudSyncData;
+        (userAccountSyncService as any).saveCloudSyncData = originalSaveCloudSyncData;
+      }
+    } catch (error) {
+      console.error('Error syncing user accounts across devices:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Enable user account synchronization
+   */
+  async enableUserAccountSync(cloudAuthInfo: CloudAuthInfo): Promise<{ success: boolean; error?: string }> {
+    try {
+      await userAccountSyncService.enableSync(cloudAuthInfo);
+      return { success: true };
+    } catch (error) {
+      console.error('Error enabling user account sync:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Disable user account synchronization
+   */
+  async disableUserAccountSync(): Promise<{ success: boolean; error?: string }> {
+    try {
+      await userAccountSyncService.disableSync();
+      return { success: true };
+    } catch (error) {
+      console.error('Error disabling user account sync:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Get user account synchronization status
+   */
+  async getUserAccountSyncStatus(): Promise<{ enabled: boolean; lastSync?: string; deviceCount?: number }> {
+    return userAccountSyncService.getSyncStatus();
+  }
+
+  /**
+   * Get pending user account conflicts
+   */
+  async getPendingUserAccountConflicts(): Promise<any[]> {
+    return userAccountSyncService.getPendingConflicts();
+  }
+
+  /**
+   * Resolve a user account conflict
+   */
+  async resolveUserAccountConflict(conflictId: string, resolution: 'local' | 'cloud' | 'merge'): Promise<{ success: boolean; error?: string }> {
+    try {
+      const mappedResolution = resolution === 'local' ? 'use_local' : resolution === 'cloud' ? 'use_cloud' : 'merge_custom';
+      await userAccountSyncService.resolveConflict(conflictId, mappedResolution);
+      return { success: true };
+    } catch (error) {
+      console.error('Error resolving user account conflict:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 }
 

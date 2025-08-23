@@ -235,8 +235,114 @@ Incorrect API endpoint paths causing 404 errors and failed fetch requests.
 
 ## 🟡 Medium Priority Issues (Severity: 🟡)
 
-### 5. Console Errors and Missing Methods
+### 5. Google Drive Sync Detection Issue
 **Issue ID:** MED-001  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Date Reported:** December 2024  
+**Date Resolved:** December 2024
+
+#### Problem Description
+Google Drive sync wasn't working properly - the "Link Google Services" button kept showing up despite linking multiple times.
+
+#### Root Cause Analysis
+**Primary Cause**: Missing `isGoogleDriveConnected` property in the `useDataSync` hook return statement.
+
+**Technical Details**:
+1. **Dashboard Component Expectation**: The `Dashboard.tsx` component was expecting an `isGoogleDriveConnected` property from the `useDataSync` hook
+2. **Missing Property**: The `useDataSync` hook was only returning `isGoogleConnected` but not `isGoogleDriveConnected`
+3. **UI Behavior**: When `isGoogleDriveConnected` was `undefined`, the Dashboard treated it as "not connected"
+
+#### Resolution Applied
+- ✅ Added `isGoogleDriveConnected: boolean;` to the TypeScript interface
+- ✅ Added `isGoogleDriveConnected: googleSync.isConnected` to the return statement
+- ✅ Ensured consistent naming convention between Google Drive and OneDrive properties
+
+#### Files Modified
+- `src/hooks/use-data-sync.tsx` - Added missing property to interface and return statement
+
+#### Verification
+- ✅ `isGoogleDriveConnected` now properly reflects the Google connection status
+- ✅ Dashboard component can correctly determine if Google services are linked
+- ✅ "Link Google Services" button disappears when services are properly connected
+- ✅ Improved user experience for Google integration
+
+---
+
+### 6. Google OAuth Electron Integration Issues
+**Issue ID:** MED-002  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Date Reported:** December 2024  
+**Date Resolved:** December 2024
+
+#### Problem Description
+The Google OAuth authentication flow in the Electron app continued to open in the default browser instead of being handled within the Electron app, despite implementing custom protocol redirect URIs.
+
+#### Root Cause Analysis
+**Primary Cause**: Google OAuth policy limitations with custom URI schemes.
+
+**Technical Details**:
+1. **Google Policy**: Custom URI schemes are no longer supported on new Chrome apps and are disabled by default due to app impersonation risks
+2. **Desktop Applications**: Google documentation suggests using `http://localhost:PORT` as the redirect URL instead of custom schemes
+3. **Configuration Issue**: The custom protocol `fincrum://auth/callback/google` was not supported by Google
+
+#### Resolution Applied
+- ✅ Reverted to using localhost redirect URI for Electron: `http://localhost:9002/auth/callback/google`
+- ✅ Updated Google Cloud Console with correct redirect URIs
+- ✅ Implemented enhanced OAuth callback handling
+- ✅ Added better error handling and logging for OAuth flow issues
+
+#### Files Modified
+- `src/services/google-oauth.ts` - Updated redirect URI configuration
+- `electron.js` - Enhanced OAuth callback handling
+- `.env.local` - Environment variable corrections
+
+#### Verification
+- ✅ OAuth flow works correctly in Electron environment
+- ✅ No more default browser redirects
+- ✅ Proper callback handling within Electron app
+- ✅ Complies with Google OAuth policies
+
+---
+
+### 7. Google Sign-In Authentication Token Errors
+**Issue ID:** MED-003  
+**Severity:** 🟡 MEDIUM  
+**Status:** ✅ RESOLVED  
+**Date Reported:** January 18, 2025  
+**Date Resolved:** January 18, 2025
+
+#### Problem Description
+The application was experiencing repeated Google authentication errors with the message: "Error: Either access or refresh token is required for fetching Google Drive metadata."
+
+#### Root Cause Analysis
+**Primary Causes**:
+1. **Incorrect Function Call Arguments**: The `fetchGoogleDriveFileMetadataAction` function was being called with a string `'test'` instead of a `GoogleTokens` object
+2. **Inconsistent Token Validation Logic**: Local token validation was stricter than centralized validation
+3. **useEffect Dependency Loop**: The `checkConnection` function was causing infinite re-renders
+
+#### Resolution Applied
+- ✅ Fixed function call arguments: `fetchGoogleDriveFileMetadataAction(tokens)` instead of `fetchGoogleDriveFileMetadataAction('test')`
+- ✅ Standardized token retrieval using centralized `getGoogleTokens()` function
+- ✅ Relaxed token validation to only require `access_token`
+- ✅ Fixed useEffect dependency to prevent infinite loops
+- ✅ Enhanced error handling with better validation and logging
+
+#### Files Modified
+- `src/hooks/useGoogleSync.tsx` - Main fixes for token handling and validation
+
+#### Verification
+- ✅ No more authentication error logs
+- ✅ Proper token validation and handling
+- ✅ Single connection check per component mount
+- ✅ Better error messages for debugging
+- ✅ Improved performance with reduced API calls
+
+---
+
+### 8. Console Errors and Missing Methods
+**Issue ID:** MED-004  
 **Severity:** 🟡 MEDIUM  
 **Status:** ✅ RESOLVED  
 **Date Reported:** December 2024  
@@ -291,17 +397,18 @@ Incorrect API endpoint paths causing 404 errors and failed fetch requests.
 ### By Severity
 - 🔴 **Critical**: 2 issues - 100% resolved
 - 🟠 **High**: 2 issues - 100% resolved
-- 🟡 **Medium**: 1 issue - 100% resolved
+- 🟡 **Medium**: 4 issues - 100% resolved
 - 🟢 **Low**: 0 issues
 
 ### By Category
 - **Server/Infrastructure**: 2 issues - 100% resolved
-- **Authentication/OAuth**: 1 issue - 100% resolved
+- **Authentication/OAuth**: 4 issues - 100% resolved
 - **API/Endpoints**: 1 issue - 100% resolved
 - **Code Quality/Console**: 1 issue - 100% resolved
+- **UI/UX Integration**: 1 issue - 100% resolved
 
 ### Timeline
-- **Total Issues**: 7 major issues
+- **Total Issues**: 10 major issues
 - **Resolution Rate**: 100%
 - **Average Resolution Time**: 1-30 days
 - **Critical Issue Resolution**: Same day

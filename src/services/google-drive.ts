@@ -1,8 +1,6 @@
 
-'use server';
-
 import type { ExcelData, FileMetadata, GoogleTokens } from '@/lib/types';
-import { google } from 'googleapis'; // For types if needed, direct fetch for API calls
+// Removed direct import of googleapis to avoid client-side bundling issues
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -262,4 +260,194 @@ export async function fetchFileMetadata(
     throw error;
   }
 }
+
+// Service object for enhanced-google-drive compatibility
+export const googleDriveService = {
+  async searchFiles(query: string, tokens?: GoogleTokens): Promise<{ success: boolean; files?: Array<{ id: string; name: string; createdTime?: string }> }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false, files: [] };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false, files: [] };
+      
+      const url = `${BASE_GDRIVE_URL}/files?q=${encodeURIComponent(query)}&fields=files(id,name,createdTime)`;
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${currentAccessToken}` },
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "search files", url);
+      }
+      
+      const result = await response.json();
+      return { success: true, files: result.files || [] };
+    } catch (error) {
+      console.error('Error searching files:', error);
+      return { success: false, files: [] };
+    }
+  },
+  
+  async createFolder(name: string, parentId?: string, tokens?: GoogleTokens): Promise<{ success: boolean; folderId?: string }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false };
+      
+      const metadata = {
+        name,
+        mimeType: 'application/vnd.google-apps.folder',
+        ...(parentId && { parents: [parentId] })
+      };
+      
+      const response = await fetch(`${BASE_GDRIVE_URL}/files`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(metadata)
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "create folder", `${BASE_GDRIVE_URL}/files`);
+      }
+      
+      const result = await response.json();
+      return { success: true, folderId: result.id };
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      return { success: false };
+    }
+  },
+  
+  async uploadFile(fileName: string, content: string, mimeType: string, parentId?: string, tokens?: GoogleTokens): Promise<{ success: boolean; fileId?: string; error?: string }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false, error: 'No authentication tokens provided' };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false, error: 'Failed to obtain access token' };
+      
+      const metadata = {
+        name: fileName,
+        mimeType,
+        ...(parentId && { parents: [parentId] })
+      };
+      
+      const formData = new FormData();
+      formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      formData.append('file', new Blob([content], { type: mimeType }), fileName);
+      
+      const response = await fetch(`${BASE_UPLOAD_URL}/files?uploadType=multipart`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentAccessToken}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "upload file", `${BASE_UPLOAD_URL}/files`);
+      }
+      
+      const result = await response.json();
+      return { success: true, fileId: result.id };
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+  
+  async downloadFile(fileId: string, tokens?: GoogleTokens): Promise<{ success: boolean; content?: string; error?: string }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false, error: 'No authentication tokens provided' };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false, error: 'Failed to obtain access token' };
+      
+      const url = `${BASE_GDRIVE_URL}/files/${fileId}?alt=media`;
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${currentAccessToken}` },
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "download file", url);
+      }
+      
+      const content = await response.text();
+      return { success: true, content };
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+  
+  async deleteFile(fileId: string, tokens?: GoogleTokens): Promise<{ success: boolean; error?: string }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false, error: 'No authentication tokens provided' };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false, error: 'Failed to obtain access token' };
+      
+      const response = await fetch(`${BASE_GDRIVE_URL}/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentAccessToken}` },
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "delete file", `${BASE_GDRIVE_URL}/files/${fileId}`);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+  
+  async updateFile(fileId: string, content: string, fileName: string, tokens?: GoogleTokens): Promise<{ success: boolean; error?: string }> {
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      return { success: false, error: 'No authentication tokens provided' };
+    }
+    
+    try {
+      const client = await getAuthenticatedClient(tokens);
+      const currentAccessToken = client.credentials.access_token;
+      if (!currentAccessToken) return { success: false, error: 'Failed to obtain access token' };
+      
+      const response = await fetch(`${BASE_UPLOAD_URL}/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${currentAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: content
+      });
+      
+      if (!response.ok) {
+        await handleGoogleDriveError(response, "update file", `${BASE_UPLOAD_URL}/files/${fileId}`);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating file:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+};
 

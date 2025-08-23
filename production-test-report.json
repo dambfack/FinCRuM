@@ -1,0 +1,186 @@
+{
+  "summary": {
+    "total": 25,
+    "passed": 19,
+    "failed": 0,
+    "warnings": 6,
+    "success_rate": "76.00"
+  },
+  "tests": [
+    {
+      "name": "Node.js Version",
+      "status": "pass",
+      "message": "Node.js v22.13.1 is supported",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.175Z"
+    },
+    {
+      "name": "Environment Variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+      "status": "warn",
+      "message": "Environment variable is missing",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.175Z"
+    },
+    {
+      "name": "Environment Variable: GOOGLE_CLIENT_SECRET",
+      "status": "warn",
+      "message": "Environment variable is missing",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.175Z"
+    },
+    {
+      "name": "Environment Variable: NEXT_PUBLIC_GOOGLE_REDIRECT_URI",
+      "status": "warn",
+      "message": "Environment variable is missing",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.175Z"
+    },
+    {
+      "name": "Disk Access",
+      "status": "pass",
+      "message": "Disk access is working",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.176Z"
+    },
+    {
+      "name": "Next.js Build",
+      "status": "pass",
+      "message": ".next directory exists",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.412Z"
+    },
+    {
+      "name": "Standalone Build",
+      "status": "pass",
+      "message": "Standalone server.js exists",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.413Z"
+    },
+    {
+      "name": "Static Assets",
+      "status": "pass",
+      "message": "Static directory exists",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.413Z"
+    },
+    {
+      "name": "Electron Main",
+      "status": "pass",
+      "message": "electron.js exists",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.413Z"
+    },
+    {
+      "name": "Electron Preload",
+      "status": "pass",
+      "message": "preload.js exists",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:46.414Z"
+    },
+    {
+      "name": "Server Startup",
+      "status": "pass",
+      "message": "Server started successfully on port 9002",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.492Z"
+    },
+    {
+      "name": "Endpoint: /",
+      "status": "pass",
+      "message": "Responded with 200 in 3ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.496Z"
+    },
+    {
+      "name": "Endpoint: /api/health",
+      "status": "pass",
+      "message": "Responded with 200 in 22ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.519Z"
+    },
+    {
+      "name": "Endpoint: /api/auth/google",
+      "status": "pass",
+      "message": "Responded with 200 in 42ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.561Z"
+    },
+    {
+      "name": "Endpoint: /customers",
+      "status": "pass",
+      "message": "Responded with 200 in 7ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.568Z"
+    },
+    {
+      "name": "Endpoint: /add-customer",
+      "status": "pass",
+      "message": "Responded with 200 in 6ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.574Z"
+    },
+    {
+      "name": "Electron Installation",
+      "status": "pass",
+      "message": "Electron is installed",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.667Z"
+    },
+    {
+      "name": "Electron API: BrowserWindow",
+      "status": "pass",
+      "message": "BrowserWindow is used in electron.js",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.667Z"
+    },
+    {
+      "name": "Electron API: app",
+      "status": "pass",
+      "message": "app is used in electron.js",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.667Z"
+    },
+    {
+      "name": "Electron API: ipcMain",
+      "status": "pass",
+      "message": "ipcMain is used in electron.js",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.667Z"
+    },
+    {
+      "name": "Response Time",
+      "status": "pass",
+      "message": "Fast response: 4ms",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.672Z"
+    },
+    {
+      "name": "Memory Usage",
+      "status": "pass",
+      "message": "Low memory usage: 6MB",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.672Z"
+    },
+    {
+      "name": "Security: .env.local",
+      "status": "warn",
+      "message": "Sensitive file .env.local exists - ensure it's not in production build",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.674Z"
+    },
+    {
+      "name": "Security: .env.production",
+      "status": "warn",
+      "message": "Sensitive file .env.production exists - ensure it's not in production build",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.674Z"
+    },
+    {
+      "name": "Security Headers",
+      "status": "warn",
+      "message": "X-Powered-By header is exposed",
+      "details": null,
+      "timestamp": "2025-07-12T04:34:48.676Z"
+    }
+  ]
+}

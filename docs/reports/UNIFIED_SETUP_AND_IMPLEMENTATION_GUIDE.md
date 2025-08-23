@@ -118,6 +118,8 @@ NEXT_PUBLIC_APP_VERSION=1.0.0
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 NEXT_PUBLIC_GOOGLE_REDIRECT_URI=http://localhost:9002/auth/callback/google
+# Electron OAuth redirect URI (custom protocol to prevent browser redirect)
+NEXT_PUBLIC_GOOGLE_REDIRECT_URI_ELECTRON=fincrum://auth/callback/google
 
 # Microsoft Services
 NEXT_PUBLIC_MICROSOFT_CLIENT_ID=your_microsoft_client_id

@@ -1,13 +1,28 @@
-import { Auth } from 'googleapis';
+// Removed direct import of googleapis to avoid client-side bundling issues
 import type { GoogleTokens } from '@/lib/types';
 
-type OAuth2Client = Auth.OAuth2Client;
-type Credentials = Auth.Credentials;
+// Use dynamic imports for OAuth2Client and Credentials types
+type OAuth2Client = any; // Will be properly typed when dynamically imported
+type Credentials = any; // Will be properly typed when dynamically imported
 
 // Environment variables
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
+// For Electron, we use a custom protocol. Ensure this matches the one in electron.js
+const REDIRECT_URI_ELECTRON = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI_ELECTRON || 'fincrum://auth/callback/google';
+
+
+/**
+ * Gets the appropriate redirect URI based on environment
+ */
+function getRedirectUri(isElectron?: boolean): string {
+  // Use Electron redirect URI if explicitly specified
+  if (isElectron) {
+    return REDIRECT_URI_ELECTRON || REDIRECT_URI;
+  }
+  return REDIRECT_URI;
+}
 
 /**
  * Checks if Google OAuth is properly configured
@@ -29,7 +44,7 @@ function throwConfigurationError(): never {
 /**
  * Gets a new OAuth2 client instance
  */
-export async function getOAuth2Client(): Promise<OAuth2Client> {
+export async function getOAuth2Client(isElectron?: boolean): Promise<OAuth2Client> {
   if (!isGoogleOAuthConfigured()) {
     throwConfigurationError();
   }
@@ -38,7 +53,7 @@ export async function getOAuth2Client(): Promise<OAuth2Client> {
   return new Client({
     clientId: CLIENT_ID,
     clientSecret: CLIENT_SECRET,
-    redirectUri: REDIRECT_URI
+    redirectUri: getRedirectUri(isElectron)
   });
 }
 
@@ -50,12 +65,12 @@ export async function generateGoogleAuthUrl(scopes: string[] = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/drive.file'
-]): Promise<string> {
+], isElectron?: boolean): Promise<string> {
   if (!isGoogleOAuthConfigured()) {
     throwConfigurationError();
   }
   
-  const client = await getOAuth2Client();
+  const client = await getOAuth2Client(isElectron);
   
   // Generate a unique state parameter to prevent CSRF attacks and ensure fresh requests
   const state = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
@@ -75,12 +90,12 @@ export async function generateGoogleAuthUrl(scopes: string[] = [
 /**
  * Exchanges authorization code for tokens
  */
-export async function exchangeCodeForTokens(code: string): Promise<Credentials> {
+export async function exchangeCodeForTokens(code: string, isElectron?: boolean): Promise<Credentials> {
   if (!isGoogleOAuthConfigured()) {
     throwConfigurationError();
   }
   
-  const client = await getOAuth2Client();
+  const client = await getOAuth2Client(isElectron);
   
   console.log('Debug - Authorization code length:', code.length);
   console.log('Debug - Authorization code preview:', code.substring(0, 20) + '...');

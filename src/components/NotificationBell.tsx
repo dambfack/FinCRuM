@@ -178,7 +178,7 @@ const NotificationBell: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-foreground/70 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md"
+          className="relative text-foreground/70 hover:text-accent hover:bg-accent/10 dark:hover:text-accent dark:hover:bg-accent/10 rounded-md"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (

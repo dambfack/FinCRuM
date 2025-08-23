@@ -7,9 +7,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const scopesParam = searchParams.get('scopes');
+    const isElectron = searchParams.get('electron') === 'true';
     const scopes = scopesParam ? scopesParam.split(',') : undefined;
     
-    const authUrl = await generateGoogleAuthUrl(scopes);
+    const authUrl = await generateGoogleAuthUrl(scopes, isElectron);
     return NextResponse.json({ success: true, authUrl });
   } catch (error) {
     console.error('Error generating Google auth URL:', error);
@@ -23,13 +24,19 @@ export async function GET(request: NextRequest) {
 // Exchange code for tokens
 export async function POST(request: NextRequest) {
   try {
-    const { code, action } = await request.json();
+    const { code, action, isElectron, accessToken } = await request.json();
     
     if (action === 'exchange') {
-      const tokens = await exchangeCodeForTokens(code);
+      const tokens = await exchangeCodeForTokens(code, isElectron);
       return NextResponse.json({ success: true, tokens });
     } else if (action === 'revoke') {
-      await revokeGoogleTokens();
+      if (!accessToken) {
+        return NextResponse.json(
+          { success: false, error: 'Access token is required for revocation' },
+          { status: 400 }
+        );
+      }
+      await revokeGoogleTokens(accessToken);
       return NextResponse.json({ success: true });
     } else {
       return NextResponse.json(

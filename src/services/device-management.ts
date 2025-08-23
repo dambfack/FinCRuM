@@ -1,5 +1,6 @@
 import { User } from '@/lib/types';
-import { getCloudDatabase } from './shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from './shared-cloud-database';
 import { UserManagementService } from './user-management';
 import { getData, saveData } from '@/lib/utils';
 import { DataItemType } from '@/lib/types';
@@ -80,13 +81,13 @@ export class DeviceManagementService {
     }
     
     const fingerprint = [
-      navigator.userAgent,
-      navigator.language,
-      screen.width + 'x' + screen.height,
+      typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+      typeof screen !== 'undefined' ? screen.width + 'x' + screen.height : '1920x1080',
       new Date().getTimezoneOffset(),
       canvas.toDataURL(),
-      navigator.hardwareConcurrency || 0,
-      navigator.deviceMemory || 0
+      typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 0) : 0,
+      typeof navigator !== 'undefined' ? ((navigator as any).deviceMemory || 0) : 0
     ].join('|');
     
     // Simple hash function
@@ -122,13 +123,13 @@ export class DeviceManagementService {
       name: this.generateDeviceName(platform, deviceType),
       type: deviceType,
       platform,
-      userAgent: navigator.userAgent,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
       registeredAt: new Date().toISOString(),
       lastActiveAt: new Date().toISOString(),
       isActive: true,
       userId,
       location: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
       }
     };
   }
@@ -137,7 +138,7 @@ export class DeviceManagementService {
    * Detect platform
    */
   private detectPlatform(): string {
-    const userAgent = navigator.userAgent.toLowerCase();
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
     
     if (userAgent.includes('windows')) return 'Windows';
     if (userAgent.includes('mac')) return 'macOS';
@@ -152,7 +153,7 @@ export class DeviceManagementService {
    * Detect device type
    */
   private detectDeviceType(): 'desktop' | 'mobile' | 'tablet' | 'web' {
-    const userAgent = navigator.userAgent.toLowerCase();
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
     
     if (userAgent.includes('mobile') && !userAgent.includes('tablet')) {
       return 'mobile';
@@ -179,7 +180,7 @@ export class DeviceManagementService {
    * Get browser name
    */
   private getBrowserName(): string {
-    const userAgent = navigator.userAgent.toLowerCase();
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
     
     if (userAgent.includes('chrome') && !userAgent.includes('edge')) return 'Chrome';
     if (userAgent.includes('firefox')) return 'Firefox';
@@ -200,15 +201,15 @@ export class DeviceManagementService {
     error?: string;
   }> {
     try {
-      const user = await this.userManagement.getUser(userId);
-      if (!user.success || !user.user) {
+      const user = await this.userManagement.getUserById(userId);
+      if (!user) {
         return { success: false, error: 'User not found' };
       }
 
       const deviceInfo = this.getDeviceInfo(userId);
       
       // Check if device is already registered
-      const existingDevices = user.user.deviceIds || [];
+      const existingDevices = user.deviceIds || [];
       if (existingDevices.includes(this.currentDeviceId)) {
         // Update last active time
         await this.updateDeviceActivity(this.currentDeviceId);
@@ -216,12 +217,10 @@ export class DeviceManagementService {
       }
 
       // For admin and partner roles, auto-approve device registration
-      if (user.user.role === 'admin' || user.user.role === 'partner') {
+      if (user.role === 'admin' || user.role === 'partner') {
         const updatedDeviceIds = [...existingDevices, this.currentDeviceId];
-        const updateResult = await this.userManagement.updateUser(userId, {
-          deviceIds: updatedDeviceIds,
-          lastLoginAt: new Date().toISOString()
-        });
+        const updatedUser = { ...user, deviceIds: updatedDeviceIds, lastLoginAt: new Date().toISOString() };
+        const updateResult = await this.userManagement.updateUser(updatedUser);
 
         if (updateResult.success) {
           // Store device info locally
@@ -245,11 +244,12 @@ export class DeviceManagementService {
       };
 
       // Store pending request
-      const pendingRequests = getData<DeviceAuthRequest[]>('deviceAuthRequests') || [];
+      const pendingRequests = getData<DeviceAuthRequest[]>(DataItemType.DeviceAuthRequests) || [];   
       pendingRequests.push(authRequest);
-      saveData('deviceAuthRequests' as DataItemType, pendingRequests);
+      saveData(DataItemType.DeviceAuthRequests, pendingRequests);
 
       // Sync with cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (provider) {
         await getCloudDatabase().syncWithCloud(provider);
@@ -270,7 +270,7 @@ export class DeviceManagementService {
    * Store device info locally
    */
   private storeDeviceInfo(deviceInfo: DeviceInfo): void {
-    const devices = getData<DeviceInfo[]>('registeredDevices') || [];
+    const devices = getData<DeviceInfo[]>(DataItemType.RegisteredDevices) || [];
     const existingIndex = devices.findIndex(d => d.id === deviceInfo.id);
     
     if (existingIndex >= 0) {
@@ -279,19 +279,19 @@ export class DeviceManagementService {
       devices.push(deviceInfo);
     }
     
-    saveData('registeredDevices' as DataItemType, devices);
+    saveData(DataItemType.RegisteredDevices, devices);
   }
 
   /**
    * Update device activity timestamp
    */
   public async updateDeviceActivity(deviceId: string): Promise<void> {
-    const devices = getData<DeviceInfo[]>('registeredDevices') || [];
+    const devices = getData<DeviceInfo[]>(DataItemType.RegisteredDevices) || [];
     const deviceIndex = devices.findIndex(d => d.id === deviceId);
     
     if (deviceIndex >= 0) {
       devices[deviceIndex].lastActiveAt = new Date().toISOString();
-      saveData('registeredDevices' as DataItemType, devices);
+      saveData(DataItemType.RegisteredDevices, devices);
     }
   }
 
@@ -299,7 +299,7 @@ export class DeviceManagementService {
    * Get pending device authorization requests
    */
   public getPendingAuthRequests(): DeviceAuthRequest[] {
-    return getData<DeviceAuthRequest[]>('deviceAuthRequests') || [];
+    return getData<DeviceAuthRequest[]>(DataItemType.DeviceAuthRequests) || [];
   }
 
   /**
@@ -310,7 +310,7 @@ export class DeviceManagementService {
     approverId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const requests = getData<DeviceAuthRequest[]>('deviceAuthRequests') || [];
+      const requests = getData<DeviceAuthRequest[]>(DataItemType.DeviceAuthRequests) || [];
       const requestIndex = requests.findIndex(r => r.deviceId === requestId);
       
       if (requestIndex === -1) {
@@ -320,15 +320,14 @@ export class DeviceManagementService {
       const request = requests[requestIndex];
       
       // Update user's device list
-      const user = await this.userManagement.getUser(request.userId);
-      if (!user.success || !user.user) {
+      const user = await this.userManagement.getUserById(request.userId);
+      if (!user) {
         return { success: false, error: 'User not found' };
       }
 
-      const updatedDeviceIds = [...(user.user.deviceIds || []), request.deviceId];
-      const updateResult = await this.userManagement.updateUser(request.userId, {
-        deviceIds: updatedDeviceIds
-      });
+      const updatedDeviceIds = [...(user.deviceIds || []), request.deviceId];
+      const updatedUser = { ...user, deviceIds: updatedDeviceIds };
+      const updateResult = await this.userManagement.updateUser(updatedUser);
 
       if (!updateResult.success) {
         return { success: false, error: updateResult.error };
@@ -342,9 +341,10 @@ export class DeviceManagementService {
         approvedAt: new Date().toISOString()
       };
       
-      saveData('deviceAuthRequests' as DataItemType, requests);
+      saveData(DataItemType.DeviceAuthRequests, requests);
 
       // Sync with cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (provider) {
         await getCloudDatabase().syncWithCloud(provider);
@@ -365,7 +365,7 @@ export class DeviceManagementService {
     approverId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const requests = getData<DeviceAuthRequest[]>('deviceAuthRequests') || [];
+      const requests = getData<DeviceAuthRequest[]>(DataItemType.DeviceAuthRequests) || [];
       const requestIndex = requests.findIndex(r => r.deviceId === requestId);
       
       if (requestIndex === -1) {
@@ -380,9 +380,10 @@ export class DeviceManagementService {
         approvedAt: new Date().toISOString()
       };
       
-      saveData('deviceAuthRequests' as DataItemType, requests);
+      saveData(DataItemType.DeviceAuthRequests, requests);
 
       // Sync with cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (provider) {
         await getCloudDatabase().syncWithCloud(provider);
@@ -404,14 +405,14 @@ export class DeviceManagementService {
     error?: string;
   }> {
     try {
-      const user = await this.userManagement.getUser(userId);
-      if (!user.success || !user.user) {
+      const user = await this.userManagement.getUserById(userId);
+      if (!user) {
         return { success: false, error: 'User not found' };
       }
 
-      const allDevices = getData<DeviceInfo[]>('registeredDevices') || [];
+      const allDevices = getData<DeviceInfo[]>(DataItemType.RegisteredDevices) || [];
       const userDevices = allDevices.filter(device => 
-        user.user!.deviceIds?.includes(device.id)
+        user.deviceIds?.includes(device.id)
       );
 
       return { success: true, devices: userDevices };
@@ -429,26 +430,26 @@ export class DeviceManagementService {
     deviceId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const user = await this.userManagement.getUser(userId);
-      if (!user.success || !user.user) {
+      const user = await this.userManagement.getUserById(userId);
+      if (!user) {
         return { success: false, error: 'User not found' };
       }
 
-      const updatedDeviceIds = (user.user.deviceIds || []).filter(id => id !== deviceId);
-      const updateResult = await this.userManagement.updateUser(userId, {
-        deviceIds: updatedDeviceIds
-      });
+      const updatedDeviceIds = (user.deviceIds || []).filter(id => id !== deviceId);
+      const updatedUser = { ...user, deviceIds: updatedDeviceIds };
+      const updateResult = await this.userManagement.updateUser(updatedUser);
 
       if (!updateResult.success) {
         return { success: false, error: updateResult.error };
       }
 
       // Remove device info locally
-      const devices = getData<DeviceInfo[]>('registeredDevices') || [];
+      const devices = getData<DeviceInfo[]>(DataItemType.RegisteredDevices) || [];
       const filteredDevices = devices.filter(d => d.id !== deviceId);
-      saveData('registeredDevices' as DataItemType, filteredDevices);
+      saveData(DataItemType.RegisteredDevices, filteredDevices);
 
       // Sync with cloud
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (provider) {
         await getCloudDatabase().syncWithCloud(provider);
@@ -466,12 +467,12 @@ export class DeviceManagementService {
    */
   public async isDeviceAuthorized(userId: string): Promise<boolean> {
     try {
-      const user = await this.userManagement.getUser(userId);
-      if (!user.success || !user.user) {
+      const user = await this.userManagement.getUserById(userId);
+      if (!user) {
         return false;
       }
 
-      return (user.user.deviceIds || []).includes(this.currentDeviceId);
+      return user.deviceIds?.includes(this.currentDeviceId) || false;
     } catch (error) {
       console.error('Error checking device authorization:', error);
       return false;
@@ -482,7 +483,7 @@ export class DeviceManagementService {
    * Update sync status for device
    */
   public updateSyncStatus(status: Partial<SyncStatus>): void {
-    const syncStatuses = getData<SyncStatus[]>('deviceSyncStatuses') || [];
+    const syncStatuses = getData<SyncStatus[]>(DataItemType.DeviceSyncStatuses) || [];
     const existingIndex = syncStatuses.findIndex(s => s.deviceId === this.currentDeviceId);
     
     const updatedStatus: SyncStatus = {
@@ -500,14 +501,14 @@ export class DeviceManagementService {
       syncStatuses.push(updatedStatus);
     }
     
-    saveData('deviceSyncStatuses' as DataItemType, syncStatuses);
+    saveData(DataItemType.DeviceSyncStatuses, syncStatuses);
   }
 
   /**
    * Get sync status for current device
    */
   public getSyncStatus(): SyncStatus | null {
-    const syncStatuses = getData<SyncStatus[]>('deviceSyncStatuses') || [];
+    const syncStatuses = getData<SyncStatus[]>(DataItemType.DeviceSyncStatuses) || [];
     return syncStatuses.find(s => s.deviceId === this.currentDeviceId) || null;
   }
 
@@ -515,7 +516,7 @@ export class DeviceManagementService {
    * Get all sync statuses (for admin/partner users)
    */
   public getAllSyncStatuses(): SyncStatus[] {
-    return getData<SyncStatus[]>('deviceSyncStatuses') || [];
+    return getData<SyncStatus[]>(DataItemType.DeviceSyncStatuses) || [];
   }
 }
 

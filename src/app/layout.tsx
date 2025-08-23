@@ -1,5 +1,4 @@
-
-'use client';
+'use client';
 
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
@@ -13,6 +12,8 @@ import SetPinScreen from '@/components/SetPinScreen';
 import FirstTimeSetupWizard from '@/components/FirstTimeSetupWizard';
 import NotificationBell from '@/components/NotificationBell';
 import { setupManagerService } from '@/services/setup-manager';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { logger } from '@/lib/logger';
 import {
   SidebarProvider,
   Sidebar,
@@ -27,12 +28,13 @@ import {
   useSidebar, 
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2, Briefcase, ListTree, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Users2, Table, UserPlus as UserPlusIcon, Upload, Settings, LogOut, ImageUp, CheckCircle, Sun, Moon, Download, FileArchive, Menu as MenuIcon, PanelLeft, Palette, Trash2, Briefcase, ListTree, HelpCircle, Cloud, Image as ImageIconLucide, Shield } from 'lucide-react';
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import BackgroundImageSwitcher from '@/components/BackgroundImageSwitcher';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,6 +48,7 @@ import { SketchPicker, type ColorResult } from 'react-color';
 import { Separator } from '@/components/ui/separator';
 import { GoogleAuthManager } from '@/components/GoogleAuthManager';
 import { MicrosoftAuthManager } from '@/components/MicrosoftAuthManager';
+import { SecuritySettings } from '@/components/SecuritySettings';
 
 
 // Local fonts downloaded from Google Fonts
@@ -162,6 +165,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   const [showChartColorPicker, setShowChartColorPicker] = useState<keyof UserThemeSettings | null>(null);
   const [currentChartPickerColor, setCurrentChartPickerColor] = useState('#000000');
+  const [showThemeDialog, setShowThemeDialog] = useState(false);
+  const [showSystemDialog, setShowSystemDialog] = useState(false);
+  const [showCloudDialog, setShowCloudDialog] = useState(false);
+  const [showSecurityDialog, setShowSecurityDialog] = useState(false);
 
   const chartColorConfig: {
     label: string;
@@ -179,19 +186,24 @@ function AppContent({ children }: { children: React.ReactNode }) {
     const initializeApp = async () => {
       try {
         // Check if this is the first time setup
-        const setupCompleted = getData('setup_completed');
-        if (!setupCompleted) {
-          setIsFirstTimeSetup(true);
-          setSetupLoading(false);
-          return;
+        if (typeof window !== 'undefined') {
+          const setupCompleted = getData(DataItemType.SetupCompleted);
+          if (!setupCompleted) {
+            setIsFirstTimeSetup(true);
+            setSetupLoading(false);
+            return;
+          }
         }
         
         if (typeof window !== 'undefined') {
-          const APP_HARDCODED_DEFAULT_BACKGROUND = 'https://placehold.co/1920x1080.png';
-          
+          const defaultLightBg = '/default-bg-light.svg';
+          const defaultDarkBg = '/default-bg-dark.svg';
+
           const applyInitialBackground = (url: string | null) => {
-            document.body.style.backgroundImage = url ? `url('${url}')` : `url('${APP_HARDCODED_DEFAULT_BACKGROUND}')`;
-            document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'abstract gradient');
+            const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            const defaultBg = currentTheme === 'dark' ? defaultDarkBg : defaultLightBg;
+            document.body.style.backgroundImage = url ? `url('${url}')` : `url('${defaultBg}')`;
+            document.body.setAttribute('data-ai-hint', url ? 'custom background' : 'default theme background');
           };
 
           const storedCustomBg = getData<string>(DataItemType.BackgroundImage);
@@ -202,7 +214,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           } else if (storedDefaultBg) {
             applyInitialBackground(storedDefaultBg);
           } else {
-            applyInitialBackground(APP_HARDCODED_DEFAULT_BACKGROUND);
+            applyInitialBackground(null); // applyInitialBackground will use theme-specific default if null
           }
         }
       } catch (error) {
@@ -215,6 +227,34 @@ function AppContent({ children }: { children: React.ReactNode }) {
     initializeApp();
   }, []);
 
+  const handleSoftResetApp = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('setup_completed');
+      localStorage.removeItem('first_time_setup_step'); // Ensure wizard starts from the beginning
+      toast({
+        title: "Setup Reset",
+        description: "Application will now return to the initial setup. Reloading...",
+        duration: 3000,
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
+
+  const handleHardResetApp = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      toast({
+        title: "Application Reset",
+        description: "All local data has been cleared. The application will now return to the initial setup. Reloading...",
+        duration: 3000,
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
 
   useEffect(() => {
     setCurrentAccentPickerColor(currentUserThemeSettings?.accentColor || '#008080');
@@ -223,7 +263,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const handleSetupComplete = async (setupResult: any) => {
     try {
       // Mark setup as completed
-      saveData('setup_completed', true);
+      saveData(DataItemType.SetupCompleted, true);
       setIsFirstTimeSetup(false);
       
       // Reload the page to reinitialize with new settings
@@ -329,7 +369,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   if (isFirstTimeSetup) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex items-center justify-center">
         <FirstTimeSetupWizard onSetupComplete={handleSetupComplete} />
       </div>
     );
@@ -357,8 +397,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
             {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Team Management"><Link href="/users"><Users2 /><span className={spanClasses}>Team Management</span></Link></SidebarMenuButton></SidebarMenuItem>}
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Data Grid"><Link href="/data-grid"><Table /><span className={spanClasses}>Data Grid</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Add Customer"><Link href="/add-customer"><UserPlusIcon /><span className={spanClasses}>Add Customer</span></Link></SidebarMenuButton></SidebarMenuItem>
-            <SidebarMenuItem><SidebarMenuButton asChild tooltip="Import Data"><Link href="/import"><Upload /><span className={spanClasses}>Import Data</span></Link></SidebarMenuButton></SidebarMenuItem>
-            {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><FileArchive /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
+                        {currentUser?.role === 'partner' && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Export Data"><Link href="/export-data"><FileArchive /><span className={spanClasses}>Export Data</span></Link></SidebarMenuButton></SidebarMenuItem>}
             <SidebarMenuItem><SidebarMenuButton asChild tooltip="Help & Support"><Link href="/help"><HelpCircle /><span className={spanClasses}>Help & Support</span></Link></SidebarMenuButton></SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
@@ -367,7 +406,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        <header className={cn("sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg glass-effect bg-background/50 dark:bg-background/40 hover:shadow-2xl transition-shadow duration-300")}>
+        <header className={cn("sticky top-2 z-20 flex h-16 items-center justify-between px-4 md:px-6 mx-2 md:mx-4 rounded-lg bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-sidebar-border hover:shadow-2xl transition-shadow duration-300")}>
           <div className="flex items-center gap-2 md:hidden">
             <SidebarTrigger><MenuIcon /></SidebarTrigger>
             {!isMobileSidebarOpen && ( 
@@ -398,7 +437,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
                   <Settings className="h-5 w-5" /><span className="sr-only">Settings</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-96 sm:w-[672px] glass-effect bg-popover/80 dark:bg-popover/60 border-white/10 dark:border-white/5 max-h-[calc(100vh-8rem)] overflow-y-auto p-1">
+              <PopoverContent className="w-64 bg-sidebar-background/50 dark:bg-sidebar-background/60 backdrop-blur-xl shadow-2xl border border-sidebar-border p-1">
                 <div className="space-y-3 p-3 mb-3">
                   <h4 className="font-medium leading-none text-sm font-heading">
                      {currentUser?.role ? currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1) : 'User'}
@@ -419,64 +458,72 @@ function AppContent({ children }: { children: React.ReactNode }) {
                 </div>
                 <Separator className="my-4" />
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6 pt-4 px-3 pb-3">
-                  {/* Left Column: Partner-only settings & Theme Customization */}
-                  <div className="space-y-6">
-                    {currentUser?.role === 'partner' && (
-                      <div className="space-y-3">
-                        <h4 className="font-medium leading-none text-sm font-heading mb-2">Header Logos</h4>
-                        <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
-                        <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoLightInputRef.current?.click()}><Sun className="mr-2 h-4 w-4" />Header Logo (Light)</Button>
-                        <Button variant="outline" size="sm" className="w-full h-9" onClick={handleSetCurrentLightHeaderLogoAsDefault} disabled={!headerLogoLightUrl}><CheckCircle className="mr-2 h-4 w-4" />Set as Default Light Header</Button>
-                        
-                        <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
-                        <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoDarkInputRef.current?.click()}><Moon className="mr-2 h-4 w-4" />Header Logo (Dark)</Button>
-                        <Button variant="outline" size="sm" className="w-full h-9" onClick={handleSetCurrentDarkHeaderLogoAsDefault} disabled={!headerLogoDarkUrl}><CheckCircle className="mr-2 h-4 w-4" />Set as Default Dark Header</Button>
+                <div className="space-y-1 pt-4 px-3 pb-3">
+                  {/* Theme & Appearance Section */}
+                  <Button variant="ghost" className="w-full justify-between h-10 hover:bg-accent/50" onClick={() => setShowThemeDialog(true)}>
+                    <div className="flex items-center gap-2">
+                      <Palette className="h-4 w-4" />
+                      <span>Theme & Appearance</span>
+                    </div>
+                    {/* <ChevronRight className="h-4 w-4" /> */}
+                  </Button>
+
+                  {/* System Settings Section (Partner or Admin) */}
+                  {(currentUser?.role === 'partner' || currentUser?.role === 'admin') && (
+                    <Button variant="ghost" className="w-full justify-between h-10 hover:bg-accent/50" onClick={() => setShowSystemDialog(true)}>
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        <span>System Settings</span>
                       </div>
-                    )}
-                     <div className="space-y-3"> 
-                        <h4 className="font-medium leading-none text-sm font-heading mb-2">Theme Customization</h4>
-                        <div className="space-y-1">
-                          <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
-                          {(currentUserThemeSettings?.accentColor) && ( 
-                            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive h-8" onClick={handleAccentColorReset}><Trash2 className="mr-1.5 h-3 w-3" />Reset Accent Color</Button>
-                          )}
-                        </div>
-                        {showAccentPicker && (
-                          <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
-                            <SketchPicker color={currentAccentPickerColor} onChangeComplete={handleAccentColorChange} disableAlpha={true} width="100%" className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"/>
-                            <Button size="sm" onClick={handleAccentColorSave} className="w-full h-9">Apply Accent Color</Button>
-                          </div>
-                        )}
-                        {chartColorConfig.map((config, index) => (
-                          <div key={index} className="space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => handleChartColorPickerToggle(config.pickerKey)}>
-                                <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm shrink-0"></div>
-                                <span className="truncate">{showChartColorPicker === config.pickerKey ? "Hide" : "Change"} {config.label}</span>
-                              </Button>
-                              {config.stateValue && (<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => handleChartColorReset(config.pickerKey)} title={`Reset ${config.label}`}><Trash2 className="h-3.5 w-3.5" /></Button>)}
-                            </div>
-                            {showChartColorPicker === config.pickerKey && (
-                              <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
-                                <SketchPicker color={currentChartPickerColor} onChangeComplete={handleChartColorChange} disableAlpha={true} width="100%" className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"/>
-                                <Button size="sm" onClick={handleChartColorSave} className="w-full h-9">Apply {config.label}</Button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                  </div>
-                  {/* Right Column: App Background & Cloud Services */}
-                  <div className="space-y-6">
-                    <BackgroundImageSwitcher />
-                    <GoogleAuthManager />
-                    <MicrosoftAuthManager />
-                  </div>
+                      {/* <ChevronRight className="h-4 w-4" /> */}
+                    </Button>
+                  )}
+
+                  {/* Cloud Services Section */}
+                  <Button variant="ghost" className="w-full justify-between h-10 hover:bg-accent/50" onClick={() => setShowCloudDialog(true)}>
+                    <div className="flex items-center gap-2">
+                      <Cloud className="h-4 w-4" />
+                      <span>Cloud Services</span>
+                    </div>
+                    {/* <ChevronRight className="h-4 w-4" /> */}
+                  </Button>
+
+                  {/* Security Settings Section */}
+                  <Button variant="ghost" className="w-full justify-between h-10 hover:bg-accent/50" onClick={() => setShowSecurityDialog(true)}>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      <span>Security Settings</span>
+                    </div>
+                    {/* <ChevronRight className="h-4 w-4" /> */}
+                  </Button>
                 </div>
-                {isAuthenticated && (<div className="mt-6 px-3 pb-3"><Button onClick={() => logout()} variant="outline" size="sm" className="w-full h-9"><LogOut className="mr-2 h-4 w-4" />Logout</Button></div>)}
+                {isAuthenticated && (
+                  <div className="mt-6 px-3 pb-3 space-y-2">
+                    <Button onClick={() => logout()} variant="outline" size="sm" className="w-full h-9">
+                      <LogOut className="mr-2 h-4 w-4" />Logout
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-9"
+                      onClick={handleSoftResetApp}
+                    >
+                      <ListTree className="mr-2 h-4 w-4" />
+                      Reset Setup
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full h-9"
+                      onClick={handleHardResetApp}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Full App Reset
+                    </Button>
+                  </div>
+                )}
               </PopoverContent>
-            </Popover>
+              </Popover>
             {currentUser && (<button onClick={() => { if (currentUser.profilePictureUrl) setIsUserAvatarModalOpen(true); }} className={cn("rounded-full", currentUser.profilePictureUrl && "cursor-pointer hover:opacity-80 transition-opacity")} aria-label="View profile picture">
               <Avatar className="h-8 w-8">
                   <AvatarImage src={currentUser.profilePictureUrl} alt={currentUser.name} />
@@ -485,6 +532,113 @@ function AppContent({ children }: { children: React.ReactNode }) {
             </button>)}
           </div>
         </header>
+
+        {/* Theme & Appearance Dialog */}
+        <Dialog open={showThemeDialog} onOpenChange={setShowThemeDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Theme & Appearance
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 p-4">
+              {/* Theme Customization */}
+              <div className="space-y-3">
+                <h5 className="font-medium text-sm">Colors</h5>
+                <div className="space-y-1">
+                  <Button variant="outline" size="sm" className="w-full h-9" onClick={() => setShowAccentPicker(!showAccentPicker)}><Palette className="mr-2 h-4 w-4" />{showAccentPicker ? "Hide" : "Change"} Accent Color</Button>
+                  {(currentUserThemeSettings?.accentColor) && ( 
+                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive h-8" onClick={handleAccentColorReset}><Trash2 className="mr-1.5 h-3 w-3" />Reset Accent Color</Button>
+                  )}
+                </div>
+                {showAccentPicker && (
+                  <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
+                    <SketchPicker color={currentAccentPickerColor} onChangeComplete={handleAccentColorChange} disableAlpha={true} width="100%" className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"/>
+                    <Button size="sm" onClick={handleAccentColorSave} className="w-full h-9">Apply Accent Color</Button>
+                  </div>
+                )}
+                {chartColorConfig.map((config, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => handleChartColorPickerToggle(config.pickerKey)}>
+                        <div style={{width: '1rem', height: '1rem', backgroundColor: config.stateValue || 'transparent', border: '1px solid hsl(var(--border))' }} className="mr-2 rounded-sm shrink-0"></div>
+                        <span className="truncate">{showChartColorPicker === config.pickerKey ? "Hide" : "Change"} {config.label}</span>
+                      </Button>
+                      {config.stateValue && (<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0" onClick={() => handleChartColorReset(config.pickerKey)} title={`Reset ${config.label}`}><Trash2 className="h-3.5 w-3.5" /></Button>)}
+                    </div>
+                    {showChartColorPicker === config.pickerKey && (
+                      <div className="flex flex-col items-center space-y-2 p-2 border rounded-md bg-background/50">
+                        <SketchPicker color={currentChartPickerColor} onChangeComplete={handleChartColorChange} disableAlpha={true} width="100%" className="[&>div]:!shadow-none [&>div]:!bg-transparent [&>div>div:nth-child(3)>div>div>span]:!text-foreground/70"/>
+                        <Button size="sm" onClick={handleChartColorSave} className="w-full h-9">Apply {config.label}</Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Separator />
+              {/* Background Settings */}
+              <BackgroundImageSwitcher />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* System Settings Dialog (Partner Only) */}
+        {currentUser?.role === 'partner' && (
+          <Dialog open={showSystemDialog} onOpenChange={setShowSystemDialog}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  System Settings
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 p-4">
+                <div className="space-y-3">
+                  <h5 className="font-medium text-sm">Header Logos</h5>
+                  <input type="file" ref={headerLogoLightInputRef} onChange={handleHeaderLogoLightFileChange} accept="image/png" className="hidden"/>
+                  <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoLightInputRef.current?.click()}><Sun className="mr-2 h-4 w-4" />Header Logo (Light)</Button>
+                  <Button variant="outline" size="sm" className="w-full h-9" onClick={handleSetCurrentLightHeaderLogoAsDefault} disabled={!headerLogoLightUrl}><CheckCircle className="mr-2 h-4 w-4" />Set as Default Light Header</Button>
+                  
+                  <input type="file" ref={headerLogoDarkInputRef} onChange={handleHeaderLogoDarkFileChange} accept="image/png" className="hidden"/>
+                  <Button variant="outline" size="sm" className="w-full h-9" onClick={() => headerLogoDarkInputRef.current?.click()}><Moon className="mr-2 h-4 w-4" />Header Logo (Dark)</Button>
+                  <Button variant="outline" size="sm" className="w-full h-9" onClick={handleSetCurrentDarkHeaderLogoAsDefault} disabled={!headerLogoDarkUrl}><CheckCircle className="mr-2 h-4 w-4" />Set as Default Dark Header</Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Cloud Services Dialog */}
+        <Dialog open={showCloudDialog} onOpenChange={setShowCloudDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Cloud className="h-5 w-5" />
+                Cloud Services
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 p-4">
+              <GoogleAuthManager />
+              <MicrosoftAuthManager />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Security Settings Dialog */}
+        <Dialog open={showSecurityDialog} onOpenChange={setShowSecurityDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Security Settings
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-4">
+              <SecuritySettings />
+            </div>
+          </DialogContent>
+        </Dialog>
         <main className={cn("flex-1 overflow-y-auto p-4 md:p-6 overflow-x-hidden")}>{children}</main>
         <Toaster />
       </SidebarInset>
@@ -500,6 +654,15 @@ function AppContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
+  // Initialize logger context
+  React.useEffect(() => {
+    logger.setContext('root-layout');
+    logger.info('Application initialized', {
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+      timestamp: new Date().toISOString()
+    });
+  }, []);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -507,13 +670,28 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="description" content="Advanced CRM with Glassmorphism UI" />
       </head>
       <body className={cn(GeistSans.variable, interBlack.variable, montserrat.variable, 'antialiased font-sans flex min-h-screen flex-col')}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <SidebarProvider defaultPinnedOpen={true}> 
-              <AppContent>{children}</AppContent>
-            </SidebarProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <ErrorBoundary
+          showDetails={process.env.NODE_ENV === 'development'}
+          onError={(error, errorInfo) => {
+            logger.error('Root ErrorBoundary caught error', {
+              error: {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+              },
+              errorInfo,
+              context: 'root-layout'
+            });
+          }}
+        >
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <AuthProvider>
+              <SidebarProvider defaultPinnedOpen={true}> 
+                <AppContent>{children}</AppContent>
+              </SidebarProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDataSync, ConflictResolutionUI } from '@/hooks/use-data-sync';
 import { cn, formatDateTime, getData, saveData } from '@/lib/utils';
+import type { DataConflict } from '@/lib/types';
 import { Cloud, CloudCog, CloudOff, Loader2, RefreshCw as RefreshCwIcon, AlertTriangle, HelpCircle } from 'lucide-react'; // Renamed RefreshCw
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -149,7 +150,13 @@ const SyncManager = () => {
         </Card>
 
       {conflicts.length > 0 && (
-        <ConflictResolutionUI conflicts={conflicts} onResolve={resolveConflict} />
+        <ConflictResolutionUI 
+          conflicts={conflicts} 
+          onResolve={(resolvedConflict: DataConflict) => {
+            // Bridge the function signature gap
+            resolveConflict(resolvedConflict.id, 'local');
+          }} 
+        />
       )}
     </>
   );

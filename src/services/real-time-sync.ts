@@ -1,4 +1,5 @@
-import { getCloudDatabase } from './shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from './shared-cloud-database';
 import { getDeviceManager } from './device-management';
 import { getData, saveData } from '@/lib/utils';
 import { DataItemType, DataConflictWithResolution, ConflictResolution } from '@/lib/types';
@@ -105,10 +106,10 @@ export class RealTimeSyncService {
    * Load persisted state from local storage
    */
   private loadPersistedState(): void {
-    this.syncQueue = getData<SyncQueueItem[]>('syncQueue') || [];
-    this.lastSyncTime = getData<string>('lastSyncTime');
-    
-    const optimisticUpdatesArray = getData<OptimisticUpdate[]>('optimisticUpdates') || [];
+    this.syncQueue = getData<SyncQueueItem[]>(DataItemType.SyncQueue) || [];
+    this.lastSyncTime = getData<string>(DataItemType.LastSyncTime);
+
+    const optimisticUpdatesArray = getData<OptimisticUpdate[]>(DataItemType.OptimisticUpdates) || [];
     this.optimisticUpdates = new Map(optimisticUpdatesArray.map(update => [update.id, update]));
   }
 
@@ -116,9 +117,9 @@ export class RealTimeSyncService {
    * Persist state to local storage
    */
   private persistState(): void {
-    saveData('syncQueue' as DataItemType, this.syncQueue);
-    saveData('lastSyncTime' as DataItemType, this.lastSyncTime);
-    saveData('optimisticUpdates' as DataItemType, Array.from(this.optimisticUpdates.values()));
+    saveData(DataItemType.SyncQueue, this.syncQueue);
+    saveData(DataItemType.LastSyncTime, this.lastSyncTime);
+    saveData(DataItemType.OptimisticUpdates, Array.from(this.optimisticUpdates.values()));
   }
 
   /**
@@ -237,7 +238,7 @@ export class RealTimeSyncService {
    * Get unresolved conflict count
    */
   private getUnresolvedConflictCount(): number {
-    const conflicts = getData<DataConflictWithResolution[]>('unresolvedConflicts') || [];
+    const conflicts = getData<DataConflictWithResolution[]>(DataItemType.UnresolvedConflicts) || [];
     return conflicts.filter(c => !c.resolution).length;
   }
 
@@ -350,6 +351,7 @@ export class RealTimeSyncService {
     this.notifySyncStatusListeners();
 
     try {
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (!provider) {
         console.warn('No cloud provider available for sync');
@@ -506,12 +508,12 @@ export class RealTimeSyncService {
    */
   private handleConflicts(conflicts: DataConflictWithResolution[]): void {
     // Store unresolved conflicts
-    const existingConflicts = getData<DataConflictWithResolution[]>('unresolvedConflicts') || [];
+    const existingConflicts = getData<DataConflictWithResolution[]>(DataItemType.UnresolvedConflicts) || [];
     const newConflicts = conflicts.filter(conflict => !conflict.resolution);
     
     if (newConflicts.length > 0) {
       const updatedConflicts = [...existingConflicts, ...newConflicts];
-      saveData('unresolvedConflicts' as DataItemType, updatedConflicts);
+      saveData(DataItemType.UnresolvedConflicts, updatedConflicts);
       
       // Notify conflict listeners
       this.notifyConflictListeners(newConflicts);
@@ -530,14 +532,15 @@ export class RealTimeSyncService {
     resolutions: Map<string, ConflictResolution>
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const result = await getCloudDatabase().resolveConflicts(
-        getData<DataConflictWithResolution[]>('unresolvedConflicts') || [],
+        getData<DataConflictWithResolution[]>(DataItemType.UnresolvedConflicts) || [],
         resolutions
       );
 
       if (result.success) {
         // Clear resolved conflicts
-        saveData('unresolvedConflicts' as DataItemType, []);
+        saveData(DataItemType.UnresolvedConflicts, []);
         this.notifySyncStatusListeners();
       }
 
@@ -561,6 +564,7 @@ export class RealTimeSyncService {
     }
 
     try {
+      const { getCloudDatabase } = await import('./shared-cloud-database');
       const provider = getCloudDatabase().getPreferredProvider();
       if (!provider) {
         return { success: false, error: 'No cloud provider available' };

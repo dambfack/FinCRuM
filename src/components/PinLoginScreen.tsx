@@ -15,7 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, LogIn, UserPlus, Shield, Users, Cloud } from 'lucide-react';
-import { getCloudDatabase } from '@/services/shared-cloud-database';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from '@/services/shared-cloud-database';
 
 const PinLoginScreen: React.FC = () => {
   const { login, isLoadingAuth, authenticateWithPin } = useAuth();
@@ -32,8 +33,9 @@ const PinLoginScreen: React.FC = () => {
       setIsCloudSyncing(true);
       try {
         // First try to sync from cloud to get latest user data
+        const { getCloudDatabase } = await import('@/services/shared-cloud-database');
         await getCloudDatabase().syncFromCloud('googledrive');
-      await getCloudDatabase().syncFromCloud('onedrive');
+        await getCloudDatabase().syncFromCloud('onedrive');
       } catch (error) {
         console.warn('Cloud sync failed during user load:', error);
       }

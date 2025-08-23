@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="62" failures="0" errors="0" time="43.663">
+  <testsuite name="Logger" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="5.299" tests="19">
+    <testcase classname="Logger Basic logging functionality should log debug messages" name="Logger Basic logging functionality should log debug messages" time="0.013">
+    </testcase>
+    <testcase classname="Logger Basic logging functionality should log info messages" name="Logger Basic logging functionality should log info messages" time="0.001">
+    </testcase>
+    <testcase classname="Logger Basic logging functionality should log warn messages" name="Logger Basic logging functionality should log warn messages" time="0.001">
+    </testcase>
+    <testcase classname="Logger Basic logging functionality should log error messages" name="Logger Basic logging functionality should log error messages" time="0.001">
+    </testcase>
+    <testcase classname="Logger Context management should set and use context" name="Logger Context management should set and use context" time="0.001">
+    </testcase>
+    <testcase classname="Logger Context management should clear context" name="Logger Context management should clear context" time="0.001">
+    </testcase>
+    <testcase classname="Logger Session management should generate session ID" name="Logger Session management should generate session ID" time="0.001">
+    </testcase>
+    <testcase classname="Logger Session management should maintain same session ID across calls" name="Logger Session management should maintain same session ID across calls" time="0">
+    </testcase>
+    <testcase classname="Logger Local storage logging should store logs in localStorage when enabled" name="Logger Local storage logging should store logs in localStorage when enabled" time="0.001">
+    </testcase>
+    <testcase classname="Logger Local storage logging should not store logs in localStorage when disabled" name="Logger Local storage logging should not store logs in localStorage when disabled" time="0.001">
+    </testcase>
+    <testcase classname="Logger Local storage logging should retrieve logs from localStorage" name="Logger Local storage logging should retrieve logs from localStorage" time="0">
+    </testcase>
+    <testcase classname="Logger Local storage logging should clear logs from localStorage" name="Logger Local storage logging should clear logs from localStorage" time="0.001">
+    </testcase>
+    <testcase classname="Logger Remote logging should send logs to remote endpoint when configured" name="Logger Remote logging should send logs to remote endpoint when configured" time="0.001">
+    </testcase>
+    <testcase classname="Logger Remote logging should handle remote logging failures gracefully" name="Logger Remote logging should handle remote logging failures gracefully" time="0.002">
+    </testcase>
+    <testcase classname="Logger Log level filtering should respect minimum log level" name="Logger Log level filtering should respect minimum log level" time="0.001">
+    </testcase>
+    <testcase classname="Logger withLogging utility should wrap function with logging" name="Logger withLogging utility should wrap function with logging" time="0.001">
+    </testcase>
+    <testcase classname="Logger withLogging utility should log function errors" name="Logger withLogging utility should log function errors" time="0.017">
+    </testcase>
+    <testcase classname="Logger Electron integration should detect Electron environment" name="Logger Electron integration should detect Electron environment" time="0">
+    </testcase>
+    <testcase classname="Logger Error serialization should properly serialize Error objects" name="Logger Error serialization should properly serialize Error objects" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="Google Calendar Service" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="5.516" tests="2">
+    <testcase classname="Google Calendar Service generateGoogleAuthUrl should generate a Google OAuth URL" name="Google Calendar Service generateGoogleAuthUrl should generate a Google OAuth URL" time="0.09">
+    </testcase>
+    <testcase classname="Google Calendar Service createCalendarEvent should create a new calendar event" name="Google Calendar Service createCalendarEvent should create a new calendar event" time="0.1">
+    </testcase>
+  </testsuite>
+  <testsuite name="Google Calendar Service - Extended Tests" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="5.543" tests="15">
+    <testcase classname="Google Calendar Service - Extended Tests getOAuth2Client should create an OAuth2 client with the correct configuration" name="Google Calendar Service - Extended Tests getOAuth2Client should create an OAuth2 client with the correct configuration" time="0.019">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests getCalendarClient should create a calendar client with the provided tokens" name="Google Calendar Service - Extended Tests getCalendarClient should create a calendar client with the provided tokens" time="0">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests generateGoogleAuthUrl should generate a Google OAuth URL with default scopes" name="Google Calendar Service - Extended Tests generateGoogleAuthUrl should generate a Google OAuth URL with default scopes" time="0.076">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests generateGoogleAuthUrl should generate a Google OAuth URL with custom scopes" name="Google Calendar Service - Extended Tests generateGoogleAuthUrl should generate a Google OAuth URL with custom scopes" time="0.002">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests exchangeCodeForTokens should exchange an authorization code for tokens" name="Google Calendar Service - Extended Tests exchangeCodeForTokens should exchange an authorization code for tokens" time="0.007">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests exchangeCodeForTokens should throw an error if token exchange fails" name="Google Calendar Service - Extended Tests exchangeCodeForTokens should throw an error if token exchange fails" time="0.052">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests mapToGoogleCalendarEvent should map a reminder to a Google Calendar event" name="Google Calendar Service - Extended Tests mapToGoogleCalendarEvent should map a reminder to a Google Calendar event" time="0.029">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests mapToGoogleCalendarEvent should map an appointment to a Google Calendar event with attendees" name="Google Calendar Service - Extended Tests mapToGoogleCalendarEvent should map an appointment to a Google Calendar event with attendees" time="0.002">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests createCalendarEvent should create a new calendar event for a reminder" name="Google Calendar Service - Extended Tests createCalendarEvent should create a new calendar event for a reminder" time="0.011">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests createCalendarEvent should include conference data for online meetings" name="Google Calendar Service - Extended Tests createCalendarEvent should include conference data for online meetings" time="0.003">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests updateCalendarEvent should update an existing calendar event" name="Google Calendar Service - Extended Tests updateCalendarEvent should update an existing calendar event" time="0.002">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests deleteCalendarEvent should delete an existing calendar event" name="Google Calendar Service - Extended Tests deleteCalendarEvent should delete an existing calendar event" time="0.002">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests listCalendarEvents should list calendar events within the specified time range" name="Google Calendar Service - Extended Tests listCalendarEvents should list calendar events within the specified time range" time="0.004">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests listCalendarEvents should use default time range if none provided" name="Google Calendar Service - Extended Tests listCalendarEvents should use default time range if none provided" time="0.004">
+    </testcase>
+    <testcase classname="Google Calendar Service - Extended Tests token refresh should refresh expired tokens when needed" name="Google Calendar Service - Extended Tests token refresh should refresh expired tokens when needed" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="Google Calendar Sync - Duplicate Prevention" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="21.566" tests="8">
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should return correct data structure when creating calendar event" name="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should return correct data structure when creating calendar event" time="0.012">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle calendar event creation failure gracefully" name="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle calendar event creation failure gracefully" time="0.07">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should update existing calendar event correctly" name="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should update existing calendar event correctly" time="0.001">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle appointment calendar event creation" name="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle appointment calendar event creation" time="0.001">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle missing Google tokens gracefully" name="Google Calendar Sync - Duplicate Prevention Calendar Event Action Functions should handle missing Google tokens gracefully" time="0.003">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Error Handling and Edge Cases should handle network errors during calendar sync" name="Google Calendar Sync - Duplicate Prevention Error Handling and Edge Cases should handle network errors during calendar sync" time="0.003">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Error Handling and Edge Cases should handle malformed calendar API response" name="Google Calendar Sync - Duplicate Prevention Error Handling and Edge Cases should handle malformed calendar API response" time="0.001">
+    </testcase>
+    <testcase classname="Google Calendar Sync - Duplicate Prevention Token Management should update tokens when provided in calendar response" name="Google Calendar Sync - Duplicate Prevention Token Management should update tokens when provided in calendar response" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="ErrorBoundary" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="28.265" tests="12">
+    <testcase classname="ErrorBoundary renders children when there is no error" name="ErrorBoundary renders children when there is no error" time="0.036">
+    </testcase>
+    <testcase classname="ErrorBoundary renders error UI when there is an error" name="ErrorBoundary renders error UI when there is an error" time="0.07">
+    </testcase>
+    <testcase classname="ErrorBoundary shows error details in development mode" name="ErrorBoundary shows error details in development mode" time="0.018">
+    </testcase>
+    <testcase classname="ErrorBoundary calls onError callback when error occurs" name="ErrorBoundary calls onError callback when error occurs" time="0.012">
+    </testcase>
+    <testcase classname="ErrorBoundary logs error when error occurs" name="ErrorBoundary logs error when error occurs" time="0.01">
+    </testcase>
+    <testcase classname="ErrorBoundary has retry button that can be clicked" name="ErrorBoundary has retry button that can be clicked" time="0.027">
+    </testcase>
+    <testcase classname="ErrorBoundary renders custom fallback component" name="ErrorBoundary renders custom fallback component" time="0.008">
+    </testcase>
+    <testcase classname="withErrorBoundary HOC wraps component with ErrorBoundary" name="withErrorBoundary HOC wraps component with ErrorBoundary" time="0.003">
+    </testcase>
+    <testcase classname="withErrorBoundary HOC catches errors in wrapped component" name="withErrorBoundary HOC catches errors in wrapped component" time="0.072">
+    </testcase>
+    <testcase classname="withErrorBoundary HOC passes through props to wrapped component" name="withErrorBoundary HOC passes through props to wrapped component" time="0.002">
+    </testcase>
+    <testcase classname="useErrorHandler hook provides error handler function" name="useErrorHandler hook provides error handler function" time="0.003">
+    </testcase>
+    <testcase classname="useErrorHandler hook logs error when handler is called" name="useErrorHandler hook logs error when handler is called" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="useDataSync" errors="0" failures="0" skipped="0" timestamp="2025-07-10T17:29:35" time="32.46" tests="6">
+    <testcase classname="useDataSync should initialize with default values" name="useDataSync should initialize with default values" time="0.026">
+    </testcase>
+    <testcase classname="useDataSync Google Calendar Integration should sync calendar events successfully" name="useDataSync Google Calendar Integration should sync calendar events successfully" time="0.011">
+    </testcase>
+    <testcase classname="useDataSync Google Calendar Integration should handle calendar sync errors" name="useDataSync Google Calendar Integration should handle calendar sync errors" time="0.003">
+    </testcase>
+    <testcase classname="useDataSync Google Calendar Integration should handle token refresh during sync" name="useDataSync Google Calendar Integration should handle token refresh during sync" time="0.003">
+    </testcase>
+    <testcase classname="useDataSync Authentication should initiate Google authentication" name="useDataSync Authentication should initiate Google authentication" time="0.003">
+    </testcase>
+    <testcase classname="useDataSync Authentication should initiate Microsoft authentication" name="useDataSync Authentication should initiate Microsoft authentication" time="0.002">
+    </testcase>
+  </testsuite>
+</testsuites>

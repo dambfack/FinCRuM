@@ -27,36 +27,10 @@ const DataGrid = <T extends Record<string, unknown>>({
   const [localData, setLocalData] = useState<T[]>([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        if (data && data.length > 0) {
-          setLocalData(data);
-        } else {
-          // Fallback to localStorage if no data prop is provided
-          const storedData = localStorage.getItem('customerData');
-          if (storedData) {
-            const parsedData = JSON.parse(storedData);
-            if (Array.isArray(parsedData)) {
-              setLocalData(parsedData as T[]);
-            } else if (parsedData && Array.isArray(parsedData.rows)) {
-              setLocalData(parsedData.rows as T[]);
-            } else {
-              setError("No valid data found. Please import a file.");
-            }
-          } else {
-            setError("No data found. Please import a file.");
-          }
-        }
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError("Failed to load data. Please try importing again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    setLocalData(data || []); // Ensure localData is always an array
+    // Error and loading states are primarily managed by the parent component (DataGridPage)
+    // This component will just reflect the data passed to it.
+    // If data is empty, the conditional rendering below will handle the "No Data Available" message.
   }, [data]);
 
   if (loading) {
@@ -92,14 +66,18 @@ const DataGrid = <T extends Record<string, unknown>>({
     );
   }
 
-  if (!localData || localData.length === 0) {
+  // Error state is now handled by the generic error block above
+  // If localData is empty and there's no error, it means loading is done and data is legitimately empty.
+  // The specific message for empty data (after successful load) can be shown here if needed,
+  // or rely on the error message set in useEffect if data prop was empty.
+  if (!loading && !error && (!localData || localData.length === 0)) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>No Data Available</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Please import data to get started.</p>
+          <p>There is no data to display. You can import data or add new customers.</p>
         </CardContent>
       </Card>
     );

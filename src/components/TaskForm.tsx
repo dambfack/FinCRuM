@@ -56,7 +56,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { syncCalendar, syncMicrosoftCalendar } = useDataSync();
+  const { syncCalendarOnly } = useDataSync();
   const { toast } = useToast();
   const { currentUser } = useAuth(); // Get current user
 
@@ -82,13 +82,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
-      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+      setDueDate(task.dueDate ? parseDate(task.dueDate as string) : null);
       setDueTime(task.dueTime || '');
       setPriority(task.priority);
       setStatus(task.status);
-      setAssociatedContactId(task.associatedContactId || '');
-      setChecklist(task.checklist || []);
-      setAssignedToUserId(task.assignedToUserId || '');
+      // selectedContact is already set based on task.associatedContactId above
+      setChecklistItems(task.checklist || []);
+      setAssignedUserId(task.assignedToUserId || undefined); // Ensure undefined if not present
       setIsRepetitive(task.isRepetitive || false);
       setRepetitionType(task.repetitionType || 'daily');
       setRepetitionDays(task.repetitionDays || []);
@@ -97,13 +97,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       // Reset form for new task
       setTitle('');
       setDescription('');
-      setDueDate('');
+      setDueDate(null);
       setDueTime('');
       setPriority('medium');
-      setStatus('pending');
-      setAssociatedContactId('');
-      setChecklist([]);
-      setAssignedToUserId('');
+      setStatus('todo'); // Default to 'todo' for new tasks
+      // selectedContact will be null by default, no need to set associatedContactId
+      setChecklistItems([]);
+      setAssignedUserId(undefined);
       setIsRepetitive(false);
       setRepetitionType('daily');
       setRepetitionDays([]);
@@ -266,13 +266,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, initialSelectedContactId, onS
       toast({ title: "Google Tasks Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive"});
     }
 
-    // Microsoft Calendar sync
-    try {
-      await syncMicrosoftCalendar();
-    } catch (error) {
-      console.error('Failed to sync task to Microsoft Calendar:', error);
-      toast({ title: "Microsoft Calendar Sync Error", description: `Failed to sync task: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
-    }
+    // Microsoft Calendar sync would be handled by the main sync process
     
     onSave();
   };

@@ -18,6 +18,11 @@ export default function GoogleAuthCallbackPage() {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const code = searchParams.get('code');
     const errorParam = searchParams.get('error');
     

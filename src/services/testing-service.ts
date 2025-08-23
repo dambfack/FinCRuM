@@ -1,5 +1,6 @@
-import { LocalData, User, Contact, Task, Reminder, Appointment } from '@/lib/types';
-import { getCloudDatabase } from './shared-cloud-database';
+import { LocalData, User, Contact, Task, Reminder, Appointment, DataItemType } from '@/lib/types';
+// Dynamic import to prevent server-side modules from being bundled on client
+// import { getCloudDatabase } from './shared-cloud-database';
 import { getDeviceManager } from './device-management';
 import { getRealTimeSync } from './real-time-sync';
 import { enhancedGoogleDriveService } from './enhanced-google-drive';
@@ -178,16 +179,18 @@ export class TestingService {
     try {
       const testContact: Contact = {
         id: 'test-contact-1',
-        name: 'Test Contact',
+        firstName: 'Test',
+        lastName: 'Contact',
         email: 'test@example.com',
         phone: '1234567890',
         company: 'Test Company',
         notes: 'Test notes',
-        lastModified: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       // Test valid contact
-      if (!testContact.id || !testContact.name || !testContact.email) {
+      if (!testContact.id || !testContact.firstName || !testContact.email) {
         return { success: false, error: 'Valid contact validation failed' };
       }
 
@@ -308,7 +311,7 @@ export class TestingService {
         role: 'employee',
         pin: '1234',
         createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
         isActive: true
       };
 
@@ -391,21 +394,24 @@ export class TestingService {
       const testData: LocalData = {
         contacts: [{
           id: 'test-contact-1',
-          name: 'Test Contact',
+          firstName: 'Test',
+          lastName: 'Contact',
           email: 'test@example.com',
           phone: '1234567890',
           company: 'Test Company',
           notes: 'Test notes',
-          lastModified: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }],
         tasks: [],
         reminders: [],
         appointments: [],
-        lastModified: new Date().toISOString()
+        lastSyncTime: new Date().toISOString()
       };
 
       // Test cloud database service
-      const syncResult = await getCloudDatabase().syncWithCloud(testData);
+      const { getCloudDatabase } = await import('./shared-cloud-database');
+      const syncResult = await getCloudDatabase().syncWithCloud('googledrive');
       
       return {
         success: syncResult.success,
@@ -427,14 +433,9 @@ export class TestingService {
   private async testDeviceManagementIntegration(): Promise<TestExecutionResult> {
     try {
       // Test device registration
-      const deviceInfo = {
-        name: 'Test Device',
-        type: 'desktop' as const,
-        os: 'Windows',
-        browser: 'Chrome'
-      };
+      const testUserId = 'test-user-123';
 
-      const registrationResult = await getDeviceManager().registerDevice(deviceInfo);
+      const registrationResult = await getDeviceManager().registerDevice(testUserId);
       
       if (!registrationResult.success) {
         return {
@@ -445,7 +446,7 @@ export class TestingService {
       }
 
       // Test device list retrieval
-      const devicesResult = await getDeviceManager().getRegisteredDevices();
+      const devicesResult = await getDeviceManager().getUserDevices(testUserId);
       
       return {
         success: devicesResult.success,
@@ -470,23 +471,27 @@ export class TestingService {
         id: 'test-item-1',
         type: 'contact' as const,
         data: {
-          name: 'Test Contact',
+          id: 'test-contact-1',
+          firstName: 'Test',
+          lastName: 'Contact',
           email: 'test@example.com'
         }
       };
 
       // Test optimistic update
-      const updateResult = await getRealTimeSync().performOptimisticUpdate(
+      const updateId = getRealTimeSync().performOptimisticUpdate(
         'create',
-        testItem.type,
+        DataItemType.Contacts,
         testItem.data
       );
 
+      const success = updateId && updateId.length > 0;
+
       return {
-        success: updateResult.success,
-        message: updateResult.success ? 'Real-time sync integration passed' : 'Real-time sync integration failed',
-        error: updateResult.error,
-        details: { updateResult }
+        success,
+        message: success ? 'Real-time sync integration passed' : 'Real-time sync integration failed',
+        error: success ? undefined : 'Failed to create optimistic update',
+        details: { updateId }
       };
     } catch (error) {
       return {
@@ -587,7 +592,7 @@ export class TestingService {
         role: 'employee',
         pin: '5678',
         createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
         isActive: true
       };
 
@@ -671,12 +676,14 @@ export class TestingService {
     try {
       const testContact: Contact = {
         id: 'crud-test-contact',
-        name: 'CRUD Test Contact',
+        firstName: 'CRUD Test',
+        lastName: 'Contact',
         email: 'crud@example.com',
         phone: '1234567890',
         company: 'Test Company',
         notes: 'CRUD test notes',
-        lastModified: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       // CREATE
@@ -753,7 +760,7 @@ export class TestingService {
         role: 'admin',
         pin: '1111',
         createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
         isActive: true
       };
 
@@ -764,7 +771,7 @@ export class TestingService {
         role: 'employee',
         pin: '2222',
         createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
         isActive: true
       };
 
@@ -804,17 +811,19 @@ export class TestingService {
       const testData: LocalData = {
         contacts: [{
           id: 'backup-test-contact',
-          name: 'Backup Test Contact',
+          firstName: 'Backup Test',
+          lastName: 'Contact',
           email: 'backup@example.com',
           phone: '1234567890',
           company: 'Backup Test Company',
           notes: 'Backup test notes',
-          lastModified: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }],
         tasks: [],
         reminders: [],
         appointments: [],
-        lastModified: new Date().toISOString()
+        lastSyncTime: new Date().toISOString()
       };
 
       // Test backup creation
@@ -866,12 +875,14 @@ export class TestingService {
       for (let i = 0; i < 1000; i++) {
         largeDataset.push({
           id: `perf-contact-${i}`,
-          name: `Performance Test Contact ${i}`,
+          firstName: `Performance Test`,
+          lastName: `Contact ${i}`,
           email: `perf${i}@example.com`,
           phone: `123456${i.toString().padStart(4, '0')}`,
           company: `Company ${i}`,
           notes: `Performance test notes for contact ${i}`,
-          lastModified: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
       }
       
@@ -1019,21 +1030,24 @@ export class TestingService {
       const testData: LocalData = {
         contacts: new Array(100).fill(0).map((_, i) => ({
           id: `perf-contact-${i}`,
-          name: `Performance Contact ${i}`,
+          firstName: `Performance`,
+          lastName: `Contact ${i}`,
           email: `perf${i}@example.com`,
           phone: `123456${i.toString().padStart(4, '0')}`,
           company: `Company ${i}`,
-          notes: `Performance test notes ${i}`,
-          lastModified: new Date().toISOString()
+          notes: `Performance test notes for contact ${i}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         })),
         tasks: [],
         reminders: [],
         appointments: [],
-        lastModified: new Date().toISOString()
+        lastSyncTime: new Date().toISOString()
       };
       
       const startTime = Date.now();
-      const syncResult = await cloudDatabaseService.syncWithCloud(testData);
+      const { getCloudDatabase } = await import('./shared-cloud-database');
+      const syncResult = await getCloudDatabase().syncWithCloud('googledrive');
       const syncTime = Date.now() - startTime;
       
       return {

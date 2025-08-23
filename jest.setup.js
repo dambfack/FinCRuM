@@ -1,6 +1,23 @@
 // Import Jest DOM matchers
 import '@testing-library/jest-dom';
 
+// Set up environment variables for Google OAuth
+process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI = 'http://localhost:3000/auth/callback/google';
+
+// Suppress punycode deprecation warning
+process.noDeprecation = true;
+
+// Mock Google OAuth configuration globally
+jest.mock('./src/services/google-oauth', () => {
+  const originalModule = jest.requireActual('./src/services/google-oauth');
+  return {
+    ...originalModule,
+    isGoogleOAuthConfigured: jest.fn().mockReturnValue(true),
+  };
+});
+
 // Add custom Jest matchers
 import { expect } from '@jest/globals';
 

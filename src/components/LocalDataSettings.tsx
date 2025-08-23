@@ -20,7 +20,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { ConflictResolutionLog } from './ConflictResolutionLog';
 import { ConflictResolutionDialog } from './ConflictResolutionDialog';
@@ -33,9 +33,9 @@ export interface LocalDataSettingsProps {
 
 export function LocalDataSettings({ className }: LocalDataSettingsProps) {
   const { state, actions } = useCloudDatabase();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(
-    getData<boolean>('autoSyncEnabled') ?? true
+    getData<boolean>(DataItemType.AutoSyncEnabled) ?? true
   );
   const [isInitializing, setIsInitializing] = useState(false);
   const [showConflictLog, setShowConflictLog] = useState(false);
@@ -45,7 +45,7 @@ export function LocalDataSettings({ className }: LocalDataSettingsProps) {
   const handleAutoSyncToggle = (enabled: boolean) => {
     setAutoSyncEnabled(enabled);
     actions.enableAutoSync(enabled);
-    saveData('autoSyncEnabled', enabled);
+    saveData(DataItemType.AutoSyncEnabled, enabled);
   };
 
   const handleInitializeSharedDatabase = async () => {
@@ -229,7 +229,7 @@ export function LocalDataSettings({ className }: LocalDataSettingsProps) {
           {state.isConnected ? (
             <>
               <Button
-                onClick={actions.syncNow}
+                onClick={() => actions.syncNow()}
                 disabled={state.isSyncing}
                 className="flex-1"
               >
@@ -286,12 +286,12 @@ export function LocalDataSettings({ className }: LocalDataSettingsProps) {
         </div>
 
         {/* User Info */}
-        {user && (
+        {currentUser && (
           <>
             <Separator />
             <div className="text-xs text-muted-foreground">
-              <p>Current user: {user.name || user.email}</p>
-              <p>User ID: {user.id}</p>
+              <p>Current user: {currentUser.name || currentUser.email}</p>
+              <p>User ID: {currentUser.id}</p>
             </div>
           </>
         )}

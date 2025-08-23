@@ -51,14 +51,19 @@ export interface FileAttachmentMeta {
 export interface User {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   role: 'admin' | 'partner' | 'employee';
+  department?: string;
+  phone?: string;
   pin?: string; // Optional 4-digit PIN, stored as string
   profilePictureUrl?: string; // Optional: Stores image as a data URI
   cloudPinHash?: string; // Cloud-stored hashed PIN for multi-device access
   deviceIds?: string[]; // List of authorized device IDs
   permissions?: UserPermissions; // Role-based permissions
   createdAt?: string; // ISO date string
+  updatedAt?: string; // ISO date string
   lastLoginAt?: string; // ISO date string
   isActive?: boolean; // Account status
   createdByUserId?: string; // ID of admin/partner who created this account
@@ -71,6 +76,7 @@ export interface UserPermissions {
   canCreateUsers: boolean;
   canDeleteUsers: boolean;
   canModifyUsers: boolean;
+  canManageUsers: boolean;
   canViewAllContacts: boolean;
   canModifyAllContacts: boolean;
   canDeleteContacts: boolean;
@@ -199,22 +205,38 @@ export interface CloudAuthInfo {
  * Represents a data conflict detected during synchronization.
  */
 export interface DataConflict {
+  id: string; // Unique identifier for the conflict
+  dataType: string; // Type of data that has conflict (e.g., 'contacts', 'tasks')
+  itemId: string; // ID of the specific item with conflict
+  reason: string; // Reason for the conflict
   rowIndex: number; // Index of the row with conflict
   localValue: string[];
   cloudValue: string[];
   resolvedValue?: string[]; // Optional field for resolved data
   headers?: string[]; // Optional: Include headers for context in UI
+  status?: 'pending' | 'resolved'; // Status of the conflict
+  timestamp?: string; // When the conflict was detected
+  resolution?: 'local' | 'remote' | 'merge'; // How the conflict was resolved
+  mergedData?: any; // Data used for merge resolution
+  resolvedAt?: string; // When the conflict was resolved
+  itemType?: string; // Type of item (for compatibility with useConflictResolution)
+  localData?: any; // Local data (for compatibility with useConflictResolution)
+  remoteData?: any; // Remote data (for compatibility with useConflictResolution)
+  conflictType?: 'update' | 'delete' | 'create'; // Type of conflict
 }
 
 /**
  * User-specific theme settings.
  */
+export type ChartColorKeys = 'open' | 'closed' | 'missed' | 'other';
+
 export interface UserThemeSettings {
   accentColor?: string | null; // Hex string
   chartPieColorOpen?: string | null; // Hex string
   chartPieColorClosed?: string | null; // Hex string
   chartPieColorMissed?: string | null; // Hex string
   chartPieColorOther?: string | null; // Hex string
+  chartColors?: Record<ChartColorKeys, string>; // Chart color configuration
 }
 
 /**
@@ -254,6 +276,12 @@ export enum DataItemType {
   SyncBuffer = 'sync_buffer',
   SyncConflicts = 'sync_conflicts',
   SyncBufferConfig = 'sync_buffer_config',
+  SyncSettings = 'sync_settings',
+  GoogleDriveConnected = 'google_drive_connected',
+  GoogleLastSync = 'google_last_sync',
+  MicrosoftDriveConnected = 'microsoft_drive_connected',
+  MicrosoftLastSync = 'microsoft_last_sync',
+  UserProfile = 'user_profile',
   // OAuth Token Storage Keys
   GoogleDriveAccessToken = 'google_drive_access_token',
   GoogleDriveRefreshToken = 'google_drive_refresh_token',
@@ -263,7 +291,20 @@ export enum DataItemType {
   OneDriveRefreshToken = 'onedrive_refresh_token',
   MicrosoftAccessToken = 'microsoft_access_token',
   MicrosoftRefreshToken = 'microsoft_refresh_token',
-  CloudProvider = 'cloud_provider'
+  CloudProvider = 'cloud_provider',
+  DeviceRegistration = 'device_registration',
+  UserAccountSyncConfig = 'user_account_sync_config',
+  UserAccountSyncData = 'user_account_sync_data',
+  UserAccountConflicts = 'user_account_conflicts',
+  AutoSyncEnabled = 'autoSyncEnabled',
+  AutoSyncInterval = 'autoSyncInterval',
+  ConflictResolutionStrategy = 'conflictResolutionStrategy',
+  DeviceAuthRequests = 'deviceAuthRequests',
+  RegisteredDevices = 'registeredDevices',
+  DeviceSyncStatuses = 'deviceSyncStatuses',
+  SyncQueue = 'syncQueue',
+  OptimisticUpdates = 'optimisticUpdates',
+  UnresolvedConflicts = 'unresolvedConflicts'
 }
 
 /**
@@ -284,7 +325,11 @@ export interface LocalData {
   defaultHeaderLogoDark?: string | null;  // New
   backgroundImage?: string | null;
   defaultBackgroundImage?: string | null;
-  userThemePreferences?: UserPreferences; 
+  userThemePreferences?: UserPreferences;
+  // Cross-device user account synchronization
+  userAccountSyncData?: UserAccountSyncData;
+  userAccountSyncConfig?: UserAccountSyncConfig;
+  deviceRegistration?: DeviceRegistration;
 }
 
 /**
@@ -354,8 +399,128 @@ export interface ConflictResolution {
   reason?: string;
 }
 
-export interface DataConflictWithResolution extends DataConflict {
+export interface DataConflictWithResolution extends Omit<DataConflict, 'resolution'> {
   resolution?: ConflictResolution;
   resolvedAt?: string;
   resolvedBy?: string;
+}
+
+/**
+ * Detailed conflict tracking for cloud sync operations
+ */
+export interface SyncConflictDetails {
+  id: string;
+  timestamp: string;
+  dataType: DataItemType;
+  itemId: string;
+  conflictType: 'timestamp_mismatch' | 'content_difference' | 'deletion_conflict' | 'creation_conflict';
+  localData: any;
+  cloudData: any;
+  resolvedData?: any;
+  resolutionMethod: 'local_wins' | 'cloud_wins' | 'manual_merge' | 'auto_merge' | 'pending';
+  resolutionReason: string;
+  userId?: string;
+  deviceId?: string;
+}
+
+/**
+ * Conflict tracking result for sync operations
+ */
+export interface ConflictTrackingResult {
+  conflicts: SyncConflictDetails[];
+  autoResolved: number;
+  manualResolutionRequired: number;
+  totalConflicts: number;
+}
+
+/**
+ * Encrypted user account data for cross-device synchronization
+ */
+export interface EncryptedUserAccount {
+  id: string;
+  username: string;
+  encryptedPassword: {
+    encryptedData: string; // Base64 encoded
+    salt: string; // Base64 encoded
+    iv: string; // Base64 encoded
+    algorithm: string;
+    keyDerivation: string;
+  };
+  role: 'admin' | 'partner' | 'employee';
+  permissions: UserPermissions;
+  profileData: {
+    name: string;
+    email: string;
+    profilePictureUrl?: string;
+    createdAt: string;
+    lastLoginAt?: string;
+    isActive: boolean;
+    createdByUserId?: string;
+  };
+  deviceOrigin: string; // Device ID where account was created/last modified
+  lastModified: string; // ISO timestamp
+  syncVersion: number; // Version for conflict resolution
+}
+
+/**
+ * Device registration and trust information
+ */
+export interface DeviceRegistration {
+  deviceId: string;
+  deviceName: string;
+  deviceFingerprint: {
+    userAgent: string;
+    screenResolution: string;
+    timezone: string;
+    language: string;
+    platform: string;
+  };
+  registrationToken: string;
+  registeredAt: string; // ISO timestamp
+  lastActiveAt: string; // ISO timestamp
+  isActive: boolean;
+  cloudProvider: CloudProvider;
+  encryptionKeyVersion: number;
+}
+
+/**
+ * Cross-device user account synchronization data
+ */
+export interface UserAccountSyncData {
+  encryptedAccounts: EncryptedUserAccount[];
+  deviceRegistrations: DeviceRegistration[];
+  masterDeviceId?: string; // First device that set up encryption
+  syncVersion: number;
+  lastSyncAt: string; // ISO timestamp
+  conflictResolutionLog: UserAccountConflict[];
+}
+
+/**
+ * User account conflict information
+ */
+export interface UserAccountConflict {
+  id: string;
+  timestamp: string;
+  username: string;
+  conflictType: 'password_mismatch' | 'permission_difference' | 'profile_difference' | 'device_conflict';
+  localAccount: EncryptedUserAccount;
+  cloudAccount: EncryptedUserAccount;
+  resolvedAccount?: EncryptedUserAccount;
+  resolutionMethod: 'local_wins' | 'cloud_wins' | 'manual_merge' | 'user_choice' | 'pending';
+  resolutionReason: string;
+  deviceId: string;
+  requiresUserInput: boolean;
+}
+
+/**
+ * User account sync configuration
+ */
+export interface UserAccountSyncConfig {
+  enabled: boolean;
+  autoResolveConflicts: boolean;
+  syncFrequency: 'realtime' | 'hourly' | 'daily' | 'manual';
+  encryptionEnabled: boolean;
+  deviceTrustRequired: boolean;
+  maxDevices: number;
+  passwordExpiryDays: number;
 }

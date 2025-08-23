@@ -53,7 +53,7 @@ const customerFormSchema = z.object({
   profilePictureUrl: z.string().optional().or(z.literal('')),
   contactStatus: z.enum(['approved', 'pending_approval', 'pending_deletion']).optional(),
   changeProposal: z.any().optional(),
-  lastModifiedByRole: z.enum(['partner', 'employee']).optional(),
+  lastModifiedByRole: z.enum(['partner', 'employee', 'admin']).optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -184,7 +184,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
     setImageToCropSrc(null);
   };
 
-  const onSubmit = (data: CustomerFormValues) => {
+  const onSubmit = async (data: z.infer<typeof customerFormSchema>) => {
+    console.log('[CustomerForm] onSubmit function CALLED'); // New log
     if (!currentUser) {
         toast({ title: "Error", description: "No authenticated user found. Cannot save.", variant: "destructive" });
         return;
@@ -203,6 +204,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
 
     const finalAssignedToUserId = data.assignedToUserId === "none" ? undefined : data.assignedToUserId;
 
+    console.log('[CustomerForm] currentUser.role before check:', currentUser?.role);
     const formInputAsContactShape: Partial<Contact> = {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -271,7 +273,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
               ...initialData, 
               ...customerDataToSave, 
               id: contactId, 
-              createdAt: ensureDateString(initialData.createdAt) 
+              createdAt: ensureDateString(customerDataToSave.createdAt) 
             };
         }
 
@@ -319,7 +321,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onSave }) => {
           {!initialData && <CardDescription>Fill in the details to add a new customer to your records.</CardDescription>}
         </CardHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
+          <form onSubmit={form.handleSubmit((data) => {
+            console.log('[CustomerForm] handleSubmit CALLED. Data:', data);
+            console.log('[CustomerForm] handleSubmit formState:', form.formState);
+            onSubmit(data); // Call the original onSubmit
+          }, (errors) => {
+            console.error('[CustomerForm] handleSubmit VALIDATION ERRORS:', errors);
+          })}>
             <CardContent className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
               <div className="flex flex-col items-center space-y-3 mb-4">
                 <button

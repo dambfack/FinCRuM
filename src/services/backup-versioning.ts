@@ -1,6 +1,6 @@
 import { enhancedGoogleDriveService } from './enhanced-google-drive';
 import { enhancedOneDriveService } from './enhanced-onedrive';
-import { LocalData, User } from '@/lib/types';
+import { LocalData, User, DataItemType } from '@/lib/types';
 
 /**
  * Comprehensive backup and versioning service
@@ -19,17 +19,9 @@ export class BackupVersioningService {
    */
   async initialize(): Promise<{ success: boolean; error?: string }> {
     try {
-      // Initialize folder structures for both services
-      const googleResult = await enhancedGoogleDriveService.initializeFolderStructure();
-      const onedriveResult = await enhancedOneDriveService.initializeFolderStructure();
-
-      if (!googleResult.success && !onedriveResult.success) {
-        return {
-          success: false,
-          error: 'Failed to initialize backup folders on both cloud services'
-        };
-      }
-
+      // Note: Folder structure initialization will be done when tokens are available
+      // during actual backup operations. This allows the service to start without tokens.
+      
       // Start automatic backup schedule
       this.startAutomaticBackup();
 
@@ -90,7 +82,7 @@ export class BackupVersioningService {
   /**
    * Create full system backup
    */
-  async createFullSystemBackup(): Promise<{ success: boolean; error?: string; backupInfo?: any }> {
+  async createFullSystemBackup(googleTokens?: any, oneDriveTokens?: any): Promise<{ success: boolean; error?: string; backupInfo?: any }> {
     if (this.isBackupInProgress) {
       return { success: false, error: 'Backup already in progress' };
     }
@@ -113,16 +105,30 @@ export class BackupVersioningService {
 
       // Create backup on Google Drive
       try {
-        const googleResult = await enhancedGoogleDriveService.createFullBackup(allUsersData);
-        backupResults.googleDrive = googleResult;
+        if (googleTokens) {
+          const googleResult = await enhancedGoogleDriveService.createFullBackup(allUsersData, googleTokens);
+          backupResults.googleDrive = {
+            success: googleResult.success,
+            error: googleResult.error || (googleResult.success ? '' : 'Unknown error')
+          };
+        } else {
+          backupResults.googleDrive.error = 'No Google tokens provided';
+        }
       } catch (error) {
         backupResults.googleDrive.error = error instanceof Error ? error.message : 'Unknown error';
       }
 
       // Create backup on OneDrive
       try {
-        const onedriveResult = await enhancedOneDriveService.createFullBackup(allUsersData);
-        backupResults.oneDrive = onedriveResult;
+        if (oneDriveTokens) {
+          const onedriveResult = await enhancedOneDriveService.createFullBackup(allUsersData, oneDriveTokens);
+          backupResults.oneDrive = {
+            success: onedriveResult.success,
+            error: onedriveResult.error || (onedriveResult.success ? '' : 'Unknown error')
+          };
+        } else {
+          backupResults.oneDrive.error = 'No OneDrive tokens provided';
+        }
       } catch (error) {
         backupResults.oneDrive.error = error instanceof Error ? error.message : 'Unknown error';
       }
@@ -156,7 +162,9 @@ export class BackupVersioningService {
   async createUserBackup(
     userId: string, 
     userName: string, 
-    data: LocalData
+    data: LocalData,
+    googleTokens?: any,
+    oneDriveTokens?: any
   ): Promise<{ success: boolean; error?: string; backupInfo?: any }> {
     try {
       const backupResults = {
@@ -166,16 +174,30 @@ export class BackupVersioningService {
 
       // Create backup on Google Drive
       try {
-        const googleResult = await enhancedGoogleDriveService.uploadUserData(userId, userName, data);
-        backupResults.googleDrive = googleResult;
+        if (googleTokens) {
+          const googleResult = await enhancedGoogleDriveService.uploadUserData(userId, userName, data, googleTokens);
+          backupResults.googleDrive = {
+            success: googleResult.success,
+            error: googleResult.error || (googleResult.success ? '' : 'Unknown error')
+          };
+        } else {
+          backupResults.googleDrive.error = 'No Google tokens provided';
+        }
       } catch (error) {
         backupResults.googleDrive.error = error instanceof Error ? error.message : 'Unknown error';
       }
 
       // Create backup on OneDrive
       try {
-        const onedriveResult = await enhancedOneDriveService.uploadUserData(userId, userName, data);
-        backupResults.oneDrive = onedriveResult;
+        if (oneDriveTokens) {
+          const onedriveResult = await enhancedOneDriveService.uploadUserData(userId, userName, data, oneDriveTokens);
+          backupResults.oneDrive = {
+            success: onedriveResult.success,
+            error: onedriveResult.error || (onedriveResult.success ? '' : 'Unknown error')
+          };
+        } else {
+          backupResults.oneDrive.error = 'No OneDrive tokens provided';
+        }
       } catch (error) {
         backupResults.oneDrive.error = error instanceof Error ? error.message : 'Unknown error';
       }
@@ -207,7 +229,9 @@ export class BackupVersioningService {
   async restoreUserData(
     userId: string, 
     userName: string, 
-    preferredService: 'google' | 'onedrive' | 'auto' = 'auto'
+    preferredService: 'google' | 'onedrive' | 'auto' = 'auto',
+    googleTokens?: any,
+    oneDriveTokens?: any
   ): Promise<{ success: boolean; data?: LocalData; error?: string; source?: string }> {
     try {
       let restoreResult: { success: boolean; data?: LocalData; error?: string } = { success: false };
@@ -215,9 +239,11 @@ export class BackupVersioningService {
 
       if (preferredService === 'google' || preferredService === 'auto') {
         try {
-          restoreResult = await enhancedGoogleDriveService.downloadUserData(userId, userName);
-          if (restoreResult.success) {
-            source = 'Google Drive';
+          if (googleTokens) {
+            restoreResult = await enhancedGoogleDriveService.downloadUserData(userId, userName, googleTokens);
+            if (restoreResult.success) {
+              source = 'Google Drive';
+            }
           }
         } catch (error) {
           console.error('Error restoring from Google Drive:', error);
@@ -226,9 +252,11 @@ export class BackupVersioningService {
 
       if (!restoreResult.success && (preferredService === 'onedrive' || preferredService === 'auto')) {
         try {
-          restoreResult = await enhancedOneDriveService.downloadUserData(userId, userName);
-          if (restoreResult.success) {
-            source = 'OneDrive';
+          if (oneDriveTokens) {
+            restoreResult = await enhancedOneDriveService.downloadUserData(userId, userName, oneDriveTokens);
+            if (restoreResult.success) {
+              source = 'OneDrive';
+            }
           }
         } catch (error) {
           console.error('Error restoring from OneDrive:', error);
@@ -236,6 +264,12 @@ export class BackupVersioningService {
       }
 
       if (restoreResult.success && restoreResult.data) {
+        // If the restored data contains a 'users' array, update the local storage for all users
+        if (restoreResult.data.users && restoreResult.data.users.length > 0) {
+          localStorage.setItem(DataItemType.Users, JSON.stringify(restoreResult.data.users));
+          console.log('Successfully restored and updated all user profiles from cloud backup.');
+        }
+
         return {
           success: true,
           data: restoreResult.data,
@@ -263,22 +297,33 @@ export class BackupVersioningService {
     userId: string,
     userName: string,
     localData: LocalData,
-    preferredService: 'google' | 'onedrive' | 'both' = 'both'
+    preferredService: 'google' | 'onedrive' | 'both' = 'both',
+    googleTokens?: any,
+    oneDriveTokens?: any
   ): Promise<{ success: boolean; data?: LocalData; conflicts?: any[]; error?: string }> {
     try {
       let syncResult: { success: boolean; data?: LocalData; conflicts?: any[]; error?: string } = { success: false };
 
       if (preferredService === 'google' || preferredService === 'both') {
-        // Google Drive doesn't have built-in conflict resolution yet
-        // For now, we'll use the OneDrive implementation
+        if (googleTokens) {
+          syncResult = await enhancedGoogleDriveService.syncUserDataWithConflictResolution(
+            userId,
+            userName,
+            localData,
+            googleTokens
+          );
+        }
       }
 
-      if (preferredService === 'onedrive' || preferredService === 'both') {
-        syncResult = await enhancedOneDriveService.syncUserDataWithConflictResolution(
-          userId,
-          userName,
-          localData
-        );
+      if (!syncResult.success && (preferredService === 'onedrive' || preferredService === 'both')) {
+        if (oneDriveTokens) {
+          syncResult = await enhancedOneDriveService.syncUserDataWithConflictResolution(
+            userId,
+            userName,
+            localData,
+            oneDriveTokens
+          );
+        }
       }
 
       return syncResult;
@@ -296,22 +341,26 @@ export class BackupVersioningService {
    */
   async getUserBackupHistory(
     userId: string,
-    userName: string
+    userName: string,
+    googleTokens?: any,
+    oneDriveTokens?: any
   ): Promise<{ success: boolean; history?: any[]; error?: string }> {
     try {
       const history: any[] = [];
 
       // Get Google Drive backup history
       try {
-        const googleFolders = await enhancedGoogleDriveService.listUserFolders();
-        if (googleFolders.success && googleFolders.folders) {
-          const userFolder = googleFolders.folders.find(f => f.userId === userId.substring(0, 8));
-          if (userFolder) {
-            history.push({
-              service: 'Google Drive',
-              folderId: userFolder.id,
-              folderName: userFolder.name
-            });
+        if (googleTokens) {
+          const googleFolders = await enhancedGoogleDriveService.listUserFolders(googleTokens);
+          if (googleFolders.success && googleFolders.folders) {
+            const userFolder = googleFolders.folders.find(f => f.userId === userId.substring(0, 8));
+            if (userFolder) {
+              history.push({
+                service: 'Google Drive',
+                folderId: userFolder.id,
+                folderName: userFolder.name
+              });
+            }
           }
         }
       } catch (error) {
@@ -320,15 +369,17 @@ export class BackupVersioningService {
 
       // Get OneDrive backup history
       try {
-        const onedriveFolders = await enhancedOneDriveService.listUserFolders();
-        if (onedriveFolders.success && onedriveFolders.folders) {
-          const userFolder = onedriveFolders.folders.find(f => f.userId === userId.substring(0, 8));
-          if (userFolder) {
-            history.push({
-              service: 'OneDrive',
-              folderId: userFolder.id,
-              folderName: userFolder.name
-            });
+        if (oneDriveTokens) {
+          const onedriveFolders = await enhancedOneDriveService.listUserFolders(oneDriveTokens);
+          if (onedriveFolders.success && onedriveFolders.folders) {
+            const userFolder = onedriveFolders.folders.find(f => f.userId === userId.substring(0, 8));
+            if (userFolder) {
+              history.push({
+                service: 'OneDrive',
+                folderId: userFolder.id,
+                folderName: userFolder.name
+              });
+            }
           }
         }
       } catch (error) {
@@ -386,27 +437,31 @@ export class BackupVersioningService {
     const allUsersData = new Map<string, { user: User; data: LocalData }>();
 
     try {
-      // Get users from local storage
-      const usersJson = localStorage.getItem('fincrm_users');
-      if (!usersJson) {
-        return allUsersData;
+      // Get all users from local storage
+      const usersJson = localStorage.getItem(DataItemType.Users); // Use DataItemType.Users
+      let allUsers: User[] = [];
+      if (usersJson) {
+        allUsers = JSON.parse(usersJson);
       }
 
-      const users: User[] = JSON.parse(usersJson);
-      
-      for (const user of users) {
+      for (const user of allUsers) { // Iterate through all users
         // Get user's data from local storage
         const userDataKey = `fincrm_data_${user.id}`;
         const userDataJson = localStorage.getItem(userDataKey);
         
+        let userData: LocalData = {}; // Initialize with empty object
         if (userDataJson) {
           try {
-            const userData: LocalData = JSON.parse(userDataJson);
-            allUsersData.set(user.id, { user, data: userData });
+            userData = JSON.parse(userDataJson);
           } catch (parseError) {
             console.error(`Error parsing data for user ${user.id}:`, parseError);
           }
         }
+
+        // Ensure the 'users' array in this LocalData object contains all users
+        userData.users = allUsers; // THIS IS THE KEY CHANGE
+
+        allUsersData.set(user.id, { user, data: userData });
       }
     } catch (error) {
       console.error('Error getting all users data:', error);
@@ -439,9 +494,9 @@ export class BackupVersioningService {
   /**
    * Force immediate backup
    */
-  async forceBackup(): Promise<{ success: boolean; error?: string; backupInfo?: any }> {
+  async forceBackup(googleTokens?: any, oneDriveTokens?: any): Promise<{ success: boolean; error?: string; backupInfo?: any }> {
     console.log('Force backup requested');
-    return await this.createFullSystemBackup();
+    return await this.createFullSystemBackup(googleTokens, oneDriveTokens);
   }
 
   /**
@@ -449,30 +504,36 @@ export class BackupVersioningService {
    */
   async validateBackupIntegrity(
     userId: string,
-    userName: string
+    userName: string,
+    googleTokens?: any,
+    oneDriveTokens?: any
   ): Promise<{ success: boolean; isValid?: boolean; issues?: string[]; error?: string }> {
     try {
       const issues: string[] = [];
 
       // Check Google Drive backup
-      const googleResult = await enhancedGoogleDriveService.downloadUserData(userId, userName);
-      if (!googleResult.success) {
-        issues.push('Google Drive backup not accessible or corrupted');
-      } else if (googleResult.data) {
-        // Validate data structure
-        if (!this.validateDataStructure(googleResult.data)) {
-          issues.push('Google Drive backup has invalid data structure');
+      if (googleTokens) {
+        const googleResult = await enhancedGoogleDriveService.downloadUserData(userId, userName, googleTokens);
+        if (!googleResult.success) {
+          issues.push('Google Drive backup not accessible or corrupted');
+        } else if (googleResult.data) {
+          // Validate data structure
+          if (!this.validateDataStructure(googleResult.data)) {
+            issues.push('Google Drive backup has invalid data structure');
+          }
         }
       }
 
       // Check OneDrive backup
-      const onedriveResult = await enhancedOneDriveService.downloadUserData(userId, userName);
-      if (!onedriveResult.success) {
-        issues.push('OneDrive backup not accessible or corrupted');
-      } else if (onedriveResult.data) {
-        // Validate data structure
-        if (!this.validateDataStructure(onedriveResult.data)) {
-          issues.push('OneDrive backup has invalid data structure');
+      if (oneDriveTokens) {
+        const onedriveResult = await enhancedOneDriveService.downloadUserData(userId, userName, oneDriveTokens);
+        if (!onedriveResult.success) {
+          issues.push('OneDrive backup not accessible or corrupted');
+        } else if (onedriveResult.data) {
+          // Validate data structure
+          if (!this.validateDataStructure(onedriveResult.data)) {
+            issues.push('OneDrive backup has invalid data structure');
+          }
         }
       }
 

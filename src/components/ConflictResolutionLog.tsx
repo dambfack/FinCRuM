@@ -50,7 +50,7 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
       filtered = filtered.filter(log => 
         log.itemId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.conflictReason.toLowerCase().includes(searchTerm.toLowerCase())
+        log.conflictDetails.resolutionReason.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -61,7 +61,7 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
 
     // Apply resolution filter
     if (filterResolution !== 'all') {
-      filtered = filtered.filter(log => log.resolution === filterResolution);
+      filtered = filtered.filter(log => log.action === filterResolution);
     }
 
     // Apply sorting
@@ -80,7 +80,7 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
     const csvContent = [
       'Timestamp,User ID,Data Type,Item ID,Conflict Reason,Resolution,Local Value,Cloud Value',
       ...filteredLogs.map(log => 
-        `"${log.timestamp}","${log.userId}","${log.dataType}","${log.itemId}","${log.conflictReason}","${log.resolution}","${JSON.stringify(log.localValue).replace(/"/g, '""')}","${JSON.stringify(log.cloudValue).replace(/"/g, '""')}"`
+        `"${log.timestamp}","${log.userId}","${log.dataType}","${log.itemId}","${log.conflictDetails.resolutionReason}","${log.action}","${JSON.stringify(log.conflictDetails.localVersion).replace(/"/g, '""')}","${JSON.stringify(log.conflictDetails.cloudVersion).replace(/"/g, '""')}"`
       )
     ].join('\n');
 
@@ -114,10 +114,10 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
         return '👤';
       case DataItemType.Tasks:
         return '✓';
-      case DataItemType.Transactions:
-        return '💰';
-      case DataItemType.Categories:
-        return '📁';
+      case DataItemType.Reminders:
+        return '🔔';
+      case DataItemType.Appointments:
+        return '📅';
       default:
         return '📄';
     }
@@ -173,8 +173,8 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
               <SelectItem value="all">All Data Types</SelectItem>
               <SelectItem value={DataItemType.Contacts}>Contacts</SelectItem>
               <SelectItem value={DataItemType.Tasks}>Tasks</SelectItem>
-              <SelectItem value={DataItemType.Transactions}>Transactions</SelectItem>
-              <SelectItem value={DataItemType.Categories}>Categories</SelectItem>
+              <SelectItem value={DataItemType.Reminders}>Reminders</SelectItem>
+              <SelectItem value={DataItemType.Appointments}>Appointments</SelectItem>
             </SelectContent>
           </Select>
           
@@ -239,8 +239,8 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
                         </div>
                       </div>
                     </div>
-                    <Badge variant={getResolutionBadgeVariant(log.resolution)}>
-                      {log.resolution.replace('_', ' ').toUpperCase()}
+                    <Badge variant={getResolutionBadgeVariant(log.action)}>
+                      {log.action.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
                   
@@ -248,20 +248,20 @@ export function ConflictResolutionLog({ className }: ConflictResolutionLogProps)
                   
                   <div>
                     <p className="text-sm font-medium text-gray-700 mb-2">Conflict Reason:</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{log.conflictReason}</p>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{log.conflictDetails.resolutionReason}</p>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-blue-700 mb-2">Local Value:</p>
                       <pre className="text-xs bg-blue-50 p-2 rounded overflow-x-auto">
-                        {JSON.stringify(log.localValue, null, 2)}
+                        {JSON.stringify(log.conflictDetails.localVersion, null, 2)}
                       </pre>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-green-700 mb-2">Cloud Value:</p>
                       <pre className="text-xs bg-green-50 p-2 rounded overflow-x-auto">
-                        {JSON.stringify(log.cloudValue, null, 2)}
+                        {JSON.stringify(log.conflictDetails.cloudVersion, null, 2)}
                       </pre>
                     </div>
                   </div>

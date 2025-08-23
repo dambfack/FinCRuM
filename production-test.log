@@ -1,0 +1,95 @@
+[2025-07-12T04:24:08.864Z] [INFO] ============================================================
+[2025-07-12T04:24:08.869Z] [INFO] Starting FinCRuM Production Tests
+[2025-07-12T04:24:09.513Z] [INFO] ============================================================
+[2025-07-12T04:24:09.552Z] [INFO] Testing environment configuration...
+[2025-07-12T04:24:09.554Z] [INFO] Testing build artifacts...
+[2025-07-12T04:24:09.684Z] [INFO] Testing server startup...
+[2025-07-12T04:24:39.710Z] [INFO] Testing API endpoints...
+[2025-07-12T04:24:39.718Z] [INFO] Testing Electron compatibility...
+[2025-07-12T04:24:41.727Z] [INFO] Testing performance...
+[2025-07-12T04:24:41.730Z] [INFO] Testing security configurations...
+[2025-07-12T04:24:41.733Z] [INFO] ============================================================
+[2025-07-12T04:24:41.734Z] [INFO] PRODUCTION TEST REPORT
+[2025-07-12T04:24:41.734Z] [INFO] ============================================================
+[2025-07-12T04:24:41.735Z] [INFO] Total Tests: 24
+[2025-07-12T04:24:41.736Z] [INFO] Passed: 11
+[2025-07-12T04:24:41.736Z] [INFO] Failed: 7
+[2025-07-12T04:24:41.736Z] [INFO] Warnings: 6
+[2025-07-12T04:24:41.737Z] [INFO] Success Rate: 45.83%
+[2025-07-12T04:24:41.737Z] [INFO] 
+Detailed Results:
+[2025-07-12T04:24:41.738Z] [INFO] ✓ [PASS] Node.js Version: Node.js v22.13.1 is supported
+[2025-07-12T04:24:41.738Z] [INFO] ⚠ [WARN] Environment Variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID: Environment variable is missing
+[2025-07-12T04:24:41.739Z] [INFO] ⚠ [WARN] Environment Variable: GOOGLE_CLIENT_SECRET: Environment variable is missing
+[2025-07-12T04:24:41.739Z] [INFO] ⚠ [WARN] Environment Variable: NEXT_PUBLIC_GOOGLE_REDIRECT_URI: Environment variable is missing
+[2025-07-12T04:24:41.740Z] [INFO] ✓ [PASS] Disk Access: Disk access is working
+[2025-07-12T04:24:41.741Z] [INFO] ✓ [PASS] Next.js Build: .next directory exists
+[2025-07-12T04:24:41.741Z] [INFO] ✗ [FAIL] Standalone Build: Standalone server.js missing
+[2025-07-12T04:24:41.742Z] [INFO] ⚠ [WARN] Static Assets: Static directory missing
+[2025-07-12T04:24:41.742Z] [INFO] ✓ [PASS] Electron Main: electron.js exists
+[2025-07-12T04:24:41.743Z] [INFO] ✓ [PASS] Electron Preload: preload.js exists
+[2025-07-12T04:24:41.744Z] [INFO] ✗ [FAIL] Server Startup: Server failed to start
+[2025-07-12T04:24:41.744Z] [INFO] ✗ [FAIL] Endpoint: /: Request failed: 
+[2025-07-12T04:24:41.745Z] [INFO] ✗ [FAIL] Endpoint: /api/health: Request failed: 
+[2025-07-12T04:24:41.745Z] [INFO] ✗ [FAIL] Endpoint: /api/auth/google: Request failed: 
+[2025-07-12T04:24:41.746Z] [INFO] ✗ [FAIL] Endpoint: /customers: Request failed: 
+[2025-07-12T04:24:41.746Z] [INFO] ✗ [FAIL] Endpoint: /add-customer: Request failed: 
+[2025-07-12T04:24:41.746Z] [INFO] ✓ [PASS] Electron Installation: Electron is installed
+[2025-07-12T04:24:41.747Z] [INFO] ✓ [PASS] Electron API: BrowserWindow: BrowserWindow is used in electron.js
+[2025-07-12T04:24:41.747Z] [INFO] ✓ [PASS] Electron API: app: app is used in electron.js
+[2025-07-12T04:24:41.748Z] [INFO] ✓ [PASS] Electron API: ipcMain: ipcMain is used in electron.js
+[2025-07-12T04:24:41.748Z] [INFO] ✓ [PASS] Response Time: Fast response: 3ms
+[2025-07-12T04:24:41.749Z] [INFO] ✓ [PASS] Memory Usage: Low memory usage: 6MB
+[2025-07-12T04:24:41.749Z] [INFO] ⚠ [WARN] Security: .env.local: Sensitive file .env.local exists - ensure it's not in production build
+[2025-07-12T04:24:41.750Z] [INFO] ⚠ [WARN] Security: .env.production: Sensitive file .env.production exists - ensure it's not in production build
+[2025-07-12T04:24:41.751Z] [INFO] 
+Detailed report saved to: D:\Local_Git\FinCRuM\production-test-report.json
+[2025-07-12T04:24:41.752Z] [ERROR] Some tests failed. Please review the issues above.
+[2025-07-12T04:34:45.814Z] [INFO] ============================================================
+[2025-07-12T04:34:46.173Z] [INFO] Starting FinCRuM Production Tests
+[2025-07-12T04:34:46.174Z] [INFO] ============================================================
+[2025-07-12T04:34:46.175Z] [INFO] Testing environment configuration...
+[2025-07-12T04:34:46.176Z] [INFO] Testing build artifacts...
+[2025-07-12T04:34:46.414Z] [INFO] Testing server startup...
+[2025-07-12T04:34:48.492Z] [INFO] Testing API endpoints...
+[2025-07-12T04:34:48.575Z] [INFO] Testing Electron compatibility...
+[2025-07-12T04:34:48.668Z] [INFO] Testing performance...
+[2025-07-12T04:34:48.672Z] [INFO] Testing security configurations...
+[2025-07-12T04:34:48.677Z] [INFO] ============================================================
+[2025-07-12T04:34:48.677Z] [INFO] PRODUCTION TEST REPORT
+[2025-07-12T04:34:48.678Z] [INFO] ============================================================
+[2025-07-12T04:34:48.679Z] [INFO] Total Tests: 25
+[2025-07-12T04:34:48.680Z] [INFO] Passed: 19
+[2025-07-12T04:34:48.680Z] [INFO] Failed: 0
+[2025-07-12T04:34:48.681Z] [INFO] Warnings: 6
+[2025-07-12T04:34:48.682Z] [INFO] Success Rate: 76.00%
+[2025-07-12T04:34:48.682Z] [INFO] 
+Detailed Results:
+[2025-07-12T04:34:48.683Z] [INFO] ✓ [PASS] Node.js Version: Node.js v22.13.1 is supported
+[2025-07-12T04:34:48.684Z] [INFO] ⚠ [WARN] Environment Variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID: Environment variable is missing
+[2025-07-12T04:34:48.685Z] [INFO] ⚠ [WARN] Environment Variable: GOOGLE_CLIENT_SECRET: Environment variable is missing
+[2025-07-12T04:34:48.685Z] [INFO] ⚠ [WARN] Environment Variable: NEXT_PUBLIC_GOOGLE_REDIRECT_URI: Environment variable is missing
+[2025-07-12T04:34:48.686Z] [INFO] ✓ [PASS] Disk Access: Disk access is working
+[2025-07-12T04:34:48.686Z] [INFO] ✓ [PASS] Next.js Build: .next directory exists
+[2025-07-12T04:34:48.687Z] [INFO] ✓ [PASS] Standalone Build: Standalone server.js exists
+[2025-07-12T04:34:48.687Z] [INFO] ✓ [PASS] Static Assets: Static directory exists
+[2025-07-12T04:34:48.688Z] [INFO] ✓ [PASS] Electron Main: electron.js exists
+[2025-07-12T04:34:48.688Z] [INFO] ✓ [PASS] Electron Preload: preload.js exists
+[2025-07-12T04:34:48.689Z] [INFO] ✓ [PASS] Server Startup: Server started successfully on port 9002
+[2025-07-12T04:34:48.689Z] [INFO] ✓ [PASS] Endpoint: /: Responded with 200 in 3ms
+[2025-07-12T04:34:48.689Z] [INFO] ✓ [PASS] Endpoint: /api/health: Responded with 200 in 22ms
+[2025-07-12T04:34:48.690Z] [INFO] ✓ [PASS] Endpoint: /api/auth/google: Responded with 200 in 42ms
+[2025-07-12T04:34:48.691Z] [INFO] ✓ [PASS] Endpoint: /customers: Responded with 200 in 7ms
+[2025-07-12T04:34:48.691Z] [INFO] ✓ [PASS] Endpoint: /add-customer: Responded with 200 in 6ms
+[2025-07-12T04:34:48.692Z] [INFO] ✓ [PASS] Electron Installation: Electron is installed
+[2025-07-12T04:34:48.692Z] [INFO] ✓ [PASS] Electron API: BrowserWindow: BrowserWindow is used in electron.js
+[2025-07-12T04:34:48.693Z] [INFO] ✓ [PASS] Electron API: app: app is used in electron.js
+[2025-07-12T04:34:48.693Z] [INFO] ✓ [PASS] Electron API: ipcMain: ipcMain is used in electron.js
+[2025-07-12T04:34:48.694Z] [INFO] ✓ [PASS] Response Time: Fast response: 4ms
+[2025-07-12T04:34:48.694Z] [INFO] ✓ [PASS] Memory Usage: Low memory usage: 6MB
+[2025-07-12T04:34:48.695Z] [INFO] ⚠ [WARN] Security: .env.local: Sensitive file .env.local exists - ensure it's not in production build
+[2025-07-12T04:34:48.695Z] [INFO] ⚠ [WARN] Security: .env.production: Sensitive file .env.production exists - ensure it's not in production build
+[2025-07-12T04:34:48.696Z] [INFO] ⚠ [WARN] Security Headers: X-Powered-By header is exposed
+[2025-07-12T04:34:48.844Z] [INFO] 
+Detailed report saved to: D:\Local_Git\FinCRuM\production-test-report.json
+[2025-07-12T04:34:48.846Z] [WARN] All tests passed but there are warnings to review.

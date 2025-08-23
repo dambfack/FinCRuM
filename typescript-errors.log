@@ -1,0 +1,79 @@
+src/app/customers/page.tsx(153,21): error TS2322: Type '"approval_request"' is not assignable to type '"error" | "info" | "warning" | "success"'.
+src/components/AppBackgroundPanel.tsx(35,9): error TS2304: Cannot find name 'toast'.
+src/components/AppBackgroundPanel.tsx(52,9): error TS2304: Cannot find name 'toast'.
+src/components/AppointmentForm.tsx(252,9): error TS2322: Type '"assignment"' is not assignable to type '"error" | "info" | "warning" | "success"'.
+src/components/CustomerForm.tsx(247,17): error TS2322: Type '"approval_request"' is not assignable to type '"error" | "info" | "warning" | "success"'.
+src/components/Dashboard.tsx(88,24): error TS2339: Property 'currentUserThemeSettings' does not exist on type 'AuthContextType'.
+src/components/LocalDataSettings.tsx(57,11): error TS2339: Property 'resetApplication' does not exist on type 'AuthContextType'.
+src/components/NotificationBell.tsx(80,59): error TS2367: This comparison appears to be unintentional because the types '"error" | "info" | "warning" | "success"' and '"approval_request"' have no overlap.
+src/components/NotificationBell.tsx(162,12): error TS2678: Type '"assignment"' is not comparable to type '"error" | "info" | "warning" | "success"'.
+src/components/NotificationBell.tsx(164,12): error TS2678: Type '"approval_request"' is not comparable to type '"error" | "info" | "warning" | "success"'.
+src/components/NotificationBell.tsx(228,44): error TS2367: This comparison appears to be unintentional because the types '"error" | "info" | "warning" | "success"' and '"approval_request"' have no overlap.
+src/components/NotificationBell.tsx(241,55): error TS2367: This comparison appears to be unintentional because the types '"error" | "info" | "warning" | "success"' and '"approval_request"' have no overlap.
+src/components/ReminderForm.tsx(164,9): error TS2322: Type '"assignment"' is not assignable to type '"error" | "info" | "warning" | "success"'.
+src/components/TaskForm.tsx(229,9): error TS2322: Type '"assignment"' is not assignable to type '"error" | "info" | "warning" | "success"'.
+src/components/ui/chart.tsx(6,20): error TS2307: Cannot find module '@/lib/utils.mts' or its corresponding type declarations.
+src/lib/types.ts(32,13): error TS2567: Enum declarations can only merge with namespace or other enum declarations.
+src/lib/types.ts(233,3): error TS2300: Duplicate identifier 'Contacts'.
+src/lib/types.ts(234,3): error TS2300: Duplicate identifier 'Tasks'.
+src/lib/types.ts(235,3): error TS2300: Duplicate identifier 'Reminders'.
+src/lib/types.ts(236,3): error TS2300: Duplicate identifier 'Appointments'.
+src/lib/types.ts(237,3): error TS2300: Duplicate identifier 'Users'.
+src/lib/types.ts(238,3): error TS2300: Duplicate identifier 'CurrentUser'.
+src/lib/types.ts(241,3): error TS2300: Duplicate identifier 'Notifications'.
+src/lib/types.ts(257,18): error TS2567: Enum declarations can only merge with namespace or other enum declarations.
+src/lib/types.ts(343,3): error TS2300: Duplicate identifier 'Contacts'.
+src/lib/types.ts(344,3): error TS2300: Duplicate identifier 'Tasks'.
+src/lib/types.ts(345,3): error TS2300: Duplicate identifier 'Reminders'.
+src/lib/types.ts(346,3): error TS2300: Duplicate identifier 'Appointments'.
+src/lib/types.ts(347,3): error TS2300: Duplicate identifier 'Users'.
+src/lib/types.ts(348,3): error TS2300: Duplicate identifier 'Notifications'.
+src/lib/types.ts(350,3): error TS2300: Duplicate identifier 'CurrentUser'.
+src/lib/types.ts(393,18): error TS2567: Enum declarations can only merge with namespace or other enum declarations.
+src/lib/types.ts(447,3): error TS2717: Subsequent property declarations must have the same type.  Property 'type' must be of type '"error" | "info" | "warning" | "success"', but here has type '"info" | "assignment" | "approval_request"'.
+src/lib/utils.ts(309,18): error TS2304: Cannot find name 'saveDataWithCloudSync'.
+src/lib/utils.ts(330,29): error TS2304: Cannot find name 'saveDataWithCloudSync'.
+src/services/backup-versioning.ts(513,23): error TS2322: Type 'import("D:/Local_Git/FinCRuM/src/lib/types").LocalData' is not assignable to type 'object'.
+src/services/enhanced-google-drive.ts(1,10): error TS2305: Module '"./google-drive"' has no exported member 'googleDriveService'.
+src/services/enhanced-onedrive.ts(291,22): error TS2352: Conversion of type 'ExcelData' to type 'LocalData' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/services/enhanced-onedrive.ts(570,13): error TS2322: Type '{ contacts: { id: any; }[]; tasks: { id: any; }[]; reminders: { id: any; }[]; appointments: { id: any; }[]; lastModified: string; }' is not assignable to type 'LocalData'.
+src/services/enhanced-onedrive.ts(571,46): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(571,72): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(572,43): error TS2339: Property 'tasks' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(572,66): error TS2339: Property 'tasks' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(573,47): error TS2339: Property 'reminders' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(573,74): error TS2339: Property 'reminders' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(574,50): error TS2339: Property 'appointments' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(574,80): error TS2339: Property 'appointments' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(576,30): error TS2339: Property 'lastModified' does not exist on type 'LocalData'.
+src/services/enhanced-onedrive.ts(577,30): error TS2339: Property 'lastModified' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(217,17): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(225,17): error TS2339: Property 'tasks' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(233,17): error TS2339: Property 'reminders' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(241,17): error TS2339: Property 'appointments' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(249,17): error TS2339: Property 'users' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(257,17): error TS2339: Property 'notifications' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(270,31): error TS2339: Property 'customerData' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(502,5): error TS2322: Type '{ contacts: Contact[]; tasks: Task[]; reminders: Reminder[]; appointments: Appointment[]; users: User[]; notifications: Notification[]; customerData: ExcelData; lastSyncTime: string; }' is not assignable to type 'LocalData'.
+src/services/shared-cloud-database.ts(510,19): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(510,77): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(511,19): error TS2339: Property 'tasks' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(511,71): error TS2339: Property 'tasks' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(512,19): error TS2339: Property 'reminders' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(512,79): error TS2339: Property 'reminders' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(513,19): error TS2339: Property 'appointments' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(513,85): error TS2339: Property 'appointments' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(514,19): error TS2339: Property 'users' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(514,71): error TS2339: Property 'users' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(515,19): error TS2339: Property 'notifications' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(515,87): error TS2339: Property 'notifications' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(516,19): error TS2339: Property 'customerData' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(516,85): error TS2339: Property 'customerData' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(517,19): error TS2339: Property 'lastSyncTime' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(517,85): error TS2339: Property 'lastSyncTime' does not exist on type 'LocalData'.
+src/services/shared-cloud-database.ts(523,5): error TS2322: Type '{ contacts: Contact[]; tasks: Task[]; reminders: Reminder[]; appointments: Appointment[]; users: User[]; notifications: Notification[]; customerData: ExcelData; lastModified: string; }' is not assignable to type 'LocalData'.
+src/services/shared-cloud-database.ts(911,13): error TS2322: Type '{ contacts: Contact[]; tasks: Task[]; reminders: Reminder[]; appointments: Appointment[]; users: User[]; notifications: Notification[]; customerData: ExcelData; }' is not assignable to type 'LocalData'.
+src/services/testing-service.ts(406,13): error TS2322: Type '{ contacts: { id: string; firstName: string; lastName: string; email: string; phone: string; company: string; notes: string; createdAt: string; updatedAt: string; }[]; tasks: undefined[]; reminders: undefined[]; appointments: undefined[]; lastModified: string; }' is not assignable to type 'LocalData'.
+src/services/testing-service.ts(829,13): error TS2322: Type '{ contacts: { id: string; firstName: string; lastName: string; email: string; phone: string; company: string; notes: string; createdAt: string; updatedAt: string; }[]; tasks: undefined[]; reminders: undefined[]; appointments: undefined[]; lastModified: string; }' is not assignable to type 'LocalData'.
+src/services/testing-service.ts(1058,13): error TS2322: Type '{ contacts: { id: string; firstName: string; lastName: string; email: string; phone: string; company: string; notes: string; createdAt: string; updatedAt: string; }[]; tasks: undefined[]; reminders: undefined[]; appointments: undefined[]; lastModified: string; }' is not assignable to type 'LocalData'.
+src/services/testing-service.ts(1088,30): error TS2339: Property 'contacts' does not exist on type 'LocalData'.
